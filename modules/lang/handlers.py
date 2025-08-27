@@ -1,8 +1,8 @@
 # modules/lang/handlers.py
 import db
 from utils import edit_or_send
-from .texts import TITLE
-from .keyboards import lang_menu
+from modules.lang.texts import TITLE
+from modules.lang.keyboards import lang_menu
 from modules.home.texts import MAIN
 from modules.home.keyboards import main_menu
 from modules.i18n import t
