@@ -1,3 +1,4 @@
-pip install pyTelegramBotAPI requests
-modules
-pytelegrambotapi
+pyTelegramBotAPI==4.16.1
+requests>=2.31.0
+ujson>=5.9.0
+pydub>=0.25.1
