@@ -9,7 +9,7 @@ STAR_TO_CREDIT = {
     55: 1230,
     99: 2155,
     175: 4500,
-    260: 8800,
+    299: 8800,
 }
 
 def keyboard(lang: str = "fa"):
