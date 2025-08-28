@@ -3,7 +3,7 @@ from modules.i18n import t
 
 def INTRO(lang: str) -> str:
     # متن اصلی بدون "یا پرداخت ریالی"
-    txt = f"🛒 <b>{t('credit_title', lang)}</b>\n\n{t('credit_intro', lang)}"
+    txt = f"🛒 <b>{t('Credit', lang)}</b>\n\n{t('credit_intro', lang)}"
     # فقط برای فارسی خط ریالی اضافه شود
     if lang == "fa":
         txt += "\n\n<b>برای پرداخت به صورت ریـالی به ادمین ربات پیام بدید ( لیـنک در بیـو )</b>"
