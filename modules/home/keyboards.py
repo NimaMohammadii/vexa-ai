@@ -1,12 +1,16 @@
 # modules/home/keyboards.py
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+from modules.i18n import t
 
-def main_menu(lang: str = "fa"):
-    kb = InlineKeyboardMarkup(row_width=1)
-    kb.add(
-        InlineKeyboardButton("تبدیل متن به صدا 🎧", callback_data="home:tts"),
-        InlineKeyboardButton("پروفایل 🙋🏼‍♂️", callback_data="home:profile"),
-        InlineKeyboardButton("خرید Credit 🛒", callback_data="home:credit"),
-        InlineKeyboardButton("دعوت دوستان 🎁", callback_data="home:invite"),
+def main_menu(lang: str):
+    kb = InlineKeyboardMarkup()
+    kb.row(
+        InlineKeyboardButton(t("btn_tts", lang), callback_data="home:tts"),
+        InlineKeyboardButton(t("btn_profile", lang), callback_data="home:profile")
     )
+    kb.row(
+        InlineKeyboardButton(t("btn_credit", lang), callback_data="home:credit"),
+        InlineKeyboardButton(t("btn_invite", lang), callback_data="home:invite")
+    )
+    kb.add(InlineKeyboardButton(t("btn_lang", lang), callback_data="home:lang"))
     return kb
