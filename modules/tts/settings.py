@@ -7,12 +7,12 @@ STATE_WAIT_TEXT = "tts:wait_text"
 CREDIT_PER_CHAR = 1
 
 # صدای پیش‌فرض (وقتی هنوز چیزی ذخیره نشده)
-DEFAULT_VOICE_NAME = "Amir"
+DEFAULT_VOICE_NAME = "Liam"
 
 # لیست صداها: name -> eleven voice_id
 VOICES = {
     "Liam":      "TX3LPaxmHKxFdv7VOQHJ",
-    "Amir":      "PleK417YVMP2SUWm8Btb",
+    "Amir":      "BognUUMX6W1qmZKB2TOw",
     "Nazy":      "WwAjIyMBDBNl1dvId9Xe",
     "Noushin":   "NZiuR1C6kVMSWHG27sIM",
     "Alexandra": "kdmDKE6EkgrWrrykO9Qt",
