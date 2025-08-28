@@ -265,3 +265,81 @@ def add_referrer(user_id: int, ref_by: Optional[int]) -> None:
     if row["ref_by"] is None:
         cur.execute("UPDATE users SET ref_by=? WHERE user_id=?", (ref_by, user_id))
         conn.commit()
+
+# ---------- DB bootstrap (safe) ----------
+import os, sqlite3, time
+
+DB_PATH = os.getenv("DB_PATH", "bot.db")
+
+def _conn():
+    return sqlite3.connect(DB_PATH, check_same_thread=False)
+
+def init_db():
+    """
+    Called once on startup. Creates tables if they don't exist.
+    Idempotent (safe to call multiple times).
+    """
+    con = _conn()
+    cur = con.cursor()
+
+    # users
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS users(
+            user_id     INTEGER PRIMARY KEY,
+            username    TEXT,
+            first_name  TEXT,
+            joined_at   INTEGER,
+            credits     INTEGER DEFAULT 0,
+            ref_code    TEXT,
+            last_seen   INTEGER,
+            got_free_credit INTEGER DEFAULT 0,   -- 0: not given, 1: given
+            banned      INTEGER DEFAULT 0
+        )
+    """)
+
+    # settings
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS settings(
+            key   TEXT PRIMARY KEY,
+            value TEXT
+        )
+    """)
+
+    # messages (برای خروجی پیام‌های TTS)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS messages(
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id    INTEGER,
+            text       TEXT,
+            created_at INTEGER
+        )
+    """)
+
+    # purchases (برای خرید استارز/کردیت)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS purchases(
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id    INTEGER,
+            stars      INTEGER,
+            credits    INTEGER,
+            status     TEXT,        -- created / paid / failed
+            created_at INTEGER
+        )
+    """)
+
+    # مقادیر پیش‌فرض اگر وجود ندارند
+    cur.execute("INSERT OR IGNORE INTO settings(key,value) VALUES('FREE_CREDIT','80')")
+    cur.execute("INSERT OR IGNORE INTO settings(key,value) VALUES('REF_BONUS','30')")
+
+    con.commit()
+    con.close()
+
+# اگر قبلاً تابع init() ساخته‌ای، این alias مشکل اختلاف اسم را حل می‌کند:
+try:
+    init  # noqa
+except NameError:
+    pass
+else:
+    # در صورت وجود init قدیمی، init_db آن را صدا بزند
+    def init_db():
+        return init()
