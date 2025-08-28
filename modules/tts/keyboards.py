@@ -1,23 +1,20 @@
 # modules/tts/keyboards.py
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+from modules.i18n import t
 from .settings import VOICES
 
-def keyboard(selected_name: str, lang: str = "fa"):
-    """
-    دکمه انتخاب صدا (✅ روی صدای انتخاب‌شده)
-    آرایش: 2تایی – 2تایی – 2تایی – 2تایی – برگشت
-    """
-    names = ["Liam", "Amir", "Nazy", "Noushin", "Alexandra", "Chris", "Laura", "Jessica"]
+def _chunk(seq, n):
+    for i in range(0, len(seq), n):
+        yield seq[i:i+n]
+
+def keyboard(selected_voice: str, lang: str = "fa"):
     kb = InlineKeyboardMarkup(row_width=2)
-
-    row = []
-    for i, name in enumerate(names, 1):
-        label = f"{'✅ ' if name == selected_name else ''}{name}"
-        row.append(InlineKeyboardButton(label, callback_data=f"tts:voice:{name}"))
-        if i % 2 == 0:
-            kb.row(*row); row = []
-    if row:
-        kb.row(*row)
-
-    kb.add(InlineKeyboardButton("بازگشت ⬅️", callback_data="tts:back"))
+    names = list(VOICES.keys())
+    for row in _chunk(names, 2):
+        kb.row(*[
+            InlineKeyboardButton(("✅ " if n == selected_voice else "") + n,
+                                 callback_data=f"tts:voice:{n}")
+            for n in row
+        ])
+    kb.add(InlineKeyboardButton(t("back", lang), callback_data="home:back"))
     return kb
