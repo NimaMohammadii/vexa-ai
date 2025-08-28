@@ -1,28 +1,28 @@
 # modules/tts/service.py
-import requests
-from config import ELEVEN_API_KEY
-from .settings import MODEL_ID, VOICE_SETTINGS_NATURAL
+import os, json, requests
 
-BASE = "https://api.elevenlabs.io/v1"
+ELEVEN_API_KEY = os.getenv("ELEVEN_API_KEY", "")
+MODEL_ID = "eleven_v3"  # مدل ثابت
 
-def synthesize(text: str, voice_id: str, mime: str):
+def synthesize(text: str, voice_id: str, mime: str = "audio/mpeg") -> bytes:
+    """
+    v3 با کیفیت پایدار (non-stream). فقط text + model_id.
+    """
+    if not ELEVEN_API_KEY:
+        raise RuntimeError("ELEVEN_API_KEY is missing")
+
+    url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"  # ← non-stream
     headers = {
         "xi-api-key": ELEVEN_API_KEY,
         "accept": mime,
         "content-type": "application/json",
     }
-    body = {
+    payload = {
         "text": text,
-        "model_id": MODEL_ID,                 # "eleven_v3"
-        "voice_settings": VOICE_SETTINGS_NATURAL,
-        "output_format": "mp3_44100_128",    # کیفیت مطمئن
+        "model_id": MODEL_ID,   # ← داخل بدنه
+        # عمداً هیچ voice_settings یا پارامتر اضافه‌ای نمی‌فرستیم
     }
-    url = f"{BASE}/text-to-speech/{voice_id}/stream"
-    r = requests.post(url, headers=headers, json=body, timeout=120)
-    if r.status_code != 200:
-        try:
-            err = r.json()
-        except Exception:
-            err = {"detail": r.text}
-        raise RuntimeError(f"ElevenLabs error {r.status_code}: {err}")
+
+    r = requests.post(url, headers=headers, data=json.dumps(payload), timeout=120)
+    r.raise_for_status()
     return r.content
