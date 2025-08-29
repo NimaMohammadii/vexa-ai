@@ -129,7 +129,7 @@ def register(bot):
 
         except Exception as e:
             safe_del(bot, status.chat.id, status.message_id)
-            err = ERROR(lang) if not DEBUG else f"{ERROR(lang)}\n\n<code>{e}</code>"
+            err = ERROR(lang)
             bot.send_message(msg.chat.id, err)
             db.clear_state(user["user_id"])
 
