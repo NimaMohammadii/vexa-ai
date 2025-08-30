@@ -2,8 +2,8 @@ import sqlite3, time, datetime, csv
 from contextlib import closing
 import sqlite3, os
 
-DB_PATH = "/var/data/bot.db"
-os.makedirs("/var/data", exist_ok=True)
+DB_PATH = "/data/bot.db"
+os.makedirs("/data", exist_ok=True)
 
 con = sqlite3.connect(DB_PATH, check_same_thread=False)
 
