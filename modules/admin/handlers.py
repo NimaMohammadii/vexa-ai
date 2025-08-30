@@ -332,7 +332,7 @@ def register(bot):
         bot.reply_to(msg, f"{DONE}\n📣 ارسال شد به {sent} کاربر.")
 
     # تنظیمات
-    @bot.message_handler(func=lambda m: db.get_state(m.from_user.id) == STATE_SET_BONUS, content_types=['text'])
+    @bot.message_handler(func=lambda m: db.get_state(m.from_user.id) == STATE_SET_BONUS, content_types=['text', 'photo', 'document'])
     def s_set_bonus(msg: types.Message):
         if not _is_owner(msg.from_user): return
         try:
