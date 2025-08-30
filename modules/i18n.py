@@ -38,7 +38,7 @@ LABELS = {
 
     # Invite
     "invite_title":   {"fa":"دعوت دوستان 🎁","en":"Invite Friends 🎁","ar":"دعوة الأصدقاء 🎁","tr":"Arkadaş Davet Et 🎁","ru":"Пригласить друзей 🎁","es":"Invitar amigos 🎁","de":"Freunde einladen 🎁","fr":"Inviter des amis 🎁"},
-    "invite_body":    {"fa":"لینک دعوت شما:\n<b>{ref}<b>\nبه ازای هر دعوت: {bonus} کردیت","en":"Your invite link:\n{ref}\nPer invite: {bonus} credits","ar":"رابط دعوتك:\n{ref}\nلكل دعوة: {bonus} رصيد","tr":"Davet bağlantın:\n{ref}\nDavet başına: {bonus} kredi","ru":"Ваша ссылка:\n{ref}\nЗа приглашение: {bonus} кредитов","es":"Tu enlace de invitación:\n{ref}\nPor invitación: {bonus} créditos","de":"Dein Einladungslink:\n{ref}\nPro Einladung: {bonus} Guthaben","fr":"Ton lien d'invitation :\n{ref}\nPar invitation : {bonus} crédits"},
+    "invite_body":    {"fa":"لینک دعوت شما:\n<b>{ref}</b>\nبه ازای هر دعوت: {bonus} کردیت","en":"Your invite link:\n{ref}\nPer invite: {bonus} credits","ar":"رابط دعوتك:\n{ref}\nلكل دعوة: {bonus} رصيد","tr":"Davet bağlantın:\n{ref}\nDavet başına: {bonus} kredi","ru":"Ваша ссылка:\n{ref}\nЗа приглашение: {bonus} кредитов","es":"Tu enlace de invitación:\n{ref}\nPor invitación: {bonus} créditos","de":"Dein Einladungslink:\n{ref}\nPro Einladung: {bonus} Guthaben","fr":"Ton lien d'invitation :\n{ref}\nPar invitation : {bonus} crédits"},
 }
 
 def t(key: str, lang: str) -> str:
