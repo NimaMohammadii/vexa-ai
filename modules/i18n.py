@@ -22,7 +22,7 @@ LABELS = {
 
     # Profile
     "profile_title":  {"fa":"پروفایل","en":"Profile","ar":"الملف الشخصي","tr":"Profil","ru":"Профиль","es":"Perfil","de":"Profil","fr":"Profil"},
-    "profile_body":   {"fa":"👤<b> ID :<\b> {uid}\n💳<b>موجودی :<\b> {credits}","en":"👤 ID: {uid}\n💳 Credits: {credits}","ar":"👤 المعرف: {uid}\n💳 الرصيد: {credits}","tr":"👤 ID: {uid}\n💳 Kredi: {credits}","ru":"👤 ID: {uid}\n💳 Кредиты: {credits}","es":"👤 ID: {uid}\n💳 Créditos: {credits}","de":"👤 ID: {uid}\n💳 Guthaben: {credits}","fr":"👤 ID : {uid}\n💳 Crédits : {credits}"},
+    "profile_body":   {"fa":"👤<b> ID :{uid}</b>\n💳<b>موجودی :<\b> {credits}","en":"👤 ID: {uid}\n💳 Credits: {credits}","ar":"👤 المعرف: {uid}\n💳 الرصيد: {credits}","tr":"👤 ID: {uid}\n💳 Kredi: {credits}","ru":"👤 ID: {uid}\n💳 Кредиты: {credits}","es":"👤 ID: {uid}\n💳 Créditos: {credits}","de":"👤 ID: {uid}\n💳 Guthaben: {credits}","fr":"👤 ID : {uid}\n💳 Crédits : {credits}"},
 
     # Credit (Stars intro متن کوتاه)
     "credit_intro": {
@@ -38,7 +38,7 @@ LABELS = {
 
     # Invite
     "invite_title":   {"fa":"دعوت دوستان 🎁","en":"Invite Friends 🎁","ar":"دعوة الأصدقاء 🎁","tr":"Arkadaş Davet Et 🎁","ru":"Пригласить друзей 🎁","es":"Invitar amigos 🎁","de":"Freunde einladen 🎁","fr":"Inviter des amis 🎁"},
-    "invite_body":    {"fa":"لینک دعوت شما:\n<code> <b>{ref}</b> <\code>\nبه ازای هر دعوت: {bonus} کردیت","en":"Your invite link:\n{ref}\nPer invite: {bonus} credits","ar":"رابط دعوتك:\n{ref}\nلكل دعوة: {bonus} رصيد","tr":"Davet bağlantın:\n{ref}\nDavet başına: {bonus} kredi","ru":"Ваша ссылка:\n{ref}\nЗа приглашение: {bonus} кредитов","es":"Tu enlace de invitación:\n{ref}\nPor invitación: {bonus} créditos","de":"Dein Einladungslink:\n{ref}\nPro Einladung: {bonus} Guthaben","fr":"Ton lien d'invitation :\n{ref}\nPar invitation : {bonus} crédits"},
+    "invite_body":    {"fa":"لینک دعوت شما:\n<code>{ref}<\code>\nبه ازای هر دعوت: {bonus} کردیت","en":"Your invite link:\n{ref}\nPer invite: {bonus} credits","ar":"رابط دعوتك:\n{ref}\nلكل دعوة: {bonus} رصيد","tr":"Davet bağlantın:\n{ref}\nDavet başına: {bonus} kredi","ru":"Ваша ссылка:\n{ref}\nЗа приглашение: {bonus} кредитов","es":"Tu enlace de invitación:\n{ref}\nPor invitación: {bonus} créditos","de":"Dein Einladungslink:\n{ref}\nPro Einladung: {bonus} Guthaben","fr":"Ton lien d'invitation :\n{ref}\nPar invitation : {bonus} crédits"},
 }
 
 def t(key: str, lang: str) -> str:
