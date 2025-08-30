@@ -22,7 +22,7 @@ LABELS = {
 
     # Profile
     "profile_title":  {"fa":"پروفایل","en":"Profile","ar":"الملف الشخصي","tr":"Profil","ru":"Профиль","es":"Perfil","de":"Profil","fr":"Profil"},
-    "profile_body":   {"fa":"👤<b>ID :{uid}</b>\n 💳موجودی : {credits}","en":"👤 ID: {uid}\n💳 Credits: {credits}","ar":"👤 المعرف: {uid}\n💳 الرصيد: {credits}","tr":"👤 ID: {uid}\n💳 Kredi: {credits}","ru":"👤 ID: {uid}\n💳 Кредиты: {credits}","es":"👤 ID: {uid}\n💳 Créditos: {credits}","de":"👤 ID: {uid}\n💳 Guthaben: {credits}","fr":"👤 ID : {uid}\n💳 Crédits : {credits}"},
+    "profile_body":   {"fa":"👤 <b>ID :{uid}</b>\n\n 💳 <b>Credit : {credits}</b>","en":"👤 ID: {uid}\n💳 Credits: {credits}","ar":"👤 المعرف: {uid}\n💳 الرصيد: {credits}","tr":"👤 ID: {uid}\n💳 Kredi: {credits}","ru":"👤 ID: {uid}\n💳 Кредиты: {credits}","es":"👤 ID: {uid}\n💳 Créditos: {credits}","de":"👤 ID: {uid}\n💳 Guthaben: {credits}","fr":"👤 ID : {uid}\n💳 Crédits : {credits}"},
 
     # Credit (Stars intro متن کوتاه)
     "credit_intro": {
@@ -47,13 +47,13 @@ def t(key: str, lang: str) -> str:
 LABELS.update({
     "back": {
         "fa": "🔙 بازگشت",
-        "en": "🔚 Back",
-        "ar": "⬅️ رجوع",
-        "tr": "⬅️ Geri",
-        "ru": "⬅️ Назад",
-        "es": "⬅️ Atrás",
-        "de": "⬅️ Zurück",
-        "fr": "⬅️ Retour",
+        "en": "🔙 Back",
+        "ar": "🔙 رجوع",
+        "tr": "🔙 Geri",
+        "ru": "🔙 Назад",
+        "es": "🔙 Atrás",
+        "de": "🔙 Zurück",
+        "fr": "🔙 Retour",
     }
 })
 # ——— افزودن متن‌های پرداخت/فاکتور ———
@@ -91,7 +91,7 @@ LABELS.update({
 })
 LABELS.update({
     "ref_welcome": {
-        "fa": "🎉 خوش آمدی! {credits} کردیت رایگان گرفتی.",
+        "fa": "🎉 <b>خوش آمدی! {credits} کردیت رایگان گرفتی.</b>",
         "en": "🎉 Welcome! You received {credits} free credits.",
         "ar": "🎉 أهلاً! حصلت على {credits} رصيد مجاني.",
         "tr": "🎉 Hoş geldin! {credits} ücretsiz kredi kazandın.",
@@ -101,7 +101,7 @@ LABELS.update({
         "fr": "🎉 Bienvenue ! Tu as reçu {credits} crédits gratuits.",
     },
     "ref_notify": {
-        "fa": "👥 یک کاربر با لینک تو عضو شد.\n🎁 {credits} کردیت بهت اضافه شد.",
+        "fa": "👥 یک کاربر با لینک تو عضو شد.\n🎁 <b>{credits}</b> کردیت بهت اضافه شد.",
         "en": "👥 A user joined with your invite link.\n🎁 You got {credits} bonus credits.",
         "ar": "👥 انضم مستخدم عبر رابط دعوتك.\n🎁 حصلت على {credits} رصيد إضافي.",
         "tr": "👥 Bir kullanıcı davet linkinle katıldı.\n🎁 {credits} bonus kredi kazandın.",
