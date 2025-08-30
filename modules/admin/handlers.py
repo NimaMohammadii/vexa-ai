@@ -294,51 +294,29 @@ def register(bot):
         bot.reply_to(msg, f"{DONE}\n👤 <code>{uid}</code>\n➖ -{amt}💳\n💼 موجودی: <b>{newc}</b>")
         db.clear_state(msg.from_user.id)
 
-# پیام تکی
-@bot.message_handler(func=lambda m: db.get_state(m.from_user.id) == STATE_MSG_UID, content_types=['text'])
-def s_msg_uid(msg: types.Message):
-    if not _is_owner(msg.from_user): return
-    uid = _resolve_user_id(msg.text)
-    if not uid:
-        bot.reply_to(msg, "❌ آی‌دی/یوزرنیم معتبر نیست."); return
-    if not db.get_user(uid):
-        bot.reply_to(msg, "❌ کاربر یافت نشد."); return
-    db.set_state(msg.from_user.id, f"{STATE_MSG_TXT}:{uid}")
-    bot.reply_to(msg, ASK_TXT_MSG)
+    # پیام تکی
+    @bot.message_handler(func=lambda m: db.get_state(m.from_user.id) == STATE_MSG_UID, content_types=['text'])
+    def s_msg_uid(msg: types.Message):
+        if not _is_owner(msg.from_user): return
+        uid = _resolve_user_id(msg.text)
+        if not uid: bot.reply_to(msg, "❌ آی‌دی/یوزرنیم معتبر نیست."); return
+        if not db.get_user(uid): bot.reply_to(msg, "❌ کاربر یافت نشد."); return
+        db.set_state(msg.from_user.id, f"{STATE_MSG_TXT}:{uid}")
+        bot.reply_to(msg, ASK_TXT_MSG)
 
-
-@bot.message_handler(func=lambda m: (db.get_state(m.from_user.id) or "").startswith(STATE_MSG_TXT),
-                     content_types=['text','photo','document'])
-def s_msg_txt(msg: types.Message):
-    if not _is_owner(msg.from_user): return
-    raw = (db.get_state(msg.from_user.id) or "").split(":")
-    uid = int(raw[-1]) if raw and raw[-1].isdigit() else None
-    if not uid:
+    @bot.message_handler(func=lambda m: (db.get_state(m.from_user.id) or "").startswith(STATE_MSG_TXT), content_types=['text'])
+    def s_msg_txt(msg: types.Message):
+        if not _is_owner(msg.from_user): return
+        raw = (db.get_state(msg.from_user.id) or "").split(":")
+        uid = int(raw[-1]) if raw and raw[-1].isdigit() else None
+        if not uid: db.clear_state(msg.from_user.id); bot.reply_to(msg, "⚠️ وضعیت نامعتبر."); return
+        txt = msg.text or ""
+        try:
+            bot.send_message(uid, txt); db.log_message(uid, "out", txt)
+            bot.reply_to(msg, DONE)
+        except Exception:
+            bot.reply_to(msg, "❌ ارسال نشد (ممکن است کاربر استارت نکرده باشد).")
         db.clear_state(msg.from_user.id)
-        bot.reply_to(msg, "⚠️ وضعیت نامعتبر."); return
-
-    try:
-        if msg.content_type == "text":
-            txt = msg.text or ""
-            bot.send_message(uid, txt)
-            db.log_message(uid, "out", txt)
-
-        elif msg.content_type == "photo":
-            file_id = msg.photo[-1].file_id
-            bot.send_photo(uid, file_id, caption=msg.caption or "")
-            db.log_message(uid, "out", f"[photo] {msg.caption or ''}")
-
-        elif msg.content_type == "document":
-            file_id = msg.document.file_id
-            bot.send_document(uid, file_id, caption=msg.caption or "")
-            db.log_message(uid, "out", f"[document] {msg.caption or ''}")
-
-        bot.reply_to(msg, DONE)
-
-    except Exception:
-        bot.reply_to(msg, "❌ ارسال نشد (ممکن است کاربر استارت نکرده باشد).")
-
-    db.clear_state(msg.from_user.id)
 
     # پیام همگانی
     @bot.message_handler(func=lambda m: db.get_state(m.from_user.id) == STATE_CAST_TXT, content_types=['text'])
