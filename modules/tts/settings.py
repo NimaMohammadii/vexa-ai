@@ -13,7 +13,7 @@ DEFAULT_VOICE_NAME = "Liam"
 VOICES = {
     "Liam":      "TX3LPaxmHKxFdv7VOQHJ",
     "Amir":      "SOYHLrjzK2X1ezoPC6cr",
-    "Nazy":      "WwAjIyMBDBNl1dvId9Xe",
+    "Nazy":      "BpjGufoPiobT79j2vtj4",
     "Noushin":   "NZiuR1C6kVMSWHG27sIM",
     "Alexandra": "kdmDKE6EkgrWrrykO9Qt",
     "Chris":     "iP95p4xoKVk53GoZ742B",
