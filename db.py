@@ -1,4 +1,4 @@
-import sqlite3, time, datetime, csv
+"""import sqlite3, time, datetime, csv
 from contextlib import closing
 import sqlite3, os
 
@@ -45,6 +45,12 @@ def init_db():
         con.commit()
     _migrate_users_table()
     ensure_default_settings()
+    # Ensure 'kind' column exists on messages table for TTS distinction
+    try:
+        _migrate_messages_kind()
+    except Exception:
+        # If migration fails, ignore so init doesn't crash, export will handle missing column gracefully
+        pass
 
 def _migrate_users_table():
     with closing(sqlite3.connect(DB_PATH)) as con:
@@ -263,7 +269,7 @@ def export_purchases_csv(path="purchases.csv"):
     return path
 
 def export_messages_csv(path="messages.csv"):
-    with closing(sqlite3.connect(DB_PATH)) as con, open(path,"w",newline="",encoding="utf-8") as f:
+    with closing(sqlite3.connect(DB_PATH)) as con, open(path, "w", newline="", encoding="utf-8") as f:
         cur = con.cursor()
         cur.execute("""SELECT id,user_id,direction,text,created_at FROM messages""")
         w = csv.writer(f)
@@ -385,11 +391,22 @@ def export_user_tts_csv(user_id: int, path=None):
         path = f"user_{user_id}_tts_texts.csv"
     with closing(sqlite3.connect(DB_PATH)) as con, open(path, "w", newline="", encoding="utf-8") as f:
         cur = con.cursor()
-        cur.execute("""SELECT id, text, created_at
-                       FROM messages
-                       WHERE user_id=? AND kind='tts_in'
-                       ORDER BY id ASC""", (user_id,))
+        # Check if 'kind' column exists; if not, fall back to filtering by direction='in'
+        cur.execute("PRAGMA table_info(messages)")
+        cols = {r[1] for r in cur.fetchall()}
+        if "kind" in cols:
+            cur.execute("""SELECT id, text, created_at
+                           FROM messages
+                           WHERE user_id=? AND kind='tts_in'
+                           ORDER BY id ASC""", (user_id,))
+        else:
+            # fallback: use direction='in' as best-effort
+            cur.execute("""SELECT id, text, created_at
+                           FROM messages
+                           WHERE user_id=? AND direction='in'
+                           ORDER BY id ASC""", (user_id,))
         import csv; w = csv.writer(f)
         w.writerow(["id","text","created_at"])
         w.writerows(cur.fetchall())
     return path
+"""
