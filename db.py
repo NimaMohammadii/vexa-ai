@@ -1,6 +1,16 @@
 import sqlite3, time, datetime, csv
 from contextlib import closing
+import os, sqlite3
 
+# مسیر DB روی دیسکِ Render (Mount path شما: /var/data)
+DB_DIR = os.getenv("DB_DIR", "/var/data")
+os.makedirs(DB_DIR, exist_ok=True)
+DB_PATH = os.path.join(DB_DIR, "bot.db")
+
+print("DB_PATH =>", DB_PATH, flush=True)  # برای اطمینان در لاگ
+
+con = sqlite3.connect(DB_PATH, check_same_thread=False)
+cur = con.cursor()
 DB_PATH = "bot.db"
 
 def init_db():
