@@ -11,7 +11,6 @@ print("DB_PATH =>", DB_PATH, flush=True)  # برای اطمینان در لاگ
 
 con = sqlite3.connect(DB_PATH, check_same_thread=False)
 cur = con.cursor()
-DB_PATH = "bot.db"
 
 def init_db():
     with closing(sqlite3.connect(DB_PATH)) as con:
