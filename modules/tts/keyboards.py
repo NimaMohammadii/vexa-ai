@@ -12,7 +12,7 @@ def keyboard(selected_voice: str, lang: str = "fa"):
     names = list(VOICES.keys())
     for row in _chunk(names, 2):
         kb.row(*[
-            InlineKeyboardButton(("✅ " if n == selected_voice else "") + n,
+            InlineKeyboardButton(("✔️ " if n == selected_voice else "") + n,
                                  callback_data=f"tts:voice:{n}")
             for n in row
         ])
