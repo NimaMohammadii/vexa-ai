@@ -3,6 +3,7 @@ from telebot import types
 from utils import edit_or_send, parse_int
 from config import BOT_OWNER_ID
 import db
+import traceback
 
 from .texts import (
     TITLE, MENU, DENY, DONE,
@@ -33,6 +34,112 @@ def _resolve_user_id(text: str):
         pass
     u = db.get_user_by_username(t)
     return (u and u.get("user_id")) or None
+
+def _send_content_to_user(bot, uid: int, msg: types.Message):
+    """
+    Try to send the admin's message (text/photo/document/audio/voice/video/sticker/...) to `uid`.
+    Returns (True, None) on success.
+    Returns (False, error_message) on failure. error_message is a short description for debugging.
+    The function attempts specific send_* methods first, then copy_message, then forward_message as fallbacks.
+    """
+    last_err = None
+    c = getattr(msg, "content_type", "text")
+    try:
+        # TEXT
+        if c == "text":
+            bot.send_message(uid, msg.text or "")
+            db.log_message(uid, "out", msg.text or "")
+            return True, None
+
+        # PHOTO (use largest size)
+        if c == "photo" and getattr(msg, "photo", None):
+            file_id = msg.photo[-1].file_id
+            try:
+                bot.send_photo(uid, file_id, caption=(msg.caption or ""))
+                db.log_message(uid, "out", msg.caption or "<photo>")
+                return True, None
+            except Exception as e:
+                last_err = e
+
+        # DOCUMENT
+        if c == "document" and getattr(msg, "document", None):
+            file_id = msg.document.file_id
+            caption = msg.caption or ""
+            try:
+                bot.send_document(uid, file_id, caption=caption)
+                fn = getattr(msg.document, "file_name", "")
+                db.log_message(uid, "out", caption or f"<document:{fn}>")
+                return True, None
+            except Exception as e:
+                last_err = e
+
+        # AUDIO (music)
+        if c == "audio" and getattr(msg, "audio", None):
+            file_id = msg.audio.file_id
+            try:
+                bot.send_audio(uid, file_id, caption=(msg.caption or ""))
+                db.log_message(uid, "out", msg.caption or "<audio>")
+                return True, None
+            except Exception as e:
+                last_err = e
+
+        # VOICE (voice note)
+        if c == "voice" and getattr(msg, "voice", None):
+            file_id = msg.voice.file_id
+            try:
+                bot.send_voice(uid, file_id, caption=(msg.caption or ""))
+                db.log_message(uid, "out", msg.caption or "<voice>")
+                return True, None
+            except Exception as e:
+                last_err = e
+
+        # VIDEO
+        if c == "video" and getattr(msg, "video", None):
+            file_id = msg.video.file_id
+            try:
+                bot.send_video(uid, file_id, caption=(msg.caption or ""))
+                db.log_message(uid, "out", msg.caption or "<video>")
+                return True, None
+            except Exception as e:
+                last_err = e
+
+        # STICKER
+        if c == "sticker" and getattr(msg, "sticker", None):
+            file_id = msg.sticker.file_id
+            try:
+                bot.send_sticker(uid, file_id)
+                db.log_message(uid, "out", "<sticker>")
+                return True, None
+            except Exception as e:
+                last_err = e
+
+        # If specific attempts failed or type not handled above, try copy_message (preferred over forward)
+        try:
+            # copy_message does not require the bot to be able to access the original chat as a member in the same way forward does,
+            # and it preserves media without reuploading whenever possible.
+            bot.copy_message(uid, msg.chat.id, msg.message_id)
+            db.log_message(uid, "out", f"<copied:{c}>")
+            return True, None
+        except Exception as e:
+            last_err = e
+
+        # Final fallback: try forwarding original message (requires bot to be able to forward)
+        try:
+            bot.forward_message(uid, msg.chat.id, msg.message_id)
+            db.log_message(uid, "out", f"<forwarded:{c}>")
+            return True, None
+        except Exception as e:
+            last_err = e
+
+    except Exception as e:
+        last_err = e
+
+    # If we get here, everything failed. Return False and a short error string.
+    # Include traceback in stdout for debugging.
+    tb = traceback.format_exc()
+    print("Error sending admin content to user:", tb)
+    err_msg = str(last_err) if last_err else "unknown error"
+    return False, err_msg
 
 # ---------- Register ----------
 def register(bot):
@@ -295,38 +402,49 @@ def register(bot):
         db.clear_state(msg.from_user.id)
 
     # پیام تکی
-    @bot.message_handler(func=lambda m: db.get_state(m.from_user.id) == STATE_MSG_UID, content_types=['text', 'photo', 'document', 'audio'])
+    @bot.message_handler(func=lambda m: db.get_state(m.from_user.id) == STATE_MSG_UID, content_types=['text', 'photo', 'document', 'audio', 'voice', 'video', 'sticker'])
     def s_msg_uid(msg: types.Message):
         if not _is_owner(msg.from_user): return
-        uid = _resolve_user_id(msg.text)
-        if not uid: bot.reply_to(msg, "❌ آی‌دی/یوزرنیم معتبر نیست."); return
+        # Allow admin to send UID either as plain text or as a reply with text.
+        text = msg.text or ""
+        if not text and msg.reply_to_message and (msg.reply_to_message.text):
+            text = msg.reply_to_message.text
+        uid = _resolve_user_id(text)
+        if not uid:
+            bot.reply_to(msg, "❌ آی‌دی/یوزرنیم معتبر نیست."); return
         if not db.get_user(uid): bot.reply_to(msg, "❌ کاربر یافت نشد."); return
         db.set_state(msg.from_user.id, f"{STATE_MSG_TXT}:{uid}")
         bot.reply_to(msg, ASK_TXT_MSG)
 
-    @bot.message_handler(func=lambda m: (db.get_state(m.from_user.id) or "").startswith(STATE_MSG_TXT), content_types=['text', 'photo', 'document', 'audio'])
+    @bot.message_handler(func=lambda m: (db.get_state(m.from_user.id) or "").startswith(STATE_MSG_TXT), content_types=['text', 'photo', 'document', 'audio', 'voice', 'video', 'sticker'])
     def s_msg_txt(msg: types.Message):
         if not _is_owner(msg.from_user): return
         raw = (db.get_state(msg.from_user.id) or "").split(":")
         uid = int(raw[-1]) if raw and raw[-1].isdigit() else None
-        if not uid: db.clear_state(msg.from_user.id); bot.reply_to(msg, "⚠️ وضعیت نامعتبر."); return
-        txt = msg.text or ""
-        try:
-            bot.send_message(uid, txt); db.log_message(uid, "out", txt)
+        if not uid:
+            db.clear_state(msg.from_user.id); bot.reply_to(msg, "⚠️ وضعیت نامعتبر."); return
+
+        success, err = _send_content_to_user(bot, uid, msg)
+        if success:
             bot.reply_to(msg, DONE)
-        except Exception:
-            bot.reply_to(msg, "❌ ارسال نشد (ممکن است کاربر استارت نکرده باشد).")
+        else:
+            # give a clearer message and include the error string for debugging
+            bot.reply_to(msg, f"❌ ارسال نشد: {err}\n(ممکن است کاربر استارت نکرده باشد یا خطای دیگری وجود دارد.)")
         db.clear_state(msg.from_user.id)
 
     # پیام همگانی
-    @bot.message_handler(func=lambda m: db.get_state(m.from_user.id) == STATE_CAST_TXT, content_types=['text', 'photo', 'document'])
+    @bot.message_handler(func=lambda m: db.get_state(m.from_user.id) == STATE_CAST_TXT, content_types=['text', 'photo', 'document', 'audio', 'voice', 'video', 'sticker'])
     def s_cast(msg: types.Message):
         if not _is_owner(msg.from_user): return
-        txt = msg.text or ""; sent = 0
+        sent = 0
         for uid in db.get_all_user_ids():
             try:
-                bot.send_message(uid, txt); db.log_message(uid, "out", txt); sent += 1
+                ok, err = _send_content_to_user(bot, uid, msg)
+                if ok:
+                    sent += 1
             except Exception:
+                # keep sending to others even on errors
+                print("Error during cast to", uid, traceback.format_exc())
                 pass
         db.clear_state(msg.from_user.id)
         bot.reply_to(msg, f"{DONE}\n📣 ارسال شد به {sent} کاربر.")
