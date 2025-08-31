@@ -295,7 +295,7 @@ def register(bot):
         db.clear_state(msg.from_user.id)
 
     # پیام تکی
-    @bot.message_handler(func=lambda m: db.get_state(m.from_user.id) == STATE_MSG_UID, content_types=['text'])
+    @bot.message_handler(func=lambda m: db.get_state(m.from_user.id) == STATE_MSG_UID, content_types=['text', 'photo', 'document', 'audio'])
     def s_msg_uid(msg: types.Message):
         if not _is_owner(msg.from_user): return
         uid = _resolve_user_id(msg.text)
@@ -304,7 +304,7 @@ def register(bot):
         db.set_state(msg.from_user.id, f"{STATE_MSG_TXT}:{uid}")
         bot.reply_to(msg, ASK_TXT_MSG)
 
-    @bot.message_handler(func=lambda m: (db.get_state(m.from_user.id) or "").startswith(STATE_MSG_TXT), content_types=['text'])
+    @bot.message_handler(func=lambda m: (db.get_state(m.from_user.id) or "").startswith(STATE_MSG_TXT), content_types=['text', 'photo', 'document', 'audio'])
     def s_msg_txt(msg: types.Message):
         if not _is_owner(msg.from_user): return
         raw = (db.get_state(msg.from_user.id) or "").split(":")
@@ -319,7 +319,7 @@ def register(bot):
         db.clear_state(msg.from_user.id)
 
     # پیام همگانی
-    @bot.message_handler(func=lambda m: db.get_state(m.from_user.id) == STATE_CAST_TXT, content_types=['text'])
+    @bot.message_handler(func=lambda m: db.get_state(m.from_user.id) == STATE_CAST_TXT, content_types=['text', 'photo', 'document'])
     def s_cast(msg: types.Message):
         if not _is_owner(msg.from_user): return
         txt = msg.text or ""; sent = 0
@@ -343,7 +343,7 @@ def register(bot):
         db.clear_state(msg.from_user.id)
         bot.reply_to(msg, f"{DONE}\n🎁 بونوس رفرال: <b>{val}</b>")
 
-    @bot.message_handler(func=lambda m: db.get_state(m.from_user.id) == STATE_SET_FREE, content_types=['text'])
+    @bot.message_handler(func=lambda m: db.get_state(m.from_user.id) == STATE_SET_FREE, content_types=['text', 'photo', 'document'])
     def s_set_free(msg: types.Message):
         if not _is_owner(msg.from_user): return
         try:
