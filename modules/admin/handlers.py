@@ -4,6 +4,7 @@ from utils import edit_or_send, parse_int
 from config import BOT_OWNER_ID
 import db
 import traceback
+import os
 
 from .texts import (
     TITLE, MENU, DENY, DONE,
@@ -325,11 +326,36 @@ def register(bot):
 
         # خروجی فقط متن‌های TTS یک کاربر
         if action == "exp_user_tts":
-            uid = int(p[2])
-            path = db.export_user_tts_csv(uid)
-            with open(path, "rb") as f:
-                bot.send_document(cq.message.chat.id, f)
-            bot.answer_callback_query(cq.id, "📥 متن‌های TTS ارسال شد.")
+            try:
+                uid = int(p[2])
+            except Exception:
+                bot.answer_callback_query(cq.id, "❌ آی‌دی نامعتبر."); return
+
+            # پاسخ سریع برای جلوگیری از بی‌پاسخ ماندن UI
+            try:
+                bot.answer_callback_query(cq.id, "در حال آماده‌سازی فایل...")
+            except Exception:
+                pass
+
+            try:
+                path = db.export_user_tts_csv(uid)
+                if not path:
+                    bot.answer_callback_query(cq.id, "⚠️ برای این کاربر متنی یافت نشد."); return
+                if not os.path.isfile(path):
+                    bot.answer_callback_query(cq.id, "❌ فایل خروجی پیدا نشد."); return
+
+                try:
+                    with open(path, "rb") as f:
+                        bot.send_document(cq.message.chat.id, f)
+                    bot.answer_callback_query(cq.id, "📥 متن‌های TTS ارسال شد.")
+                except Exception:
+                    print("Error sending exported TTS file:", traceback.format_exc())
+                    bot.answer_callback_query(cq.id, "❌ خطا در ارسال فایل خروجی.")
+            except AttributeError:
+                bot.answer_callback_query(cq.id, "❌ عملیات خروجی TTS پشتیبانی نمی‌شود (تابع موجود نیست).")
+            except Exception:
+                print("Error exporting user TTS:", traceback.format_exc())
+                bot.answer_callback_query(cq.id, "❌ خطا در تولید فایل خروجی.")
             return
 
         if action == "noop":
