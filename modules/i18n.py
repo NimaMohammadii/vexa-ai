@@ -26,7 +26,7 @@ LABELS = {
 
     # Credit (Stars intro متن کوتاه)
     "credit_intro": {
-        "fa": "<b>شارژ سریع با Telegram Stars</b>",
+        "fa": "<b>شارژ آنـی با Telegram Stars 🌟</b>",
         "en": "Top up via Telegram Stars",
         "ar": "اشحن عبر Telegram Stars",
         "tr": "Telegram Stars ile yükleme",
