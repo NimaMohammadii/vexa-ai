@@ -6,7 +6,7 @@ def INTRO(lang: str) -> str:
     txt = f"🛒 <b>{t('Credit', lang)}</b>\n\n{t('credit_intro', lang)}"
     # فقط برای فارسی خط ریالی اضافه شود
     if lang == "fa":
-        txt += "\n\n<b>برای پرداخت به صورت ریـالی به ادمین ربات پیام بدید ( لیـنک در بیـو )</b>"
+        txt += "\n\n<b>برای پرداخت به صورت ریـالی به ادمین ربات پیام بدید ( لیـنک در بیـو ) ⚠️</b>"
     return txt
 
 def INVOICE_TITLE(lang: str) -> str:
