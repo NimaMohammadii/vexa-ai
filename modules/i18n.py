@@ -22,7 +22,7 @@ LABELS = {
 
     # Profile
     "profile_title":  {"fa":"پروفایل","en":"Profile","ar":"الملف الشخصي","tr":"Profil","ru":"Профиль","es":"Perfil","de":"Profil","fr":"Profil"},
-    "profile_body":   {"fa":"👤 <b>ID : <code>{uid}</code></b>\n💳 <b>Credit : {credits}</b>","en":"👤 ID: {uid}\n💳 Credits: {credits}","ar":"👤 المعرف: {uid}\n💳 الرصيد: {credits}","tr":"👤 ID: {uid}\n💳 Kredi: {credits}","ru":"👤 ID: {uid}\n💳 Кредиты: {credits}","es":"👤 ID: {uid}\n💳 Créditos: {credits}","de":"👤 ID: {uid}\n💳 Guthaben: {credits}","fr":"👤 ID : {uid}\n💳 Crédits : {credits}"},
+    "profile_body":   {"fa":"👤 <b>آیدی : <code>{uid}</code></b>\n💳 <b>موجودی : {credits}</b>","en":"👤 ID: {uid}\n💳 Credits: {credits}","ar":"👤 المعرف: {uid}\n💳 الرصيد: {credits}","tr":"👤 ID: {uid}\n💳 Kredi: {credits}","ru":"👤 ID: {uid}\n💳 Кредиты: {credits}","es":"👤 ID: {uid}\n💳 Créditos: {credits}","de":"👤 ID: {uid}\n💳 Guthaben: {credits}","fr":"👤 ID : {uid}\n💳 Crédits : {credits}"},
 
     # Credit (Stars intro متن کوتاه)
     "credit_intro": {
