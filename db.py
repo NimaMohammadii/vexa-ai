@@ -4,7 +4,6 @@ import os, sqlite3
 
 # مسیر DB روی دیسکِ Render (Mount path شما: /var/data)
 DB_DIR = os.getenv("DB_DIR", "/var/data")
-os.makedirs(DB_DIR, exist_ok=True)
 DB_PATH = os.path.join(DB_DIR, "bot.db")
 
 print("DB_PATH =>", DB_PATH, flush=True)  # برای اطمینان در لاگ
