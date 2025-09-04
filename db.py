@@ -3,7 +3,7 @@ from contextlib import closing
 import os, sqlite3
 
 # مسیر DB روی دیسکِ Render (Mount path شما: /var/data)
-DB_DIR = os.getenv("DB_DIR", "/var/data")
+DB_DIR = os.getenv("DB_DIR", "/data")
 DB_PATH = os.path.join(DB_DIR, "bot.db")
 
 print("DB_PATH =>", DB_PATH, flush=True)  # برای اطمینان در لاگ
