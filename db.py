@@ -1,11 +1,18 @@
 import sqlite3, time, datetime, csv
 from contextlib import closing
 import os, sqlite3
-
+import shutil
 # مسیر DB روی دیسکِ Render (Mount path شما: /var/data)
 DB_DIR = os.getenv("DB_DIR", "/data")
 os.makedirs(DB_DIR, exist_ok=True)
 DB_PATH = os.path.join(DB_DIR, "bot.db")
+LEGACY_DB = "/var/data/bot.db"
+if (not os.path.exists(DB_PATH)) and os.path.exists(LEGACY_DB):
+    try:
+        shutil.copy2(LEGACY_DB, DB_PATH)
+        print("✅ Migrated old DB from /var/data to /data", flush=True)
+    except Exception as e:
+        print("⚠️ DB migrate failed:", e, flush=True)
 
 print("DB_PATH =>", DB_PATH, flush=True)  # برای اطمینان در لاگ
 
