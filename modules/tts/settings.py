@@ -13,11 +13,11 @@ DEFAULT_VOICE_NAME = "Nazy"
 VOICES = {
     "Liam":      "TX3LPaxmHKxFdv7VOQHJ",
     "Amir":      "scOwDtmlUjD3prqpp97I",
-    "Nazy":      "BpjGufoPiobT79j2vtj4",
+    "Nazy":      "tnSpp4vdxKPjI9w0GnoV",
     "Noushin":   "NZiuR1C6kVMSWHG27sIM",
     "Paniz":       "BZgkqPqms7Kj9ulSkVzn",
     "Alexandra": "kdmDKE6EkgrWrrykO9Qt",
-    "Chris":     "iP95p4xoKVk53GoZ742B",
+    "Nima":     "BognUUMX6W1qmZKB2TOw",
     "Laura":     "7piC4m7q8WrpEAnMj5xC",
     "Maxon":     "TPH31dCvEQ2aybIZHorF",
     "Jessica":   "cgSgspJ2msm6clMCkdW9",
