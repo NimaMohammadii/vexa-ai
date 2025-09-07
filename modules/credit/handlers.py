@@ -1,6 +1,7 @@
 from __future__ import annotations
 from telebot import TeleBot
 from telebot.types import CallbackQuery, Message
+import telebot.types as ttypes
 import time
 
 from .texts import (
@@ -10,6 +11,18 @@ from .keyboards import credit_menu_kb, stars_packages_kb, payrial_plans_kb, inst
 from config import BOT_OWNER_ID as ADMIN_REVIEW_CHAT_ID, CARD_NUMBER
 from .settings import PAYMENT_PLANS
 from .settings import RECEIPT_WAIT_TTL
+
+# تلاش برای خواندن تنظیمات پرداخت تلگرام از config (اختیاری اضافه کنید)
+try:
+    from config import TELEGRAM_PAYMENT_PROVIDER_TOKEN  # باید در config شما اضافه شود
+except Exception:
+    TELEGRAM_PAYMENT_PROVIDER_TOKEN = None
+
+try:
+    from config import TELEGRAM_PAYMENT_CURRENCY
+except Exception:
+    # مقدار پیش‌فرض؛ تنظیمش کنید به ارزی که provider شما پشتیبانی می‌کند (مثلاً "IRR" یا "USD")
+    TELEGRAM_PAYMENT_CURRENCY = "USD"
 
 # تلاش برای استفاده از منوی اصلی پروژه‌ی تو؛ اگر نبود، از fallback استفاده می‌کنیم.
 try:
@@ -113,19 +126,30 @@ def register(bot: TeleBot):
             import json
             payload = json.dumps({"user_id": c.from_user.id, "credits": credits})
             
-            prices = [{"label": f"{credits} کردیت", "amount": stars}]
+            # مقدار price باید به کوچک‌ترین واحد پولی ارسال شود (اینجا فرض 2 رقم اعشار)
+            # اگر ارز شما قواعد دیگری دارد، تبدیل را مطابق آن تنظیم کنید.
+            amount_smallest_unit = int(stars * 100)
+            prices = [ttypes.LabeledPrice(label=f"{credits} کردیت", amount=amount_smallest_unit)]
+            
+            # حتماً provider_token را در config قرار دهید: TELEGRAM_PAYMENT_PROVIDER_TOKEN
+            if not TELEGRAM_PAYMENT_PROVIDER_TOKEN:
+                bot.answer_callback_query(c.id, "پرداخت غیرفعال است: توکن پرداخت تنظیم نشده")
+                return
             
             bot.send_invoice(
                 chat_id=c.from_user.id,
                 title=f"خرید {credits} کردیت",
                 description=f"خرید {credits} کردیت با {stars} ستاره تلگرام",
                 payload=payload,
-                currency="XTR",  # Telegram Stars
+                provider_token=TELEGRAM_PAYMENT_PROVIDER_TOKEN,
+                currency=TELEGRAM_PAYMENT_CURRENCY,  # مطمئن شوید provider آن ارز را پشتیبانی می‌کند
                 prices=prices
             )
             bot.answer_callback_query(c.id, "لطفاً پرداخت را تکمیل کنید")
             
         except Exception as e:
+            # بهتر است لاگ را هم ثبت کنید (print یا logger)
+            print("error sending invoice:", e)
             bot.answer_callback_query(c.id, "خطا در ایجاد صورتحساب")
     
     # هندلر pre_checkout_query (ضروری برای Telegram Stars)
