@@ -115,31 +115,44 @@ def register(bot: TeleBot):
                              reply_markup=stars_packages_kb())
     
     # خرید بسته Stars
-        @bot.callback_query_handler(func=lambda c: c.data and c.data.startswith("credit:buy:"))
-    def on_buy_stars(c):
+      @bot.callback_query_handler(func=lambda c: c.data and c.data.startswith("credit:buy:"))
+def on_buy_stars(c: CallbackQuery):
+    try:
+        parts = c.data.split(":")
+        # expected: credit:buy:<stars>:<credits>
+        if len(parts) < 4:
+            bot.answer_callback_query(c.id, "داده نامعتبر")
+            return
+
+        stars = int(parts[2])
+        credits = int(parts[3])
+
+        # ساخت payload برای تشخیص سفارش در پاسخ شیپینگ/پرداخت
+        import json
+        invoice_payload = json.dumps({
+            "user_id": c.from_user.id,
+            "credits": credits
+        })
+
+        prices = [LabeledPrice(label=f"{credits} کردیت", amount=stars)]
+
+        bot.send_invoice(
+            chat_id=c.from_user.id,
+            title=f"خرید {credits} کردیت",
+            description=f"پرداخت با Telegram Stars",
+            invoice_payload=invoice_payload,   # نام درست پارامتر
+            provider_token="",                 # برای Stars خالی می‌ماند
+            currency="XTR",
+            prices=prices
+        )
+
+        bot.answer_callback_query(c.id, "فاکتور ارسال شد")
+    except Exception as e:
+        # ترجیحاً لاگ کن
         try:
-            parts = c.data.split(":")
-            stars = int(parts[2])
-            credits = int(parts[3])
-
-            import json
-            invoice_payload = json.dumps({"user_id": c.from_user.id, "credits": credits})
-
-            prices = [LabeledPrice(label=f"{credits} کردیت", amount=stars)]
-
-            bot.send_invoice(
-                chat_id=c.from_user.id,
-                title=f"خرید {credits} کردیت",
-                description=f"خرید {credits} کردیت با {stars} ستاره تلگرام",
-                invoice_payload=invoice_payload,   # نام صحیح پارامتر
-                provider_token="",                 # برای Telegram Stars خالی باشد
-                currency="XTR",
-                prices=prices
-            )
-            bot.answer_callback_query(c.id, "لطفاً پرداخت را تکمیل کنید")
+            bot.answer_callback_query(c.id, "خطا در ایجاد فاکتور")
         except Exception:
-            bot.answer_callback_query(c.id, "خطا در ایجاد صورتحساب")
-            
+            pass
             # ایجاد invoice برای پرداخت
             import json
             payload = json.dumps({"user_id": c.from_user.id, "credits": credits})
