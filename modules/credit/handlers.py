@@ -115,73 +115,70 @@ def register(bot: TeleBot):
                              reply_markup=stars_packages_kb())
     
     # خرید بسته Stars
-      @bot.callback_query_handler(func=lambda c: c.data and c.data.startswith("credit:buy:"))
-def on_buy_stars(c: CallbackQuery):
-    try:
-        parts = c.data.split(":")
-        # expected: credit:buy:<stars>:<credits>
-        if len(parts) < 4:
-            bot.answer_callback_query(c.id, "داده نامعتبر")
-            return
-
-        stars = int(parts[2])
-        credits = int(parts[3])
-
-        # ساخت payload برای تشخیص سفارش در پاسخ شیپینگ/پرداخت
-        import json
-        invoice_payload = json.dumps({
-            "user_id": c.from_user.id,
-            "credits": credits
-        })
-
-        prices = [LabeledPrice(label=f"{credits} کردیت", amount=stars)]
-
-        bot.send_invoice(
-            chat_id=c.from_user.id,
-            title=f"خرید {credits} کردیت",
-            description=f"پرداخت با Telegram Stars",
-            invoice_payload=invoice_payload,   # نام درست پارامتر
-            provider_token="",                 # برای Stars خالی می‌ماند
-            currency="XTR",
-            prices=prices
-        )
-
-        bot.answer_callback_query(c.id, "فاکتور ارسال شد")
-    except Exception as e:
-        # ترجیحاً لاگ کن
+    @bot.callback_query_handler(func=lambda c: c.data and c.data.startswith("credit:buy:"))
+    def on_buy_stars(c: CallbackQuery):
+        bot.answer_callback_query(c.id)
         try:
-            bot.answer_callback_query(c.id, "خطا در ایجاد فاکتور")
-        except Exception:
-            pass
-            # ایجاد invoice برای پرداخت
-            import json
-            payload = json.dumps({"user_id": c.from_user.id, "credits": credits})
-            
-            # مقدار price باید به کوچک‌ترین واحد پولی ارسال شود (اینجا فرض 2 رقم اعشار)
-            # اگر ارز شما قواعد دیگری دارد، تبدیل را مطابق آن تنظیم کنید.
-            amount_smallest_unit = int(stars * 100)
-            prices = [ttypes.LabeledPrice(label=f"{credits} کردیت", amount=amount_smallest_unit)]
-            
-            # حتماً provider_token را در config قرار دهید: TELEGRAM_PAYMENT_PROVIDER_TOKEN
-            if not TELEGRAM_PAYMENT_PROVIDER_TOKEN:
-                bot.answer_callback_query(c.id, "پرداخت غیرفعال است: توکن پرداخت تنظیم نشده")
+            parts = c.data.split(":")
+            # expected: credit:buy:<stars>:<credits>
+            if len(parts) < 4:
+                bot.answer_callback_query(c.id, "داده نامعتبر")
                 return
-            
+
+            stars = int(parts[2])
+            credits = int(parts[3])
+
+            # ساخت payload برای تشخیص سفارش در پاسخ شیپینگ/پرداخت
+            import json
+            invoice_payload = json.dumps({
+                "user_id": c.from_user.id,
+                "credits": credits
+            })
+
+            # برای Telegram Stars معمولا provider_token خالی و currency = "XTR"
+            prices = [LabeledPrice(label=f"{credits} کردیت", amount=stars)]
+
             bot.send_invoice(
                 chat_id=c.from_user.id,
                 title=f"خرید {credits} کردیت",
-                description=f"خرید {credits} کردیت با {stars} ستاره تلگرام",
-                payload=payload,
-                provider_token=TELEGRAM_PAYMENT_PROVIDER_TOKEN,
-                currency=TELEGRAM_PAYMENT_CURRENCY,  # مطمئن شوید provider آن ارز را پشتیبانی می‌کند
+                description=f"پرداخت با Telegram Stars",
+                invoice_payload=invoice_payload,
+                provider_token="",                 # برای Stars خالی می‌ماند
+                currency="XTR",
                 prices=prices
             )
-            bot.answer_callback_query(c.id, "لطفاً پرداخت را تکمیل کنید")
-            
+
+            bot.answer_callback_query(c.id, "فاکتور ارسال شد")
         except Exception as e:
-            # بهتر است لاگ را هم ثبت کنید (print یا logger)
-            print("error sending invoice:", e)
-            bot.answer_callback_query(c.id, "خطا در ایجاد صورتحساب")
+            # اگر ارسال با Stars ناموفق شد، تلاش به ارسال invoice با provider معمولی (fallback)
+            try:
+                import json
+                payload = json.dumps({"user_id": c.from_user.id, "credits": credits})
+
+                # مقدار price باید به کوچک‌ترین واحد پولی ارسال شود (مثلاً سنت)
+                amount_smallest_unit = int(stars * 100)
+                prices = [LabeledPrice(label=f"{credits} کردیت", amount=amount_smallest_unit)]
+
+                if not TELEGRAM_PAYMENT_PROVIDER_TOKEN:
+                    bot.answer_callback_query(c.id, "پرداخت غیرفعال است: توکن پرداخت تنظیم نشده")
+                    return
+
+                bot.send_invoice(
+                    chat_id=c.from_user.id,
+                    title=f"خرید {credits} کردیت",
+                    description=f"خرید {credits} کردیت با {stars} ستاره تلگرام",
+                    invoice_payload=payload,
+                    provider_token=TELEGRAM_PAYMENT_PROVIDER_TOKEN,
+                    currency=TELEGRAM_PAYMENT_CURRENCY,
+                    prices=prices
+                )
+                bot.answer_callback_query(c.id, "لطفاً پرداخت را تکمیل کنید")
+            except Exception as e2:
+                print("error sending invoice:", e2)
+                try:
+                    bot.answer_callback_query(c.id, "خطا در ایجاد صورتحساب")
+                except Exception:
+                    pass
     
     # هندلر pre_checkout_query (ضروری برای Telegram Stars)
     @bot.pre_checkout_query_handler(func=lambda query: True)
