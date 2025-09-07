@@ -1,6 +1,6 @@
 from __future__ import annotations
 from telebot import TeleBot
-from telebot.types import CallbackQuery, Message
+from telebot.types import CallbackQuery, Message, LabeledPrice
 import telebot.types as ttypes
 import time
 
@@ -115,12 +115,30 @@ def register(bot: TeleBot):
                              reply_markup=stars_packages_kb())
     
     # خرید بسته Stars
-    @bot.callback_query_handler(func=lambda c: c.data and c.data.startswith("credit:buy:"))
+        @bot.callback_query_handler(func=lambda c: c.data and c.data.startswith("credit:buy:"))
     def on_buy_stars(c):
         try:
             parts = c.data.split(":")
             stars = int(parts[2])
             credits = int(parts[3])
+
+            import json
+            invoice_payload = json.dumps({"user_id": c.from_user.id, "credits": credits})
+
+            prices = [LabeledPrice(label=f"{credits} کردیت", amount=stars)]
+
+            bot.send_invoice(
+                chat_id=c.from_user.id,
+                title=f"خرید {credits} کردیت",
+                description=f"خرید {credits} کردیت با {stars} ستاره تلگرام",
+                invoice_payload=invoice_payload,   # نام صحیح پارامتر
+                provider_token="",                 # برای Telegram Stars خالی باشد
+                currency="XTR",
+                prices=prices
+            )
+            bot.answer_callback_query(c.id, "لطفاً پرداخت را تکمیل کنید")
+        except Exception:
+            bot.answer_callback_query(c.id, "خطا در ایجاد صورتحساب")
             
             # ایجاد invoice برای پرداخت
             import json
