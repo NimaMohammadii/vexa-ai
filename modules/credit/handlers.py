@@ -219,7 +219,7 @@ def register(bot: TeleBot):
         plans_text = "\n".join([f"• {p['title']}" for p in PAYMENT_PLANS])
         text = (
             f"🧾 <b>{PAY_RIAL_TITLE}</b>\n\n"
-            f"<b>{plans_text}</b>"
+            f"<pre>{plans_text}</pre>"
         )
         
         try:
