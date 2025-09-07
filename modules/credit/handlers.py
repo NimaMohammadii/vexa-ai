@@ -216,7 +216,7 @@ def register(bot: TeleBot):
         bot.answer_callback_query(c.id)
         
         # فقط قیمت‌ها رو نشون بده
-        plans_text = "\n".join([f"• {p['title']}" for p in PAYMENT_PLANS])
+        plans_text = "\n".join([f"{p['title']}" for p in PAYMENT_PLANS])
         text = (
             f"🧾 <b>{PAY_RIAL_TITLE}</b>\n\n"
             f"<pre>{plans_text}</pre>"
