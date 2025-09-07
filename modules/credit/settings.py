@@ -20,7 +20,7 @@ PAYMENT_PLANS = [
 
 # بسته‌های Telegram Stars
 STAR_PACKAGES = [
-    {"stars": 5, "credits": 300, "title": "⭐️ 5 ستاره → 300 کردیت"},
+    {"stars": 15, "credits": 300, "title": "⭐️ 15 ستاره → 300 کردیت"},
     {"stars": 30, "credits": 700, "title": "⭐️ 30 ستاره → 700 کردیت"},
     {"stars": 60, "credits": 1500, "title": "⭐️ 60 ستاره → 1500 کردیت"},
     {"stars": 120, "credits": 3200, "title": "⭐️ 120 ستاره → 3200 کردیت"},
