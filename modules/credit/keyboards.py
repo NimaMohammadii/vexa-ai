@@ -28,21 +28,17 @@ def credit_menu_kb() -> InlineKeyboardMarkup:
     return kb
 
 def stars_packages_kb() -> InlineKeyboardMarkup:
-    """منوی بسته های Telegram Stars"""
+    """منوی بسته‌های Telegram Stars"""
     kb = InlineKeyboardMarkup(row_width=2)
-    row = []
-    for i, pkg in enumerate(STAR_PACKAGES, start=1):
-        row.append(
-            InlineKeyboardButton(
-                pkg["title"],
-                callback_data=f"credit:buy:{pkg['stars']}:{pkg['credits']}"
-            )
-        )
-        if i % 2 == 0:   # هر ۲تا دکمه یک ردیف
-            kb.row(*row)
-            row = []
-    if row:  # اگه آخر لیست یکی موند
-        kb.row(*row)
-
+    for pkg in STAR_PACKAGES:
+        kb.add(InlineKeyboardButton(
+            pkg["title"], 
+            callback_data=f"credit:buy:{pkg['stars']}:{pkg['credits']}"
+        ))
     kb.add(InlineKeyboardButton(BACK_BTN, callback_data="credit:menu"))
+    return kb
+
+def instant_cancel_kb() -> InlineKeyboardMarkup:
+    kb = InlineKeyboardMarkup(row_width=1)
+    kb.add(InlineKeyboardButton(CANCEL_BTN, callback_data="credit:cancel"))
     return kb
