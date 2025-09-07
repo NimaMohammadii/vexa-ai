@@ -1,19 +1,21 @@
-# modules/credit/texts.py
-from modules.i18n import t
+# دکمه/عناوین
+CREDIT_TITLE = "💎 خرید کردیت"
+CREDIT_HEADER = "برای استفاده از ربات، کردیت لازم دارید.\nیکی از بسته‌های زیر را انتخاب کنید:"
+PAY_STARS_BTN = "خرید با ستاره ⭐️"
+PAY_RIAL_BTN = "پرداخت ریالی 🇮🇷"
+PAY_RIAL_TITLE = "پرداخت ریالی – انتخاب پلن"
+PAY_RIAL_PLANS_HEADER = "یکی از پلن‌های زیر را انتخاب کن:"
+PAY_RIAL_INSTANT = "پرداخت فوری (کارت‌به‌کارت)"
+BACK_BTN = "بازگشت 🔙"
+CANCEL_BTN = "لغو ❌"
 
-def INTRO(lang: str) -> str:
-    # متن اصلی بدون "یا پرداخت ریالی"
-    txt = f"🛒 <b>{t('Credit', lang)}</b>\n\n{t('credit_intro', lang)}"
-    # فقط برای فارسی خط ریالی اضافه شود
-    if lang == "fa":
-        txt += """\n                     یا\n<b>⚠️ برای پرداخت به صورت ریـالی به ادمین ربات پیام بدید ( لیـنک در بیـو ) کمتراز 10 دقیقـه</b>\n                <a href="https://t.me/vexa_speech/123"><b>قیمت Credit به تومـن</b></a>"""
-    return txt
+# متن‌ها
+INSTANT_PAY_INSTRUCT = (
+    "🔁 <b>پرداخت فوری (کارت‌به‌کارت)</b>\n"
+    "شماره کارت: <code>{card}</code>\n\n"
+    "• مطابق یکی از قیمت‌های بالا کارت‌به‌کارت کن.\n"
+    "• سپس <b>تصویر رسید</b> را همین‌جا ارسال کن.\n\n"
+    "✅ پس از ارسال، پیام «در انتظار تایید» نمایش داده می‌شود و به منوی اصلی برمی‌گردی.\n"
+)
 
-def INVOICE_TITLE(lang: str) -> str:
-    return t("credit_invoice_title", lang)
-
-def INVOICE_DESC(lang: str) -> str:
-    return t("credit_invoice_desc", lang)
-
-def PAY_SUCCESS(lang: str, stars: int, credits: int, balance: int) -> str:
-    return t("credit_pay_success", lang).format(stars=stars, credits=credits, balance=balance)
+WAITING_CONFIRM = "✅ رسید دریافت شد.\n⏳ لطفاً منتظر تایید ادمین باش."

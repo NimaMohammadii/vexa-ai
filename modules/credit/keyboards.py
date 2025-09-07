@@ -1,41 +1,44 @@
-# modules/credit/keyboards.py
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
-from modules.i18n import t
+from .texts import PAY_STARS_BTN, PAY_RIAL_BTN, PAY_RIAL_INSTANT, BACK_BTN, CANCEL_BTN
+from .settings import PAYMENT_PLANS, STAR_PACKAGES
 
-# ستاره ← کردیت
-STAR_TO_CREDIT = {
-    15: 300,
-    28: 600,
-    55: 1230,
-    99: 2155,
-    175: 4500,
-    299: 8800,
-}
-
-def keyboard(lang: str = "fa"):
-    kb = InlineKeyboardMarkup()
-
-    stars = list(STAR_TO_CREDIT.keys())
-
-    # ردیف ۱: 15, 28
-    kb.row(
-        InlineKeyboardButton(f"Pay ⭐{stars[0]} — {STAR_TO_CREDIT[stars[0]]}💳", callback_data=f"credit:buy:{stars[0]}"),
-        InlineKeyboardButton(f"Pay ⭐{stars[1]} — {STAR_TO_CREDIT[stars[1]]}💳", callback_data=f"credit:buy:{stars[1]}"),
-    )
-    # ردیف ۲: 55
-    kb.add(InlineKeyboardButton(f"Pay ⭐{stars[2]} — {STAR_TO_CREDIT[stars[2]]}💳", callback_data=f"credit:buy:{stars[2]}"))
-    # ردیف ۳: 99, 175
-    kb.row(
-        InlineKeyboardButton(f"Pay ⭐{stars[3]} — {STAR_TO_CREDIT[stars[3]]}💳", callback_data=f"credit:buy:{stars[3]}"),
-        InlineKeyboardButton(f"Pay ⭐{stars[4]} — {STAR_TO_CREDIT[stars[4]]}💳", callback_data=f"credit:buy:{stars[4]}"),
-    )
-    # ردیف ۴: 260
-    kb.add(InlineKeyboardButton(f"Pay ⭐{stars[5]} — {STAR_TO_CREDIT[stars[5]]}💳", callback_data=f"credit:buy:{stars[5]}"))
-
-    # فقط بازگشت (بدون پرداخت ریالی)
-    kb.add(InlineKeyboardButton(t("back", lang), callback_data="home:back"))
+def augment_with_rial(base_kb: InlineKeyboardMarkup | None) -> InlineKeyboardMarkup:
+    """
+    این تابع دکمه «پرداخت ریالی» را به منوی Credit فعلی‌ات اضافه می‌کند.
+    اگر منو از قبل وجود دارد، همان را می‌گیرد و یک دکمه به آن اضافه می‌کند.
+    اگر None بدهی، یک منوی جدید می‌سازد.
+    """
+    kb = base_kb or InlineKeyboardMarkup(row_width=2)
+    kb.add(InlineKeyboardButton(PAY_RIAL_BTN, callback_data="credit:payrial"))
     return kb
 
-# برای سازگاری با ایمپورت‌های قبلی
-def plans_keyboard(lang: str = "fa"):
-    return keyboard(lang)
+def payrial_plans_kb() -> InlineKeyboardMarkup:
+    """منوی نمایش قیمت‌ها و دکمه پرداخت فوری"""
+    kb = InlineKeyboardMarkup(row_width=1)
+    kb.add(InlineKeyboardButton(PAY_RIAL_INSTANT, callback_data="credit:payrial:instant"))
+    kb.add(InlineKeyboardButton(BACK_BTN, callback_data="credit:menu"))
+    return kb
+
+def credit_menu_kb() -> InlineKeyboardMarkup:
+    """منوی اصلی خرید کردیت"""
+    kb = InlineKeyboardMarkup(row_width=1)
+    kb.add(InlineKeyboardButton(PAY_STARS_BTN, callback_data="credit:stars"))
+    kb.add(InlineKeyboardButton(PAY_RIAL_BTN, callback_data="credit:payrial"))
+    kb.add(InlineKeyboardButton(BACK_BTN, callback_data="home:back"))
+    return kb
+
+def stars_packages_kb() -> InlineKeyboardMarkup:
+    """منوی بسته‌های Telegram Stars"""
+    kb = InlineKeyboardMarkup(row_width=2)
+    for pkg in STAR_PACKAGES:
+        kb.add(InlineKeyboardButton(
+            pkg["title"], 
+            callback_data=f"credit:buy:{pkg['stars']}:{pkg['credits']}"
+        ))
+    kb.add(InlineKeyboardButton(BACK_BTN, callback_data="credit:menu"))
+    return kb
+
+def instant_cancel_kb() -> InlineKeyboardMarkup:
+    kb = InlineKeyboardMarkup(row_width=1)
+    kb.add(InlineKeyboardButton(CANCEL_BTN, callback_data="credit:cancel"))
+    return kb
