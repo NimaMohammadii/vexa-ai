@@ -61,7 +61,7 @@ def _is_waiting(user_id: int) -> bool:
 def open_credit(bot: TeleBot, cq):
     """باز کردن منوی اصلی خرید کردیت"""
     try:
-        text = f"💎 <b>{CREDIT_TITLE}</b>\n\n{CREDIT_HEADER}"
+        text = f"🛒 <b>{CREDIT_TITLE}</b>\n\n{CREDIT_HEADER}"
         bot.edit_message_text(
             text, cq.message.chat.id, cq.message.message_id,
             parse_mode="HTML", reply_markup=credit_menu_kb()
@@ -106,7 +106,7 @@ def register(bot: TeleBot):
     @bot.callback_query_handler(func=lambda c: c.data == "credit:stars")
     def on_stars_menu(c):
         bot.answer_callback_query(c.id)
-        text = "⭐️ <b>خرید با ستاره تلگرام</b>\n\nیکی از بسته‌های زیر را انتخاب کنید:"
+        text = "⭐️ <b>خرید به صورت آنـی با Telegram Stars</b>\n\nیکی از بسته‌های زیر را انتخاب کنید:"
         try:
             bot.edit_message_text(text, c.message.chat.id, c.message.message_id,
                                   parse_mode="HTML", reply_markup=stars_packages_kb())
@@ -298,7 +298,7 @@ def register(bot: TeleBot):
                 pass
         
         # 2. ارسال پیام تایید (جداگانه)
-        bot.send_message(msg.chat.id, "✅ رسید دریافت شد.\n⏳ لطفاً منتظر تایید ادمین باش.", parse_mode="HTML")
+        bot.send_message(msg.chat.id, "✅ </b>رسید دریافت شد<b>\n⏳ </b>لطفاً منتظر تایید باش<b>", parse_mode="HTML")
         
         # 3. ارسال منوی اصلی (جداگانه)
         bot.send_message(msg.chat.id, MAIN(lang), parse_mode="HTML", reply_markup=main_menu(lang))
