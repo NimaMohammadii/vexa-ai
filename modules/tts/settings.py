@@ -12,7 +12,7 @@ DEFAULT_VOICE_NAME = "Nazy"
 # لیست صداها: name -> eleven voice_id
 VOICES = {
     "Liam":      "TX3LPaxmHKxFdv7VOQHJ",
-    "Amir":      "scOwDtmlUjD3prqpp97I",
+    "Amir":      "1SM7GgM6IMuvQlz2BwM3",
     "Nazy":      "tnSpp4vdxKPjI9w0GnoV",
     "Noushin":   "NZiuR1C6kVMSWHG27sIM",
     "Paniz":       "BZgkqPqms7Kj9ulSkVzn",
