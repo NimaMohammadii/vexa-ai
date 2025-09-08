@@ -1,7 +1,7 @@
 # دکمه/عناوین
 CREDIT_TITLE = "خرید کردیت"
 CREDIT_HEADER = "برای استفاده از ربات، کردیت لازم دارید.\nیکی از بسته‌های زیر را انتخاب کنید:"
-PAY_STARS_BTN = "خرید با ستاره ⭐️"
+PAY_STARS_BTN = "خرید با Telegram Stars ⭐️"
 PAY_RIAL_BTN = "پرداخت به تومن 💵"
 PAY_RIAL_TITLE = "پرداخت به تومـن – انتخاب پلن"
 PAY_RIAL_PLANS_HEADER = "یکی از پلن‌های زیر را انتخاب کن:"
