@@ -5,9 +5,10 @@ import telebot.types as ttypes
 import time
 
 from .texts import (
-    CREDIT_TITLE(lang), CREDIT_HEADER(lang), PAY_RIAL_TITLE, PAY_RIAL_PLANS_HEADER(lang), INSTANT_PAY_INSTRUCT(lang, CARD_NUMBER), WAITING_CONFIRM(lang)
+    CREDIT_TITLE, CREDIT_HEADER, PAY_RIAL_TITLE, PAY_RIAL_PLANS_HEADER, INSTANT_PAY_INSTRUCT, WAITING_CONFIRM
 )
-from .keyboards import credit_menu_kb, stars_packages_kb, payrial_plans_kb, instant_cancel_kb, /*removed*/
+
+from .keyboards import credit_menu_kb, stars_packages_kb, payrial_plans_kb, instant_cancel_kb
 from config import BOT_OWNER_ID as ADMIN_REVIEW_CHAT_ID, CARD_NUMBER
 from .settings import PAYMENT_PLANS
 from .settings import RECEIPT_WAIT_TTL
