@@ -19,8 +19,9 @@ VOICES = {
     "Alexandra": "kdmDKE6EkgrWrrykO9Qt",
     "Nima":     "BognUUMX6W1qmZKB2TOw",
     "Laura":     "7piC4m7q8WrpEAnMj5xC",
-    "Maxon":     "TPH31dCvEQ2aybIZHorF",
+    "Maxon":     "scOwDtmlUjD3prqpp97I",
     "Jessica":   "cgSgspJ2msm6clMCkdW9",
+    "Grandpa 👨🏻‍🦳":   "NOpBlnGInO9m6vDvFkFC",
 }
 
 # خروجی‌ها (هر کدوم یک فایل MP3)
