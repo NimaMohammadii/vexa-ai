@@ -111,3 +111,47 @@ LABELS.update({
         "fr": "👥 Un utilisateur a rejoint via ton lien.\n🎁 Tu as reçu {credits} crédits bonus.",
     },
 })
+
+LABELS.update({
+    # Credit UI (generic)
+    "credit_title": {
+        "fa": "خرید کردیت",
+        "en": "Buy Credits",
+    },
+    "credit_header": {
+        "fa": "برای استفاده از ربات، کردیت لازم دارید.\nیکی از بسته‌های زیر را انتخاب کنید:",
+        "en": "You need credits to use the bot.\nChoose one of the packages below:",
+    },
+    "credit_pay_stars_btn": {
+        "fa": "خرید با Telegram Stars ⭐️",
+        "en": "Buy with Telegram Stars ⭐️",
+    },
+    "credit_pay_rial_btn": {
+        "fa": "پرداخت به تومان",
+        "en": "Pay in IRR (Iranian Rial)",
+    },
+    "credit_pay_rial_title": {
+        "fa": "پرداخت به تومان – انتخاب پلن",
+        "en": "Pay in IRR — Choose a plan",
+    },
+    "credit_pay_rial_plans_header": {
+        "fa": "یکی از پلن‌های زیر را انتخاب کن:",
+        "en": "Choose one of the following plans:",
+    },
+    "credit_pay_rial_instant": {
+        "fa": "پرداخت فوری (کارت‌به‌کارت)",
+        "en": "Instant Pay (Card-to-Card)",
+    },
+    "cancel": {
+        "fa": "لغو ❌",
+        "en": "Cancel ❌",
+    },
+    "credit_instant_pay_instruct": {
+        "fa": "💱 <b>پرداخت فوری (کارت‌به‌کارت)</b>\nشماره کارت: <code>{card}</code>\n\n• مطابق یکی از قیمت‌ها کارت‌به‌کارت کن.\n• سپس <b>تصویر رسید</b> را همین‌جا ارسال کن.\n\n✅ پس از پرداخت، کردیت شما کمتر از ۵ دقیقه به حساب کاربری‌تون اضافه میشه\n",
+        "en": "💱 <b>Instant Pay (Card-to-Card)</b>\nCard number: <code>{card}</code>\n\n• Transfer the exact price for a selected plan.\n• Then send the <b>payment receipt image</b> here.\n\n✅ After payment, your credits will be added in under 5 minutes.\n",
+    },
+    "credit_waiting_confirm": {
+        "fa": "✅ رسید دریافت شد.\n⏳ لطفاً منتظر تایید باش.",
+        "en": "✅ Receipt received.\n⏳ Please wait for confirmation.",
+    },
+})
