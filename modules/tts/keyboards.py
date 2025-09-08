@@ -8,9 +8,9 @@ def _chunk(seq, n):
         yield seq[i:i+n]
 
 def keyboard(selected_voice: str, lang: str = "fa"):
-    kb = InlineKeyboardMarkup(row_width=2)
+    kb = InlineKeyboardMarkup(row_width=3)
     names = list(VOICES.keys())
-    for row in _chunk(names, 2):
+    for row in _chunk(names, 3):
         kb.row(*[
             InlineKeyboardButton(("✔️ " if n == selected_voice else "") + n,
                                  callback_data=f"tts:voice:{n}")
