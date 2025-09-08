@@ -30,6 +30,7 @@ def credit_menu_kb(lang: str = "fa") -> InlineKeyboardMarkup:
     """
     منوی اصلی خرید کردیت.
     اگر lang فارسی نباشد، دکمهٔ پرداخت به تومان نمایش داده نمیشود.
+    (پارامتر lang پیش‌فرض 'fa' است تا سایر فراخوانی‌ها که بدون آرگومان فراخوانی می‌کنند، آسیب نبینند)
     """
     kb = InlineKeyboardMarkup(row_width=1)
     kb.add(InlineKeyboardButton(PAY_STARS_BTN, callback_data="credit:stars"))
