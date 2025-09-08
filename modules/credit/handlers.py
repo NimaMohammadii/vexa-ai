@@ -298,7 +298,7 @@ def register(bot: TeleBot):
                 pass
         
         # 2. ارسال پیام تایید (جداگانه)
-        bot.send_message(msg.chat.id, "✅ </b>رسید دریافت شد<b>\n⏳ </b>لطفاً منتظر تایید باش<b>", parse_mode="HTML")
+        bot.send_message(msg.chat.id, "✅ رسید دریافت شد\n⏳ لطفاً منتظر تایید باش", parse_mode="HTML")
         
         # 3. ارسال منوی اصلی (جداگانه)
         bot.send_message(msg.chat.id, MAIN(lang), parse_mode="HTML", reply_markup=main_menu(lang))
