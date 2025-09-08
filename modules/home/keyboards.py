@@ -12,5 +12,3 @@ def main_menu(lang: str):
         InlineKeyboardButton(t("btn_credit", lang), callback_data="home:credit"),
         InlineKeyboardButton(t("btn_invite", lang), callback_data="home:invite")
     )
-    kb.add(InlineKeyboardButton(t("btn_lang", lang), callback_data="home:lang"))
-    return kb
