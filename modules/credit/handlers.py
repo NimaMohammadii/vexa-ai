@@ -5,9 +5,9 @@ import telebot.types as ttypes
 import time
 
 from .texts import (
-    CREDIT_TITLE, CREDIT_HEADER, PAY_RIAL_TITLE, PAY_RIAL_PLANS_HEADER, INSTANT_PAY_INSTRUCT, WAITING_CONFIRM
+    CREDIT_TITLE(lang), CREDIT_HEADER(lang), PAY_RIAL_TITLE, PAY_RIAL_PLANS_HEADER(lang), INSTANT_PAY_INSTRUCT(lang, CARD_NUMBER), WAITING_CONFIRM(lang)
 )
-from .keyboards import credit_menu_kb, stars_packages_kb, payrial_plans_kb, instant_cancel_kb, augment_with_rial
+from .keyboards import credit_menu_kb, stars_packages_kb, payrial_plans_kb, instant_cancel_kb, /*removed*/
 from config import BOT_OWNER_ID as ADMIN_REVIEW_CHAT_ID, CARD_NUMBER
 from .settings import PAYMENT_PLANS
 from .settings import RECEIPT_WAIT_TTL
@@ -60,16 +60,25 @@ def _is_waiting(user_id: int) -> bool:
 # === API اصلی برای منوی کردیت ===
 def open_credit(bot: TeleBot, cq):
     """باز کردن منوی اصلی خرید کردیت"""
+    user = db.get_or_create_user(cq.from_user)
+    lang = db.get_user_lang(user["user_id"], "fa")
+    text = f"🛒 <b>{CREDIT_TITLE(lang)(lang)}</b>
+
+{CREDIT_HEADER(lang)(lang)}"
     try:
-        text = f"🛒 <b>{CREDIT_TITLE}</b>\n\n{CREDIT_HEADER}"
         bot.edit_message_text(
             text, cq.message.chat.id, cq.message.message_id,
-            parse_mode="HTML", reply_markup=credit_menu_kb()
+            parse_mode="HTML", reply_markup=credit_menu_kb(lang)
         )
     except Exception:
         bot.send_message(
             cq.message.chat.id, text,
-            parse_mode="HTML", reply_markup=credit_menu_kb()
+            parse_mode="HTML", reply_markup=credit_menu_kb(lang)it_menu_kb()
+        )
+    except Exception:
+        bot.send_message(
+            cq.message.chat.id, text,
+            parse_mode="HTML", reply_markup=credit_menu_kb(lang)
         )
 
 # === API عمومی برای ادغام با منوی Credit موجود تو ===
@@ -77,7 +86,7 @@ def add_rial_button_to_credit_menu(markup):
     """در کد فعلی منوی Credit، قبل از ارسال reply_markup این تابع را صدا بزن:
         markup = add_rial_button_to_credit_menu(markup)
     """
-    return augment_with_rial(markup)
+    return /*removed*/(markup)
 
 def _go_home(bot: TeleBot, chat_id: int, msg_id: int | None = None):
     text = f"🏠 <b>{HOME_TITLE}</b>"
@@ -109,10 +118,10 @@ def register(bot: TeleBot):
         text = "⭐️ <b>خرید به صورت آنـی با Telegram Stars</b>\n\nیکی از بسته‌های زیر را انتخاب کنید:"
         try:
             bot.edit_message_text(text, c.message.chat.id, c.message.message_id,
-                                  parse_mode="HTML", reply_markup=stars_packages_kb())
+                                  parse_mode="HTML", reply_markup=stars_packages_kb(lang))
         except Exception:
             bot.send_message(c.message.chat.id, text, parse_mode="HTML",
-                             reply_markup=stars_packages_kb())
+                             reply_markup=stars_packages_kb(lang))
     
     # خرید بسته Stars
     @bot.callback_query_handler(func=lambda c: c.data and c.data.startswith("credit:buy:"))
@@ -218,29 +227,29 @@ def register(bot: TeleBot):
         # فقط قیمت‌ها رو نشون بده
         plans_text = "\n".join([f"{p['title']}" for p in PAYMENT_PLANS])
         text = (
-            f"🧾 <b>{PAY_RIAL_TITLE}</b>\n\n"
+            f"🧾 <b>{PAY_RIAL_TITLE(lang)}</b>\n\n"
             f"<pre>{plans_text}</pre>"
         )
         
         try:
             bot.edit_message_text(text, c.message.chat.id, c.message.message_id,
-                                  parse_mode="HTML", reply_markup=payrial_plans_kb())
+                                  parse_mode="HTML", reply_markup=payrial_plans_kb(lang))
         except Exception:
             bot.send_message(c.message.chat.id, text, parse_mode="HTML",
-                             reply_markup=payrial_plans_kb())
+                             reply_markup=payrial_plans_kb(lang))
 
     # ورود به حالت «پرداخت فوری (کارت‌به‌کارت)» → انتظار دریافت تصویر رسید
     @bot.callback_query_handler(func=lambda c: c.data == "credit:payrial:instant")
     def on_instant(c: CallbackQuery):
         bot.answer_callback_query(c.id)
         _set_wait(c.from_user.id, c.message.message_id)  # ذخیره message_id
-        text = INSTANT_PAY_INSTRUCT.format(card=CARD_NUMBER)
+        text = INSTANT_PAY_INSTRUCT(lang, CARD_NUMBER).format(card=CARD_NUMBER)
         try:
             bot.edit_message_text(text, c.message.chat.id, c.message.message_id,
-                                  parse_mode="HTML", reply_markup=instant_cancel_kb())
+                                  parse_mode="HTML", reply_markup=instant_cancel_kb(lang))
         except Exception:
             bot.send_message(c.message.chat.id, text, parse_mode="HTML",
-                             reply_markup=instant_cancel_kb())
+                             reply_markup=instant_cancel_kb(lang))
 
     # بازگشت/لغو → خروج از حالت انتظار و برگشت به منوی اصلی
     @bot.callback_query_handler(func=lambda c: c.data in ("credit:menu", "credit:cancel"))
