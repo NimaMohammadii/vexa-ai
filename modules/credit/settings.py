@@ -20,12 +20,12 @@ PAYMENT_PLANS = [
 
 # بسته‌های Telegram Stars
 STAR_PACKAGES = [
-    {"stars": 15, "credits": 300, "title": "⭐️ 15 ستاره → 300 کردیت"},
-    {"stars": 28, "credits": 600, "title": "⭐️ 28 ستاره → 600 کردیت"},
-    {"stars": 55, "credits": 1230, "title": "⭐️ 55 ستاره → 1230 کردیت"},
-    {"stars": 99, "credits": 2155, "title": "⭐️ 99 ستاره → 2155 کردیت"},
-    {"stars": 175, "credits": 4500, "title": "⭐️ 175 ستاره → 4500 کردیت"},
-    {"stars": 299, "credits": 8800, "title": "⭐️ 299 ستاره → 8800 کردیت"}
+    {"stars": 15, "credits": 300, "title": "Pay ⭐️ 15 → 300 کردیت"},
+    {"stars": 28, "credits": 600, "title": "Pay ⭐️ 28 → 600 کردیت"},
+    {"stars": 55, "credits": 1230, "title": "Pay ⭐️ 55 → 1230 کردیت"},
+    {"stars": 99, "credits": 2155, "title": "Pay ⭐️ 99 → 2155 کردیت"},
+    {"stars": 175, "credits": 4500, "title": "Pay ⭐️ 175 → 4500 کردیت"},
+    {"stars": 299, "credits": 8800, "title": "Pay ⭐️ 299 → 8800 کردیت"}
 ]
 
 # زمان انتظار برای ارسال رسید (ثانیه)
