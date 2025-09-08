@@ -1,35 +1,21 @@
-# modules/credit/texts.py
-from modules.i18n import t
+# دکمه/عناوین
+CREDIT_TITLE = "خرید کردیت"
+CREDIT_HEADER = "برای استفاده از ربات، کردیت لازم دارید.\nیکی از بسته‌های زیر را انتخاب کنید:"
+PAY_STARS_BTN = "خرید با Telegram Stars ⭐️"
+PAY_RIAL_BTN = "پرداخت به تومان"
+PAY_RIAL_TITLE = "پرداخت به تومـان – انتخاب پلن"
+PAY_RIAL_PLANS_HEADER = "یکی از پلن‌های زیر را انتخاب کن:"
+PAY_RIAL_INSTANT = "پرداخت فوری (کارت‌به‌کارت)"
+BACK_BTN = "بازگشت 🔙"
+CANCEL_BTN = "لغو ❌"
 
-def CREDIT_TITLE(lang: str) -> str:
-    return t("credit_title", lang)
+# متن‌ها
+INSTANT_PAY_INSTRUCT = (
+    "💱 <b>پرداخت فوری (کارت‌به‌کارت)</b>\n"
+    "شماره کارت: <code>{card}</code>\n\n"
+    "• مطابق یکی از قیمت‌ها کارت‌به‌کارت کن.\n"
+    "• سپس <b>تصویر رسید</b> را همین‌جا ارسال کن.\n\n"
+    "✅ پس از پرداخت، کردیت شما کمتر از ۵ دقیقه به حساب کاربری‌تون اضافه میشه\n"
+)
 
-def CREDIT_HEADER(lang: str) -> str:
-    return t("credit_header", lang)
-
-def PAY_STARS_BTN(lang: str) -> str:
-    return t("credit_pay_stars_btn", lang)
-
-def PAY_RIAL_BTN(lang: str) -> str:
-    return t("credit_pay_rial_btn", lang)
-
-def PAY_RIAL_TITLE(lang: str) -> str:
-    return t("credit_pay_rial_title", lang)
-
-def PAY_RIAL_PLANS_HEADER(lang: str) -> str:
-    return t("credit_pay_rial_plans_header", lang)
-
-def PAY_RIAL_INSTANT(lang: str) -> str:
-    return t("credit_pay_rial_instant", lang)
-
-def BACK_BTN(lang: str) -> str:
-    return t("back", lang)
-
-def CANCEL_BTN(lang: str) -> str:
-    return t("cancel", lang)
-
-def INSTANT_PAY_INSTRUCT(lang: str, card: str) -> str:
-    return t("credit_instant_pay_instruct", lang).format(card=card)
-
-def WAITING_CONFIRM(lang: str) -> str:
-    return t("credit_waiting_confirm", lang)
+WAITING_CONFIRM = "✅ رسید دریافت شد.\n⏳ لطفاً منتظر تایید باش."
