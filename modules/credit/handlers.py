@@ -140,8 +140,8 @@ def register(bot: TeleBot):
 
             bot.send_invoice(
                 chat_id=c.from_user.id,
-                title=f"خرید {credits} کردیت",
-                description=f"پرداخت با Telegram Stars",
+                title=f"خرید {credits} کردیت – Vexa",
+                description=f"شارژ موجودی با Telegram Stars",
                 invoice_payload=invoice_payload,
                 provider_token="",                 # برای Stars خالی می‌ماند
                 currency="XTR",
