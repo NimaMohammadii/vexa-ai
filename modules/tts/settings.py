@@ -17,7 +17,7 @@ VOICES = {
     "Noushin":   "NZiuR1C6kVMSWHG27sIM",
     "Paniz":       "BZgkqPqms7Kj9ulSkVzn",
     "Alexandra": "kdmDKE6EkgrWrrykO9Qt",
-    "Nima":     "BognUUMX6W1qmZKB2TOw",
+    "Nima":     "6dcFFb31LVaCdYevmTAx",
     "Laura":     "7piC4m7q8WrpEAnMj5xC",
     "Maxon":     "scOwDtmlUjD3prqpp97I",
     "Jessica":   "cgSgspJ2msm6clMCkdW9",
