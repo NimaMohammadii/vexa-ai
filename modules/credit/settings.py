@@ -1,9 +1,9 @@
 # پلن‌های نمونه به تومان (صرفاً برای نمایش؛ ملاک نهایی، رسید پرداخت است)
 PAYMENT_PLANS = [
-    {"title": " 300 کردیت → 29,000T", "amount_toman": 29_000, "credits": 300},
-    {"title": " 600 کردیت → 55,000T", "amount_toman": 55_000, "credits": 600},
-    {"title": " 1230 کردیت → 75,000T", "amount_toman": 75_000, "credits": 1230},
-    {"title": " 2155 کردیت → 130,000T", "amount_toman": 130_000, "credits": 2155},
+    {"title": " 300 کردیت → 39,000T", "amount_toman": 39_000, "credits": 300},
+    {"title": " 600 کردیت → 65,000T", "amount_toman": 65_000, "credits": 600},
+    {"title": " 1230 کردیت → 88,000T", "amount_toman": 88_000, "credits": 1230},
+    {"title": " 2155 کردیت → 140,000T", "amount_toman": 140_000, "credits": 2155},
     {"title": " 4500 کردیت → 260,000T", "amount_toman": 260_000, "credits": 4500},
     {"title": " 8800 کردیت → 470,000T", "amount_toman": 470_000, "credits": 8800},
 
