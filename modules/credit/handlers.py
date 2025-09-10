@@ -106,7 +106,7 @@ def register(bot: TeleBot):
     @bot.callback_query_handler(func=lambda c: c.data == "credit:stars")
     def on_stars_menu(c):
         bot.answer_callback_query(c.id)
-        text = "⭐️ <b>خرید به صورت آنـی با Telegram Stars</b>\n\nیکی از بسته‌های زیر را انتخاب کنید:"
+        text = "🌟 <b>خرید به صورت آنـی با Telegram Stars</b>\n\nیکی از بسته‌های زیر را انتخاب کنید:"
         try:
             bot.edit_message_text(text, c.message.chat.id, c.message.message_id,
                                   parse_mode="HTML", reply_markup=stars_packages_kb())
