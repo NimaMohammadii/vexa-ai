@@ -1,7 +1,7 @@
 # modules/i18n.py
 LABELS = {
     # Home
-    "home_title": {"fa":"منوی اصلی","en":"Main Menu","ar":"القائمة الرئيسية","tr":"Ana Menü","ru":"Главное меню","es":"Menú principal","de":"Hauptmenü","fr":"Menu principal"},
+    "home_title": {"fa":"/help   منوی اصلی","en":"Main Menu","ar":"القائمة الرئيسية","tr":"Ana Menü","ru":"Главное меню","es":"Menú principal","de":"Hauptmenü","fr":"Menu principal"},
     "home_body":  {"fa":"یکی از گزینه‌های زیر را انتخاب کنید:","en":"Choose an option:","ar":"اختر خياراً:","tr":"Bir seçenek seçin:","ru":"Выберите опцию:","es":"Elige una opción:","de":"Wähle eine Option:","fr":"Choisissez une option :"},
     "btn_tts":    {"fa":"تبدیل متن به صدا 🎧","en":"Text to Speech 🎧","ar":"تحويل النص إلى صوت 🎧","tr":"Metinden Sese 🎧","ru":"Текст в речь 🎧","es":"Texto a voz 🎧","de":"Text zu Sprache 🎧","fr":"Texte en voix 🎧"},
     "btn_profile":{"fa":"پروفایل 🙋🏼‍♂️","en":"Profile 🙋🏼‍♂️","ar":"الملف الشخصي 🙋🏼‍♂️","tr":"Profil 🙋🏼‍♂️","ru":"Профиль 🙋🏼‍♂️","es":"Perfil 🙋🏼‍♂️","de":"Profil 🙋🏼‍♂️","fr":"Profil 🙋🏼‍♂️"},
