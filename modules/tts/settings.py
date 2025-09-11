@@ -22,7 +22,6 @@ VOICES = {
     "Maxon":     "scOwDtmlUjD3prqpp97I",
     "Jessica":   "cgSgspJ2msm6clMCkdW9",
     "Grandpa 👨🏻‍🦳":   "NOpBlnGInO9m6vDvFkFC",
-    "Sam":   "DGzg6RaUqxGRTHSBjfgF",
 }
 
 # خروجی‌ها (هر کدوم یک فایل MP3)
