@@ -9,7 +9,7 @@ def ask_text(lang: str, voice_name: str) -> str:
 def PROCESSING(lang: str) -> str:
     return t('tts_processing', lang)
 
-def NO_CREDIT(lang: str) -> str:
+def NO_CREDIT(lang: str, credits: int) -> str:
     return t('tts_no_credit', lang)
 
 def ERROR(lang: str) -> str:
