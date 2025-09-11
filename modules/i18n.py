@@ -17,8 +17,8 @@ LABELS = {
     "tts_title":      {"fa":"تبدیل متن به صدا 🎧","en":"Text to Speech 🎧","ar":"تحويل النص إلى صوت 🎧","tr":"Metinden Sese 🎧","ru":"Текст в речь 🎧","es":"Texto a voz 🎧","de":"Text zu Sprache 🎧","fr":"Texte en voix 🎧"},
     "tts_prompt":     {"fa":"✨ <b>متن رو بفرست (هر کاراکتر = 1 Credit)</b>\n<b><a href='https://t.me/vexa_speech/171'>دموی صداها</a></b>","en":"✍️ Send your text (each character = 1 credit)","ar":"✍️ أرسل النص (كل حرف = 1 رصيد)","tr":"✍️ Metni gönder (her karakter = 1 kredi)","ru":"✍️ Отправьте текст (каждый символ = 1 кредит)","es":"✍️ Envía tu texto (cada carácter = 1 crédito)","de":"✍️ Sende deinen Text (jedes Zeichen = 1 Kredit)","fr":"✍️ Envoie ton texte (chaque caractère = 1 crédit)"},
     "tts_processing": {"fa":"👀 <b>در حال تبدیل...</b>","en":"⏳ Converting...","ar":"⏳ جارٍ التحويل...","tr":"⏳ Dönüştürülüyor...","ru":"⏳ Конвертация...","es":"⏳ Convirtiendo...","de":"⏳ Wird konvertiert...","fr":"⏳ Conversion..."},
-    "tts_no_credit":  {"fa":"⚠️ <b>کردیت کافی نیست</b>","en":"⚠️ Not enough credits.","ar":"⚠️ الرصيد غير كافٍ.","tr":"⚠️ Yetersiz kredi.","ru":"⚠️ Недостаточно кредитов.","es":"⚠️ Créditos insuficientes.","de":"⚠️ Nicht genug Guthaben.","fr":"⚠️ Crédits insuffisants."},
-    "tts_error":      {"fa":"⚠️ خطا در تبدیل٫ دوباره تلاش کن.","en":"⚠️ Conversion failed. Try again.","ar":"⚠️ فشل التحويل. جرب مرة أخرى.","tr":"⚠️ Dönüşüm hatası. Tekrar dene.","ru":"⚠️ Ошибка конвертации. Попробуйте снова.","es":"⚠️ Error de conversión. Inténtalo de nuevo.","de":"⚠️ Umwandlung fehlgeschlagen. Versuch's nochmal.","fr":"⚠️ Échec de conversion. Réessayez."},
+    "tts_no_credit":  {"fa":"⚠️ <b>کردیت کافی نیست</b>\n<b>موجـودی شما : {credits}</b>","en":"⚠️ Not enough credits.","ar":"⚠️ الرصيد غير كافٍ.","tr":"⚠️ Yetersiz kredi.","ru":"⚠️ Недостаточно кредитов.","es":"⚠️ Créditos insuficientes.","de":"⚠️ Nicht genug Guthaben.","fr":"⚠️ Crédits insuffisants."},
+    "tts_error":      {"fa":"⚠️ <b>خطا در تبدیل٫ دوباره تلاش کن</b>","en":"⚠️ Conversion failed. Try again.","ar":"⚠️ فشل التحويل. جرب مرة أخرى.","tr":"⚠️ Dönüşüm hatası. Tekrar dene.","ru":"⚠️ Ошибка конвертации. Попробуйте снова.","es":"⚠️ Error de conversión. Inténtalo de nuevo.","de":"⚠️ Umwandlung fehlgeschlagen. Versuch's nochmal.","fr":"⚠️ Échec de conversion. Réessayez."},
 
     # Profile
     "profile_title":  {"fa":"پروفایل","en":"Profile","ar":"الملف الشخصي","tr":"Profil","ru":"Профиль","es":"Perfil","de":"Profil","fr":"Profil"},
@@ -91,7 +91,7 @@ LABELS.update({
 })
 LABELS.update({
     "ref_welcome": {
-        "fa": "🎉 <b>خوش آمدی! {credits} کردیت رایگان گرفتی.</b>",
+        "fa": "🎉 <b>خوش اومدی! {credits} کردیت رایگان گرفتی</b>",
         "en": "🎉 Welcome! You received {credits} free credits.",
         "ar": "🎉 أهلاً! حصلت على {credits} رصيد مجاني.",
         "tr": "🎉 Hoş geldin! {credits} ücretsiz kredi kazandın.",
@@ -101,7 +101,7 @@ LABELS.update({
         "fr": "🎉 Bienvenue ! Tu as reçu {credits} crédits gratuits.",
     },
     "ref_notify": {
-        "fa": "👥 یک کاربر با لینک تو عضو شد.\n🎁 <b>{credits}</b> کردیت بهت اضافه شد.",
+        "fa": "👥 یک کاربر با لینک تو عضو شد\n🎁 <b>{credits}</b> کردیت بهت اضافه شد",
         "en": "👥 A user joined with your invite link.\n🎁 You got {credits} bonus credits.",
         "ar": "👥 انضم مستخدم عبر رابط دعوتك.\n🎁 حصلت على {credits} رصيد إضافي.",
         "tr": "👥 Bir kullanıcı davet linkinle katıldı.\n🎁 {credits} bonus kredi kazandın.",
