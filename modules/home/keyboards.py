@@ -12,4 +12,11 @@ def main_menu(lang: str):
         InlineKeyboardButton(t("btn_credit", lang), callback_data="home:credit"),
         InlineKeyboardButton(t("btn_invite", lang), callback_data="home:invite")
     )
+    kb.row(InlineKeyboardButton("ساخت صدای شخصی 🧬", callback_data="home:clone"))
+    return kb
+
+def _back_to_home_kb(lang: str):
+    """کیبورد بازگشت به منوی اصلی برای صفحه راهنما"""
+    kb = InlineKeyboardMarkup()
+    kb.add(InlineKeyboardButton("🏠 منوی اصلی", callback_data="home:back"))
     return kb

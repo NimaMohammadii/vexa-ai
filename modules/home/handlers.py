@@ -125,39 +125,131 @@ def register(bot):
             except Exception:
                 pass
 
+# modules/home/handlers.py  ← فقط تابع register(bot) را جایگزین کن
+def register(bot):
+    @bot.message_handler(commands=['start'])
+    def start(msg):
+        user = db.get_or_create_user(msg.from_user)
+        db.touch_last_seen(user["user_id"])
+        if user.get("banned"):
+            bot.reply_to(msg, "⛔️ دسترسی شما مسدود است."); return
+
+        settings = db.get_settings()
+        mode = (settings.get("FORCE_SUB_MODE") or "none").lower()
+        if mode in ("new","all"):
+            ok, txt, kb = check_force_sub(bot, user["user_id"], settings)
+            if not ok:
+                edit_or_send(bot, msg.chat.id, msg.message_id, txt, kb); return
+
+        _handle_referral(bot, msg, user)
+        lang = db.get_user_lang(user["user_id"], "fa")
+        edit_or_send(bot, msg.chat.id, msg.message_id, MAIN(lang), main_menu(lang))
+
+    @bot.message_handler(commands=['help'])
+    def help_cmd(msg):
+        # بررسی عضویت اجباری
+        user = db.get_or_create_user(msg.from_user)
+        settings = db.get_settings()
+        mode = (settings.get("FORCE_SUB_MODE") or "none").lower()
+        if mode in ("new","all"):
+            ok, txt, kb = check_force_sub(bot, user["user_id"], settings)
+            if not ok:
+                edit_or_send(bot, msg.chat.id, msg.message_id, txt, kb); return
+        
+        lang = db.get_user_lang(msg.from_user.id, "fa")
+        from .texts import HELP
+        from .keyboards import _back_to_home_kb
+        edit_or_send(bot, msg.chat.id, msg.message_id, HELP(lang), _back_to_home_kb(lang))
+    
+    @bot.message_handler(commands=['menu'])
+    def menu_cmd(msg):
+        # بررسی عضویت اجباری
+        user = db.get_or_create_user(msg.from_user)
+        settings = db.get_settings()
+        mode = (settings.get("FORCE_SUB_MODE") or "none").lower()
+        if mode in ("new","all"):
+            ok, txt, kb = check_force_sub(bot, user["user_id"], settings)
+            if not ok:
+                edit_or_send(bot, msg.chat.id, msg.message_id, txt, kb); return
+        
+        lang = db.get_user_lang(msg.from_user.id, "fa")
+        edit_or_send(bot, msg.chat.id, msg.message_id, MAIN(lang), main_menu(lang))
+
     @bot.callback_query_handler(func=lambda c: c.data and c.data.startswith("home:"))
     def home_router(cq):
         user = db.get_or_create_user(cq.from_user)
         db.touch_last_seen(user["user_id"])
         lang = db.get_user_lang(user["user_id"], "fa")
+        
+        # بررسی عضویت اجباری برای تمام اقدامات
+        settings = db.get_settings()
+        mode = (settings.get("FORCE_SUB_MODE") or "none").lower()
+        if mode in ("new","all"):
+            ok, txt, kb = check_force_sub(bot, user["user_id"], settings)
+            if not ok:
+                edit_or_send(bot, cq.message.chat.id, cq.message.message_id, txt, kb)
+                bot.answer_callback_query(cq.id)
+                return
 
-        route = cq.data.split(":", 1)[1]
+        route = cq.data.split(":", 1)[1] if ":" in cq.data else ""
 
-        if route == "back":  # برگشت به منوی اصلی
+        if route in ("", "back"):
             edit_or_send(bot, cq.message.chat.id, cq.message.message_id, MAIN(lang), main_menu(lang))
+            bot.answer_callback_query(cq.id)
             return
 
-        if route == "tts":
+        elif route == "tts":
             bot.answer_callback_query(cq.id)
             from modules.tts.handlers import open_tts
             open_tts(bot, cq); return
 
-        if route == "profile":
+        elif route == "profile":
             bot.answer_callback_query(cq.id)
             from modules.profile.handlers import open_profile
             open_profile(bot, cq); return
 
-        if route == "credit":
+        elif route == "credit":
             bot.answer_callback_query(cq.id)
             from modules.credit.handlers import open_credit
             open_credit(bot, cq); return
 
-        if route == "invite":
+        elif route == "invite":
             bot.answer_callback_query(cq.id)
             from modules.invite.handlers import open_invite
             open_invite(bot, cq); return
 
-        if route == "lang":
+        elif route == "lang":
             bot.answer_callback_query(cq.id)
             from modules.lang.handlers import open_language
             open_language(bot, cq); return
+
+        elif route == "clone":
+            bot.answer_callback_query(cq.id)
+            from modules.clone.handlers import open_clone
+            open_clone(bot, cq); return
+    
+    # هندلر دکمه بررسی مجدد عضویت
+    @bot.callback_query_handler(func=lambda c: c.data and c.data.startswith("fs:"))
+    def force_sub_handler(cq):
+        user = db.get_or_create_user(cq.from_user)
+        db.touch_last_seen(user["user_id"])
+        
+        if cq.data == "fs:recheck":
+            print(f"DEBUG: Force sub recheck for user {user['user_id']}")
+            settings = db.get_settings()
+            print(f"DEBUG: Settings: FORCE_SUB_MODE={settings.get('FORCE_SUB_MODE')}, TG_CHANNEL={settings.get('TG_CHANNEL')}")
+            ok, txt, kb = check_force_sub(bot, user["user_id"], settings)
+            
+            if ok:
+                # کاربر عضو شده، منوی اصلی رو نشان بده
+                lang = db.get_user_lang(user["user_id"], "fa")
+                edit_or_send(bot, cq.message.chat.id, cq.message.message_id, MAIN(lang), main_menu(lang))
+                bot.answer_callback_query(cq.id, "✅ عضویت تایید شد!")
+                print(f"DEBUG: User {user['user_id']} membership confirmed!")
+            else:
+                # هنوز عضو نشده - فقط alert نشون بده، پیام رو تغییر نده
+                bot.answer_callback_query(cq.id, "❌ هنوز عضو نشدی!")
+                print(f"DEBUG: User {user['user_id']} still not a member")
+        
+        else:
+            bot.answer_callback_query(cq.id)
