@@ -35,7 +35,9 @@ def check_force_sub(bot, user_id, settings):
         try:
             mem = bot.get_chat_member(tg_channel, user_id)
             ok_tg = mem.status in ("creator", "administrator", "member")
-        except Exception:
+            print(f"DEBUG: Force sub check for user {user_id} in channel {tg_channel}: status={mem.status}, ok={ok_tg}")
+        except Exception as e:
+            print(f"DEBUG: Force sub check failed for user {user_id} in channel {tg_channel}: {e}")
             ok_tg = False
 
     if ok_tg:
@@ -46,7 +48,7 @@ def check_force_sub(bot, user_id, settings):
         kb.add(InlineKeyboardButton("عضو کانال تلگرام شو ✅", url=f"https://t.me/{tg_channel.lstrip('@')}"))
     if ig_url:
         kb.add(InlineKeyboardButton("اینستاگرام ما 📷", url=ig_url))
-    kb.add(InlineKeyboardButton("✅ انجام شد! بررسی مجدد", callback_data="fs:recheck"))
+    kb.add(InlineKeyboardButton("✅ انجام شد", callback_data="fs:recheck"))
 
     txt = "برای ادامه، ابتدا عضو شو:\n"
     if tg_channel: txt += f"📢 {tg_channel}\n"

@@ -2,11 +2,11 @@ import sqlite3, time, datetime, csv
 from contextlib import closing
 import os, sqlite3
 
-DB_DIR = os.getenv("DB_DIR", "/data")
+DB_DIR = "./data"
 os.makedirs(DB_DIR, exist_ok=True)
 DB_PATH = os.path.join(DB_DIR, "bot.db")
 
-print("DB_PATH =>", DB_PATH, flush=True)  # برای اطمینان در لاگ
+print("DB_PATH =>", DB_PATH, flush=True)
 
 con = sqlite3.connect(DB_PATH, check_same_thread=False)
 cur = con.cursor()
@@ -46,22 +46,18 @@ def init_db():
             text TEXT,
             created_at INTEGER
         )""")
+        # 🟢 جدول جدید برای صداهای اختصاصی
+        cur.execute("""CREATE TABLE IF NOT EXISTS user_voices(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            voice_name TEXT,
+            voice_id TEXT,
+            created_at INTEGER
+        )""")
         con.commit()
     _migrate_users_table()
     ensure_default_settings()
 
-def _migrate_users_table():
-    with closing(sqlite3.connect(DB_PATH)) as con:
-        cur = con.cursor()
-        cur.execute("PRAGMA table_info(users)")
-        cols = {r[1] for r in cur.fetchall()}
-        if "banned" not in cols:
-            cur.execute("ALTER TABLE users ADD COLUMN banned INTEGER DEFAULT 0")
-        if "last_seen" not in cols:
-            cur.execute("ALTER TABLE users ADD COLUMN last_seen INTEGER DEFAULT 0")
-        if "referred_by" not in cols:
-            cur.execute("ALTER TABLE users ADD COLUMN referred_by TEXT")
-        con.commit()
 
 def ensure_default_settings():
     defaults = {
@@ -75,6 +71,39 @@ def ensure_default_settings():
         if get_setting(k) is None:
             set_setting(k,v)
 
+# -------------------
+# User Voice Helpers
+# -------------------
+def add_user_voice(user_id:int, voice_name:str, voice_id:str):
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute("""INSERT INTO user_voices(user_id,voice_name,voice_id,created_at)
+                       VALUES(?,?,?,?)""",
+                    (user_id, voice_name, voice_id, int(time.time())))
+        con.commit()
+
+def list_user_voices(user_id:int):
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute("SELECT voice_name,voice_id FROM user_voices WHERE user_id=? ORDER BY id DESC",(user_id,))
+        return cur.fetchall() or []
+
+def get_user_voice(user_id:int, voice_name:str):
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute("SELECT voice_id FROM user_voices WHERE user_id=? AND voice_name=? LIMIT 1",(user_id,voice_name))
+        r = cur.fetchone()
+        return r[0] if r else None
+
+def delete_user_voice_by_voice_id(voice_id:str):
+    """حذف صدا از دیتابیس بر اساس voice_id"""
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute("DELETE FROM user_voices WHERE voice_id=?", (voice_id,))
+        con.commit()
+        return cur.rowcount > 0
+
+# 🟡 (بقیه توابع قبلی بدون تغییر می‌مونن)
 def get_setting(key, default=None):
     with closing(sqlite3.connect(DB_PATH)) as con:
         cur = con.cursor()
@@ -102,36 +131,7 @@ def touch_last_seen(user_id):
         cur.execute("UPDATE users SET last_seen=? WHERE user_id=?", (int(time.time()), user_id))
         con.commit()
 
-def get_or_create_user(u):
-    with closing(sqlite3.connect(DB_PATH)) as con:
-        cur = con.cursor()
-        cur.execute("SELECT user_id FROM users WHERE user_id=?", (u.id,))
-        row = cur.fetchone()
-        if not row:
-            # اعمال FREE_CREDIT از settings فقط برای کاربر جدید
-            free_credit = int(get_setting("FREE_CREDIT","80") or 80)
-            ref_code = str(u.id)
-            cur.execute("""INSERT INTO users(user_id,username,first_name,joined_at,credits,ref_code,last_seen)
-                           VALUES(?,?,?,?,?,?,?)""",
-                        (u.id, (u.username or ""), (u.first_name or ""),
-                         int(time.time()), free_credit, ref_code, int(time.time())))
-            con.commit()
-        else:
-            # هم‌زمان یوزرنیم را به‌روز نگه داریم
-            cur.execute("UPDATE users SET username=?, first_name=? WHERE user_id=?",
-                        (u.username or "", u.first_name or "", u.id))
-            con.commit()
-    return get_user(u.id)
 
-def get_user(user_id):
-    with closing(sqlite3.connect(DB_PATH)) as con:
-        cur = con.cursor()
-        cur.execute("""SELECT user_id,username,first_name,joined_at,credits,ref_code,referred_by,banned,last_seen
-                       FROM users WHERE user_id=?""", (user_id,))
-        row = cur.fetchone()
-        if not row: return None
-        keys = ["user_id","username","first_name","joined_at","credits","ref_code","referred_by","banned","last_seen"]
-        return dict(zip(keys,row))
 
 def get_user_by_username(username:str):
     """@name یا name → user dict یا None"""
