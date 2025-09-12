@@ -5,7 +5,7 @@ def MAIN(lang: str) -> str:
     return f"🏠 <b>{t('home_title', lang)}</b>\n\n{t('home_body', lang)}"
 
 def HELP(lang: str) -> str:
-    return t("<b>📖 راهنمای استفاده از Vexa</b>\n\n"
+    return ("<b>📖 راهنمای استفاده از Vexa</b>\n\n"
             "<b>🔹 کردیت یعنی چی؟</b>\n"
             "هر حرف، فاصله یا علامت = ۱ کردیت\n\n"
             "<b>🔹 کردیت رایگان اولیه:</b>\n"
