@@ -156,8 +156,8 @@ def register(bot):
 
         status = bot.send_message(msg.chat.id, PROCESSING(lang))
         try:
-            # ساخت یک خروجی MP3 (نه دوتا!)
-            audio_data = synthesize(text, voice_id, "audio/mpeg")
+            # ساخت خروجی‌ها (دو MP3)
+            produced = [synthesize(text, voice_id, fmt["mime"]) for fmt in OUTPUTS]
 
             # کسر کردیت
             if not db.deduct_credits(user["user_id"], cost):
@@ -173,10 +173,11 @@ def register(bot):
             if last_menu_id:
                 safe_del(bot, msg.chat.id, last_menu_id)
 
-            # ارسال فقط یک فایل MP3
-            bio = BytesIO(audio_data)
-            bio.name = "Vexa.mp3"
-            bot.send_document(msg.chat.id, document=bio)
+            # ارسال فایل‌ها (بدون کپشن) با نام Vexa.mp3
+            for data in produced:
+                bio = BytesIO(data)
+                bio.name = "Vexa.mp3"
+                bot.send_document(msg.chat.id, document=bio)
 
             # بازگرداندن منوی TTS با صدای فعلی
             new_menu = bot.send_message(
