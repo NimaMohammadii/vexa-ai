@@ -7,7 +7,7 @@ import time
 from .texts import (
     CREDIT_TITLE, CREDIT_HEADER, PAY_RIAL_TITLE, PAY_RIAL_PLANS_HEADER, INSTANT_PAY_INSTRUCT, WAITING_CONFIRM
 )
-from .keyboards import credit_menu_kb, stars_packages_kb, payrial_plans_kb, instant_cancel_kb, augment_with_rial
+from .keyboards import credit_menu_kb, stars_packages_kb, payrial_plans_kb, instant_cancel_kb, augment_with_rial, admin_approve_kb
 from config import BOT_OWNER_ID as ADMIN_REVIEW_CHAT_ID, CARD_NUMBER
 from .settings import PAYMENT_PLANS
 from .settings import RECEIPT_WAIT_TTL
@@ -40,15 +40,23 @@ except Exception:
 _RECEIPT_WAIT: dict[int, float] = {}
 # user_id -> message_id (برای ادیت کردن پیام بعد از ارسال عکس)
 _USER_MESSAGE_IDS: dict[int, int] = {}
+# user_id -> plan_index (برای اینکه بدونیم کدوم پلن انتخاب شده)
+_USER_SELECTED_PLANS: dict[int, int] = {}
 
-def _set_wait(user_id: int, message_id: int = None):
+def _set_wait(user_id: int, message_id: int = None, plan_index: int = None):
     _RECEIPT_WAIT[user_id] = time.time() + RECEIPT_WAIT_TTL
     if message_id:
         _USER_MESSAGE_IDS[user_id] = message_id
+    if plan_index is not None:
+        _USER_SELECTED_PLANS[user_id] = plan_index
 
 def _clear_wait(user_id: int):
     _RECEIPT_WAIT.pop(user_id, None)
     _USER_MESSAGE_IDS.pop(user_id, None)
+    _USER_SELECTED_PLANS.pop(user_id, None)
+
+def _get_selected_plan(user_id: int) -> int:
+    return _USER_SELECTED_PLANS.get(user_id, 0)
 
 def _get_message_id(user_id: int) -> int:
     return _USER_MESSAGE_IDS.get(user_id)
@@ -215,12 +223,7 @@ def register(bot: TeleBot):
     def on_payrial(c: CallbackQuery):
         bot.answer_callback_query(c.id)
         
-        # فقط قیمت‌ها رو نشون بده
-        plans_text = "\n".join([f"{p['title']}" for p in PAYMENT_PLANS])
-        text = (
-            f"🧾 <b>{PAY_RIAL_TITLE}</b>\n\n"
-            f"<pre>{plans_text}</pre>"
-        )
+        text = f"🧾 <b>{PAY_RIAL_TITLE}</b>\n\nیکی از بسته‌های زیر را انتخاب کنید:"
         
         try:
             bot.edit_message_text(text, c.message.chat.id, c.message.message_id,
@@ -228,6 +231,37 @@ def register(bot: TeleBot):
         except Exception:
             bot.send_message(c.message.chat.id, text, parse_mode="HTML",
                              reply_markup=payrial_plans_kb())
+
+    # انتخاب یکی از بسته‌های قیمت → ورود به مرحله پرداخت
+    @bot.callback_query_handler(func=lambda c: c.data and c.data.startswith("credit:select:"))
+    def on_select_plan(c: CallbackQuery):
+        bot.answer_callback_query(c.id)
+        try:
+            plan_index = int(c.data.split(":")[2])
+            if plan_index < 0 or plan_index >= len(PAYMENT_PLANS):
+                bot.answer_callback_query(c.id, "بسته نامعتبر")
+                return
+            
+            plan = PAYMENT_PLANS[plan_index]
+            _set_wait(c.from_user.id, c.message.message_id, plan_index)
+            
+            text = (
+                f"💱 <b>پرداخت فـوری (کارت‌به‌کارت)</b>\n"
+                f"<b>شماره کارت:</b><code>{CARD_NUMBER}</code>\n\n"
+                f"• دقیقاً مبلغ <b>{plan['amount_toman']:,} تومان</b> پرداخت کنید\n"
+                f"• سپس <b>تصویر رسید</b> را همین‌جا ارسال کنید\n\n"
+                f"✅ <b>پس از تایید، <b>{plan['credits']:,} کردیت</b> به حساب شما اضافه خواهد شد (کمتر از ۵ دقیقه)</b>"
+            )
+            
+            try:
+                bot.edit_message_text(text, c.message.chat.id, c.message.message_id,
+                                      parse_mode="HTML", reply_markup=instant_cancel_kb())
+            except Exception:
+                bot.send_message(c.message.chat.id, text, parse_mode="HTML",
+                                 reply_markup=instant_cancel_kb())
+                                 
+        except Exception as e:
+            bot.answer_callback_query(c.id, "خطا در انتخاب بسته")
 
     # ورود به حالت «پرداخت فوری (کارت‌به‌کارت)» → انتظار دریافت تصویر رسید
     @bot.callback_query_handler(func=lambda c: c.data == "credit:payrial:instant")
@@ -266,20 +300,37 @@ def register(bot: TeleBot):
         if not _is_waiting(msg.from_user.id):
             return  # دخالت نکن؛ این عکس ربطی به پرداخت ندارد
 
-        # گرفتن message_id قبل از پاک کردن
+        # گرفتن اطلاعات قبل از پاک کردن
         payment_msg_id = _get_message_id(msg.from_user.id)
+        plan_index = _get_selected_plan(msg.from_user.id)
+        plan = PAYMENT_PLANS[plan_index] if plan_index < len(PAYMENT_PLANS) else None
         _clear_wait(msg.from_user.id)
 
-        # فوروارد تصویر رسید برای ادمین با اطلاعات کاربر
-        caption = (
-            "🧾 رسید پرداخت جدید\n"
-            f"User ID: <code>{msg.from_user.id}</code>\n"
-            f"Username: @{msg.from_user.username or '-'}\n"
-            f"Name: {msg.from_user.first_name or ''} {msg.from_user.last_name or ''}"
-        )
+        # فوروارد تصویر رسید برای ادمین با اطلاعات کامل
+        if plan:
+            caption = (
+                f"🧾 <b>رسید پرداخت جدید</b>\n"
+                
+                f"• User ID: <code>{msg.from_user.id}</code>\n"
+                f"• Username: @{msg.from_user.username or '-'}\n"
+                f"• Name: {msg.from_user.first_name or ''} {msg.from_user.last_name or ''}\n\n"
+                
+                f"• مبلغ: {plan['amount_toman']:,} تومان\n"
+                f"• کردیت: {plan['credits']:,}"
+            )
+        else:
+            caption = (
+                f"🧾 <b>رسید پرداخت جدید</b>\n\n"
+                f"👤 <b>اطلاعات کاربر:</b>\n"
+                f"• User ID: <code>{msg.from_user.id}</code>\n"
+                f"• Username: @{msg.from_user.username or '-'}\n"
+                f"• Name: {msg.from_user.first_name or ''} {msg.from_user.last_name or ''}"
+            )
+        
         try:
             file_id = msg.photo[-1].file_id  # بزرگترین رزولوشن
-            bot.send_photo(ADMIN_REVIEW_CHAT_ID, file_id, caption=caption, parse_mode="HTML")
+            bot.send_photo(ADMIN_REVIEW_CHAT_ID, file_id, caption=caption, 
+                          parse_mode="HTML", reply_markup=admin_approve_kb(msg.from_user.id, plan_index))
         except Exception:
             pass
 
@@ -302,3 +353,88 @@ def register(bot: TeleBot):
         
         # 3. ارسال منوی اصلی (جداگانه)
         bot.send_message(msg.chat.id, MAIN(lang), parse_mode="HTML", reply_markup=main_menu(lang))
+
+    # هندلر تایید/رد ادمین
+    @bot.callback_query_handler(func=lambda c: c.data and c.data.startswith("credit_admin:"))
+    def on_admin_action(c: CallbackQuery):
+        print(f"DEBUG: Credit admin action received: {c.data}")  # برای دیباگ
+        try:
+            parts = c.data.split(":")
+            action = parts[1]  # approve یا reject
+            user_id = int(parts[2])
+            plan_index = int(parts[3])
+            
+            if plan_index < 0 or plan_index >= len(PAYMENT_PLANS):
+                bot.answer_callback_query(c.id, "بسته نامعتبر")
+                return
+                
+            plan = PAYMENT_PLANS[plan_index]
+            
+            if action == "approve":
+                # اضافه کردن کردیت به کاربر
+                import db
+                db.add_credits(user_id, plan['credits'])
+                
+                # ثبت تراکنش در دیتابیس
+                try:
+                    db.log_purchase(user_id, plan['amount_toman'], plan['credits'], f"manual_approval_{int(time.time())}")
+                except:
+                    pass
+                
+                # پیام به کاربر
+                try:
+                    bot.send_message(
+                        user_id,
+                        f"✅ <b>پرداخت تأیید شد!</b>\n\n"
+                        f"💎 <b>{plan['credits']:,} کردیت</b> به حساب شما اضافه شد.\n"
+                        f"💰 مبلغ: {plan['amount_toman']:,} تومان",
+                        parse_mode="HTML"
+                    )
+                except:
+                    pass
+                
+                # پیام به ادمین
+                bot.answer_callback_query(c.id, f"✅ تأیید شد - {plan['credits']:,} کردیت اضافه شد")
+                
+                # ویرایش پیام ادمین
+                try:
+                    new_caption = (c.message.caption or "") + f"\n\n✅ <b>تأیید شده توسط ادمین</b>"
+                    bot.edit_message_caption(
+                        chat_id=c.message.chat.id,
+                        message_id=c.message.message_id,
+                        caption=new_caption,
+                        parse_mode="HTML"
+                    )
+                except Exception as e:
+                    print(f"DEBUG: Error editing caption: {e}")
+                    
+            elif action == "reject":
+                # پیام رد به کاربر
+                try:
+                    bot.send_message(
+                        user_id,
+                        f"❌ <b>پرداخت رد شد</b>\n\n"
+                        f"رسید ارسالی تأیید نشد. در صورت اطمینان از صحت پرداخت، مجدداً رسید ارسال کنید یا با پشتیبانی تماس بگیرید.",
+                        parse_mode="HTML"
+                    )
+                except:
+                    pass
+                
+                # پیام به ادمین
+                bot.answer_callback_query(c.id, "❌ پرداخت رد شد")
+                
+                # ویرایش پیام ادمین
+                try:
+                    new_caption = (c.message.caption or "") + f"\n\n❌ <b>رد شده توسط ادمین</b>"
+                    bot.edit_message_caption(
+                        chat_id=c.message.chat.id,
+                        message_id=c.message.message_id,
+                        caption=new_caption,
+                        parse_mode="HTML"
+                    )
+                except Exception as e:
+                    print(f"DEBUG: Error editing caption: {e}")
+                    
+        except Exception as e:
+            print(f"DEBUG: Error in admin action: {e}")
+            bot.answer_callback_query(c.id, "خطا در پردازش")
