@@ -5,4 +5,4 @@ def MAIN(lang: str) -> str:
     return f"🏠 <b>{t('home_title', lang)}</b>\n\n{t('home_body', lang)}"
 
 def HELP(lang: str) -> str:
-    return f"{t('help_title', lang)}\n\n{t('help_body', lang)}"
+    return t('help_text', lang)
