@@ -150,9 +150,8 @@ def register(bot):
         cost_per_char = 2 if is_custom_voice else CREDIT_PER_CHAR
         cost = len(text) * cost_per_char
         if user["credits"] < cost:
-            from .keyboards import no_credit_kb
             db.clear_state(user["user_id"])
-            bot.send_message(msg.chat.id, NO_CREDIT(lang, user.get("credits", 0)), reply_markup=no_credit_kb())
+            bot.send_message(msg.chat.id, NO_CREDIT(lang, user.get("credits", 0)))
             return
 
         status = bot.send_message(msg.chat.id, PROCESSING(lang))
@@ -162,11 +161,10 @@ def register(bot):
 
             # کسر کردیت
             if not db.deduct_credits(user["user_id"], cost):
-                from .keyboards import no_credit_kb
                 safe_del(bot, status.chat.id, status.message_id)
                 # موجودی را تازه‌سازی کن و پیام کمبود اعتبار را با موجودی واقعی بفرست
                 refreshed = db.get_user(user["user_id"]) or {}
-                bot.send_message(msg.chat.id, NO_CREDIT(lang, refreshed.get("credits", 0)), reply_markup=no_credit_kb())
+                bot.send_message(msg.chat.id, NO_CREDIT(lang, refreshed.get("credits", 0)))
                 db.clear_state(user["user_id"])
                 return
 
