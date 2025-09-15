@@ -40,3 +40,9 @@ def keyboard(selected_voice: str, lang: str = "fa", user_id: int = None):
     
     kb.add(InlineKeyboardButton(t("back", lang), callback_data="home:back"))
     return kb
+
+def no_credit_keyboard(lang: str = "fa"):
+    """کیبورد برای پیام کردیت کافی نیست"""
+    kb = InlineKeyboardMarkup(row_width=1)
+    kb.add(InlineKeyboardButton("💳 خرید کردیت", callback_data="credit:menu"))
+    return kb
