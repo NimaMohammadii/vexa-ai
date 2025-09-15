@@ -45,13 +45,13 @@ def check_force_sub(bot, user_id, settings):
 
     kb = InlineKeyboardMarkup()
     if tg_channel:
-        kb.add(InlineKeyboardButton("عضو کانال تلگرام شو ✅", url=f"https://t.me/{tg_channel.lstrip('@')}"))
+        kb.add(InlineKeyboardButton("ورود به چنـل تلگرام 🚀", url=f"https://t.me/{tg_channel.lstrip('@')}"))
     if ig_url:
-        kb.add(InlineKeyboardButton("اینستاگرام ما 📷", url=ig_url))
+        kb.add(InlineKeyboardButton("رفتن به اینستـاگرام 📱", url=ig_url))
     kb.add(InlineKeyboardButton("✅ انجام شد", callback_data="fs:recheck"))
 
     txt = "برای ادامه، ابتدا عضو شو:\n"
-    if tg_channel: txt += f"📢 {tg_channel}\n"
-    if ig_url:     txt += f"📷 {ig_url}\n"
+    if tg_channel: txt += f"• چنل تلگـرام\n"
+    if ig_url:     txt += f"• اینستاگرام\n"
     txt += "\nسپس روی «انجام شد» بزن."
     return False, txt, kb
