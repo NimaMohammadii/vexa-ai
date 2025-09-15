@@ -9,17 +9,17 @@ def ask_text(lang: str, voice_name: str) -> str:
 def PROCESSING(lang: str) -> str:
     return t('tts_processing', lang)
 
-def NO_CREDIT(lang: str, credits: int | None = None) -> str:
+def NO_CREDIT(lang: str, credits: int | None = None, required_credits: int | None = None) -> str:
     """
-    بر اساس i18n:
-    - fa شامل {credits} است → باید format اعمال شود.
-    - سایر زبان‌ها placeholder ندارند → آرگومان اضافه مشکلی ایجاد نمی‌کند.
+    پیام کردیت کافی نیست با فرمت مشخص
     """
-    try:
-        return t('tts_no_credit', lang).format(credits=(credits if credits is not None else 0))
-    except Exception:
-        # اگر رشته i18n placeholder نداشت یا format شکست خورد، متن خام را بده
-        return t('tts_no_credit', lang)
+    current_credits = credits if credits is not None else 0
+    required = required_credits if required_credits is not None else 0
+    
+    return f"""⚠️ <b>کردیت کافی نیست</b>
+موجـودی شما : <b>{current_credits} Credit</b>
+➕ کردیـت لازم : <b>{required}</b>
+میتونـی کردیت بخری یا متن رو کوتاه‌تر کنی<b> /help</b>"""
 
 def ERROR(lang: str) -> str:
     return t('tts_error', lang)
