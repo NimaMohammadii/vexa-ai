@@ -50,7 +50,7 @@ def check_force_sub(bot, user_id, settings):
         kb.add(InlineKeyboardButton("رفتن به اینستـاگرام 📱", url=ig_url))
     kb.add(InlineKeyboardButton("✅ انجام شد", callback_data="fs:recheck"))
 
-    txt = "برای ادامه، ابتدا عضو شو:\n"
+    txt = "<b>برای ادامه، ابتدا عضو شو :</b>\n"
     if tg_channel: txt += f"• چنل تلگـرام\n"
     if ig_url:     txt += f"• اینستاگرام\n"
     txt += "\nسپس روی «انجام شد» بزن."
