@@ -150,7 +150,7 @@ def register(bot):
         cost_per_char = 2 if is_custom_voice else CREDIT_PER_CHAR
         cost = len(text) * cost_per_char
         if user["credits"] < cost:
-            db.clear_state(user["user_id"])
+            # state رو پاک نکن تا بتونیم منوی TTS رو بعداً پاک کنیم
             from .keyboards import no_credit_keyboard
             bot.send_message(msg.chat.id, NO_CREDIT(lang, user.get("credits", 0)), reply_markup=no_credit_keyboard(lang))
             return
