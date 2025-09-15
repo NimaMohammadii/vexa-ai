@@ -68,13 +68,33 @@ def _is_waiting(user_id: int) -> bool:
 # === API اصلی برای منوی کردیت ===
 def open_credit(bot: TeleBot, cq):
     """باز کردن منوی اصلی خرید کردیت"""
+    import db
+    
+    # پاک کردن منوی TTS قبلی اگر وجود داشته باشه
+    user_state = db.get_state(cq.from_user.id) or ""
+    if user_state.startswith("tts:wait_text:"):
+        try:
+            # استخراج message_id منوی TTS از state
+            parts = user_state.split(":")
+            if len(parts) >= 3 and parts[2].isdigit():
+                tts_menu_id = int(parts[2])
+                bot.delete_message(cq.message.chat.id, tts_menu_id)
+                print(f"DEBUG: Deleted TTS menu {tts_menu_id} for user {cq.from_user.id}")
+        except Exception as e:
+            print(f"DEBUG: Failed to delete TTS menu: {e}")
+        # پاک کردن state
+        db.clear_state(cq.from_user.id)
+    
+    text = f"🛒 <b>{CREDIT_TITLE}</b>\n\n{CREDIT_HEADER}"
+    
+    # ادیت کردن همین پیام
     try:
-        text = f"🛒 <b>{CREDIT_TITLE}</b>\n\n{CREDIT_HEADER}"
         bot.edit_message_text(
             text, cq.message.chat.id, cq.message.message_id,
             parse_mode="HTML", reply_markup=credit_menu_kb()
         )
     except Exception:
+        # اگر ادیت نشد، پیام جدید بفرست
         bot.send_message(
             cq.message.chat.id, text,
             parse_mode="HTML", reply_markup=credit_menu_kb()
