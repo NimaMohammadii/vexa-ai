@@ -150,8 +150,9 @@ def register(bot):
         cost_per_char = 2 if is_custom_voice else CREDIT_PER_CHAR
         cost = len(text) * cost_per_char
         if user["credits"] < cost:
-            db.clear_state(user["user_id"])
-            bot.send_message(msg.chat.id, NO_CREDIT(lang, user.get("credits", 0)))
+            # state رو پاک نکن تا بتونیم منوی TTS رو بعداً پاک کنیم
+            from .keyboards import no_credit_keyboard
+            bot.send_message(msg.chat.id, NO_CREDIT(lang, user.get("credits", 0), cost), reply_markup=no_credit_keyboard(lang))
             return
 
         status = bot.send_message(msg.chat.id, PROCESSING(lang))
@@ -164,7 +165,8 @@ def register(bot):
                 safe_del(bot, status.chat.id, status.message_id)
                 # موجودی را تازه‌سازی کن و پیام کمبود اعتبار را با موجودی واقعی بفرست
                 refreshed = db.get_user(user["user_id"]) or {}
-                bot.send_message(msg.chat.id, NO_CREDIT(lang, refreshed.get("credits", 0)))
+                from .keyboards import no_credit_keyboard
+                bot.send_message(msg.chat.id, NO_CREDIT(lang, refreshed.get("credits", 0), cost), reply_markup=no_credit_keyboard(lang))
                 db.clear_state(user["user_id"])
                 return
 
