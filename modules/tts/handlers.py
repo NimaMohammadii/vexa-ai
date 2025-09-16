@@ -12,7 +12,7 @@ from .settings import (
     CREDIT_PER_CHAR,
     OUTPUTS,  # [{'mime':'audio/mpeg'}, {'mime':'audio/mpeg'}] → دو خروجی MP3
 )
-from .service import synthesize
+from .service import synthesize, fanout_outputs
 
 # ----------------- helpers -----------------
 def _parse_state(raw: str):
@@ -157,10 +157,14 @@ def register(bot):
 
         status = bot.send_message(msg.chat.id, PROCESSING(lang))
         try:
-            # ساخت خروجی‌ها (دو MP3)
-            produced = [synthesize(text, voice_id, fmt["mime"]) for fmt in OUTPUTS]
+            # فقط یک بار به ElevenLabs درخواست میزنیم
+            base_mime = (OUTPUTS[0]["mime"] if OUTPUTS else "audio/mpeg")
+            base_audio = synthesize(text, voice_id, base_mime)
 
-            # کسر کردیت
+            # از همان یک خروجی، بقیه خروجیها را محلی بساز (تکثیر ساده)
+            produced = fanout_outputs(base_audio, OUTPUTS)
+
+            # کسر کردیت (فقط یکبار)
             if not db.deduct_credits(user["user_id"], cost):
                 safe_del(bot, status.chat.id, status.message_id)
                 # موجودی را تازه‌سازی کن و پیام کمبود اعتبار را با موجودی واقعی بفرست
