@@ -17,7 +17,7 @@ from .service import synthesize
 # —————– helpers —————–
 
 def _parse_state(raw: str):
-“””
+"""
 state format: ‘tts:wait_text:<menu_msg_id>:<voice_name>’
 “””
 parts = (raw or “”).split(”:”)
