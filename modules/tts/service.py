@@ -1,200 +1,117 @@
-# modules/tts/handlers.py
+# modules/tts/service.py
+import os
+import json
+import requests
 from io import BytesIO
-import db
-from utils import edit_or_send
-from config import DEBUG
-from .texts import TITLE, ask_text, PROCESSING, NO_CREDIT, ERROR
-from .keyboards import keyboard as tts_keyboard
-from .settings import (
-    STATE_WAIT_TEXT,
-    VOICES,
-    DEFAULT_VOICE_NAME,
-    CREDIT_PER_CHAR,
-    OUTPUTS,  # [{'mime':'audio/mpeg'}, {'mime':'audio/mpeg'}] → دو خروجی MP3
-)
-from .service import synthesize, fanout_outputs
+from typing import Optional, List, Dict, Any
 
-# ----------------- helpers -----------------
-def _parse_state(raw: str):
+ELEVEN_API_KEY = os.getenv("ELEVEN_API_KEY", "")
+MODEL_ID = "eleven_v3"  # مدل ثابت
+
+# اختیاری: اگر خواستی خروجی‌ها را به فرمت/بیت‌ریت متفاوت ترنسکُد کنی
+try:
+    from pydub import AudioSegment  # نیازمند ffmpeg در سیستم
+except Exception:
+    AudioSegment = None
+
+
+def synthesize(text: str, voice_id: str, mime: str = "audio/mpeg") -> bytes:
     """
-    state format: 'tts:wait_text:<menu_msg_id>:<voice_name>'
+    یک بار درخواست non-stream به ElevenLabs (v3) برای تولید صدا.
     """
-    parts = (raw or "").split(":")
-    menu_id = int(parts[2]) if len(parts) >= 3 and parts[2].isdigit() else None
-    voice_name = parts[3] if len(parts) >= 4 else DEFAULT_VOICE_NAME
-    return menu_id, voice_name
+    if not ELEVEN_API_KEY:
+        raise RuntimeError("ELEVEN_API_KEY is missing")
 
-def _make_state(menu_id: int, voice_name: str) -> str:
-    return f"{STATE_WAIT_TEXT}:{menu_id}:{voice_name}"
+    url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
+    headers = {
+        "xi-api-key": ELEVEN_API_KEY,
+        "accept": mime,
+        "content-type": "application/json",
+    }
+    payload = {
+        "text": text,
+        "model_id": MODEL_ID,
+    }
 
-def safe_del(bot, chat_id, message_id):
-    try:
-        bot.delete_message(chat_id, message_id)
-    except Exception:
-        pass
+    r = requests.post(url, headers=headers, data=json.dumps(payload), timeout=120)
+    r.raise_for_status()
+    return r.content
 
-# ----------------- public API -----------------
-def register(bot):
-    # دکمه‌های داخل منوی TTS
-    @bot.callback_query_handler(func=lambda c: c.data and c.data.startswith("tts:"))
-    def tts_router(cq):
-        user = db.get_or_create_user(cq.from_user)
-        lang = db.get_user_lang(user["user_id"], "fa")
 
-        route = cq.data.split(":", 1)[1]
+def _mime_to_format(m: str) -> str:
+    """
+    نگاشت MIME به فرمت خروجی pydub/ffmpeg
+    """
+    m = (m or "").lower()
+    if "mpeg" in m or "mp3" in m:
+        return "mp3"
+    if "wav" in m or "x-wav" in m:
+        return "wav"
+    if "ogg" in m:
+        return "ogg"
+    return "mp3"
 
-        if route == "back":
-            from modules.home.texts import MAIN
-            from modules.home.keyboards import main_menu
-            db.clear_state(cq.from_user.id)
-            edit_or_send(bot, cq.message.chat.id, cq.message.message_id, MAIN(lang), main_menu(lang))
-            return
 
-        if route.startswith("voice:"):
-            name = route.split(":", 1)[1]
-            
-            # بررسی وجود صدا در لیست پیش‌فرض یا کاستوم
-            custom_voice_id = db.get_user_voice(user["user_id"], name)
-            if name not in VOICES and not custom_voice_id:
-                bot.answer_callback_query(cq.id, "Voice not found"); return
+def _transcode_audio(
+    input_bytes: bytes,
+    in_mime: str,
+    out_mime: str,
+    bitrate: Optional[str] = None,
+) -> bytes:
+    """
+    ترنسکُد صدا با pydub (اختیاری). اگر pydub یا ffmpeg در دسترس نبود، همان بایت اولیه را برمی‌گرداند.
+    """
+    if AudioSegment is None:
+        # در صورت نبود pydub/ffmpeg، همان ورودی را تحویل بده
+        return input_bytes
 
-            # منوی «متن را بفرست» با صدای انتخابی
-            edit_or_send(
-                bot,
-                cq.message.chat.id,
-                cq.message.message_id,
-                ask_text(lang, name),
-                tts_keyboard(name, lang, user["user_id"])
-            )
-            db.set_state(cq.from_user.id, _make_state(cq.message.message_id, name))
-            bot.answer_callback_query(cq.id, name)
-            return
+    in_fmt = _mime_to_format(in_mime)
+    out_fmt = _mime_to_format(out_mime)
 
-        if route.startswith("delete:"):
-            voice_name = route.split(":", 1)[1]
-            
-            # حذف صدای کاستوم
-            custom_voice_id = db.get_user_voice(user["user_id"], voice_name)
-            if custom_voice_id:
-                try:
-                    # حذف از الون لبز
-                    from modules.clone.service import delete_voice
-                    delete_voice(custom_voice_id)
-                    
-                    # حذف از دیتابیس
-                    db.delete_user_voice_by_voice_id(custom_voice_id)
-                    
-                    bot.answer_callback_query(cq.id, f"✅ صدای '{voice_name}' حذف شد")
-                    
-                    # بازگشت به منوی انتخاب صدا
-                    sel = DEFAULT_VOICE_NAME
-                    edit_or_send(
-                        bot, 
-                        cq.message.chat.id, 
-                        cq.message.message_id, 
-                        ask_text(lang, sel), 
-                        tts_keyboard(sel, lang, user["user_id"])
-                    )
-                    db.set_state(cq.from_user.id, _make_state(cq.message.message_id, sel))
-                except Exception as e:
-                    bot.answer_callback_query(cq.id, "❌ خطا در حذف صدا")
-                    if DEBUG: print(f"Delete voice error: {e}")
-            else:
-                bot.answer_callback_query(cq.id, "صدا یافت نشد")
-            return
+    bio_in = BytesIO(input_bytes)
+    audio = AudioSegment.from_file(bio_in, format=in_fmt)
 
-    # دریافت متن برای تبدیل
-    @bot.message_handler(
-        func=lambda m: (db.get_state(m.from_user.id) or "").startswith(STATE_WAIT_TEXT),
-        content_types=["text"]
-    )
-    def on_text_to_tts(msg):
-        user = db.get_or_create_user(msg.from_user)
-        
-        # بررسی عضویت اجباری
-        from utils import check_force_sub, edit_or_send
-        settings = db.get_settings()
-        mode = (settings.get("FORCE_SUB_MODE") or "none").lower()
-        if mode in ("new","all"):
-            ok, txt, kb = check_force_sub(bot, user["user_id"], settings)
-            if not ok:
-                edit_or_send(bot, msg.chat.id, msg.message_id, txt, kb)
-                return
-        
-        lang = db.get_user_lang(user["user_id"], "fa")
+    bio_out = BytesIO()
+    export_args: Dict[str, Any] = {}
+    if bitrate and out_fmt == "mp3":
+        # تنظیم بیت‌ریت فقط وقتی mp3 است معنی دارد، مثال: "128k"
+        export_args["bitrate"] = bitrate
 
-        raw_state = db.get_state(user["user_id"]) or ""
-        last_menu_id, voice_name = _parse_state(raw_state)
-        
-        # بررسی صدای پیش‌فرض یا کاستوم
-        voice_id = VOICES.get(voice_name)
-        if not voice_id:
-            # اگر صدای پیش‌فرض نبود، از صداهای کاستوم کاربر بگیر
-            voice_id = db.get_user_voice(user["user_id"], voice_name)
-            if not voice_id:
-                voice_id = VOICES[DEFAULT_VOICE_NAME]
-                voice_name = DEFAULT_VOICE_NAME
+    audio.export(bio_out, format=out_fmt, **export_args)
+    return bio_out.getvalue()
 
-        text = (msg.text or "").strip()
-        if not text:
-            return
 
-        # لاگ مخصوص پنل ادمین (برای خروجی متن‌های TTS)
+def fanout_outputs(
+    base_audio: bytes,
+    outputs: List[Dict[str, Any]],
+    in_mime: str = "audio/mpeg",
+) -> List[bytes]:
+    """
+    از یک بار خروجی ElevenLabs چند خروجی بساز:
+    - اگر MIME مقصد با ورودی یکی بود، همان بایت‌ها را تکرار می‌کنیم (بدون تماس مجدد).
+    - اگر متفاوت بود و pydub/ffmpeg موجود بود، ترنسکُد می‌کنیم.
+    - اگر ترنسکُد در دسترس/موفق نبود، همان ورودی را تکرار می‌کنیم.
+    """
+    if not outputs:
+        return [base_audio]
+
+    results: List[bytes] = []
+    in_mime_lc = (in_mime or "").lower()
+
+    for out in outputs:
+        out_mime = (out.get("mime") or "audio/mpeg").lower()
+        bitrate = out.get("bitrate")  # اختیاری: مثل "128k" یا "64k"
+
+        if out_mime == in_mime_lc:
+            # همان را تکرار کن
+            results.append(base_audio)
+            continue
+
         try:
-            db.log_tts_request(user["user_id"], text)
+            data = _transcode_audio(base_audio, in_mime, out_mime, bitrate=bitrate)
+            results.append(data)
         except Exception:
-            pass
+            # در صورت خطا/نبود ترنسکُد، همان را تکرار کن
+            results.append(base_audio)
 
-        # محاسبه هزینه: صداهای کاستوم ۲ کردیت، بقیه ۱ کردیت
-        is_custom_voice = db.get_user_voice(user["user_id"], voice_name) is not None
-        cost_per_char = 2 if is_custom_voice else CREDIT_PER_CHAR
-        cost = len(text) * cost_per_char
-        if user["credits"] < cost:
-            # state رو پاک نکن تا بتونیم منوی TTS رو بعداً پاک کنیم
-            from .keyboards import no_credit_keyboard
-            bot.send_message(msg.chat.id, NO_CREDIT(lang, user.get("credits", 0), cost), reply_markup=no_credit_keyboard(lang))
-            return
-
-        status = bot.send_message(msg.chat.id, PROCESSING(lang))
-        try:
-            # فقط یک بار به ElevenLabs درخواست می‌زنیم
-            base_mime = (OUTPUTS[0]["mime"] if OUTPUTS else "audio/mpeg")
-            base_audio = synthesize(text, voice_id, base_mime)
-
-            # از همان یک خروجی، بقیه خروجی‌ها را محلی بساز (تکثیر/ترنسکُد)
-            produced = fanout_outputs(base_audio, OUTPUTS, in_mime=base_mime)
-
-            # کسر کردیت (فقط یک‌بار)
-            if not db.deduct_credits(user["user_id"], cost):
-                safe_del(bot, status.chat.id, status.message_id)
-                # موجودی را تازه‌سازی کن و پیام کمبود اعتبار را با موجودی واقعی بفرست
-                refreshed = db.get_user(user["user_id"]) or {}
-                from .keyboards import no_credit_keyboard
-                bot.send_message(msg.chat.id, NO_CREDIT(lang, refreshed.get("credits", 0), cost), reply_markup=no_credit_keyboard(lang))
-                db.clear_state(user["user_id"])
-                return
-
-            # پاک‌سازی پیام‌ها
-            safe_del(bot, status.chat.id, status.message_id)
-            if last_menu_id:
-                safe_del(bot, msg.chat.id, last_menu_id)
-
-            # ارسال فایل‌ها (بدون کپشن) با نام Vexa.mp3
-            for data in produced:
-                bio = BytesIO(data)
-                bio.name = "Vexa.mp3"
-                bot.send_document(msg.chat.id, document=bio)
-
-            # بازگرداندن منوی TTS با صدای فعلی
-            new_menu = bot.send_message(
-                msg.chat.id,
-                ask_text(lang, voice_name),
-                reply_markup=tts_keyboard(voice_name, lang, user["user_id"])
-            )
-            db.set_state(user["user_id"], _make_state(new_menu.message_id, voice_name))
-
-        except Exception as e:
-            safe_del(bot, status.chat.id, status.message_id)
-            err = ERROR(lang)
-            bot.send_message(msg.chat.id, err)
-            db.clear_state(user["user_id"])
+    return results
