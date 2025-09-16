@@ -12,7 +12,7 @@ from .settings import (
     CREDIT_PER_CHAR,
     OUTPUTS,  # [{'mime':'audio/mpeg'}, {'mime':'audio/mpeg'}] → دو خروجی MP3
 )
-from .service import synthesize
+from .service import synthesize, fanout_outputs
 
 # ----------------- helpers -----------------
 def _parse_state(raw: str):
@@ -52,7 +52,7 @@ def register(bot):
 
         if route.startswith("voice:"):
             name = route.split(":", 1)[1]
-            
+
             # بررسی وجود صدا در لیست پیش‌فرض یا کاستوم
             custom_voice_id = db.get_user_voice(user["user_id"], name)
             if name not in VOICES and not custom_voice_id:
@@ -72,7 +72,7 @@ def register(bot):
 
         if route.startswith("delete:"):
             voice_name = route.split(":", 1)[1]
-            
+
             # حذف صدای کاستوم
             custom_voice_id = db.get_user_voice(user["user_id"], voice_name)
             if custom_voice_id:
@@ -80,12 +80,12 @@ def register(bot):
                     # حذف از الون لبز
                     from modules.clone.service import delete_voice
                     delete_voice(custom_voice_id)
-                    
+
                     # حذف از دیتابیس
                     db.delete_user_voice_by_voice_id(custom_voice_id)
-                    
+
                     bot.answer_callback_query(cq.id, f"✅ صدای '{voice_name}' حذف شد")
-                    
+
                     # بازگشت به منوی انتخاب صدا
                     sel = DEFAULT_VOICE_NAME
                     edit_or_send(
@@ -110,7 +110,7 @@ def register(bot):
     )
     def on_text_to_tts(msg):
         user = db.get_or_create_user(msg.from_user)
-        
+
         # بررسی عضویت اجباری
         from utils import check_force_sub, edit_or_send
         settings = db.get_settings()
@@ -120,12 +120,12 @@ def register(bot):
             if not ok:
                 edit_or_send(bot, msg.chat.id, msg.message_id, txt, kb)
                 return
-        
+
         lang = db.get_user_lang(user["user_id"], "fa")
 
         raw_state = db.get_state(user["user_id"]) or ""
         last_menu_id, voice_name = _parse_state(raw_state)
-        
+
         # بررسی صدای پیش‌فرض یا کاستوم
         voice_id = VOICES.get(voice_name)
         if not voice_id:
@@ -157,10 +157,14 @@ def register(bot):
 
         status = bot.send_message(msg.chat.id, PROCESSING(lang))
         try:
-            # ساخت خروجی‌ها (دو MP3)
-            produced = [synthesize(text, voice_id, fmt["mime"]) for fmt in OUTPUTS]
+            # فقط یک بار به ElevenLabs درخواست می‌زنیم
+            base_mime = (OUTPUTS[0]["mime"] if OUTPUTS else "audio/mpeg")
+            base_audio = synthesize(text, voice_id, base_mime)
 
-            # کسر کردیت
+            # از همان یک خروجی، بقیه خروجی‌ها را محلی بساز (تکثیر/ترنسکُد)
+            produced = fanout_outputs(base_audio, OUTPUTS, in_mime=base_mime)
+
+            # کسر کردیت (فقط یک‌بار)
             if not db.deduct_credits(user["user_id"], cost):
                 safe_del(bot, status.chat.id, status.message_id)
                 # موجودی را تازه‌سازی کن و پیام کمبود اعتبار را با موجودی واقعی بفرست
@@ -194,10 +198,3 @@ def register(bot):
             err = ERROR(lang)
             bot.send_message(msg.chat.id, err)
             db.clear_state(user["user_id"])
-
-def open_tts(bot, cq):
-    user = db.get_or_create_user(cq.from_user)
-    lang = db.get_user_lang(user["user_id"], "fa")
-    sel = DEFAULT_VOICE_NAME
-    edit_or_send(bot, cq.message.chat.id, cq.message.message_id, ask_text(lang, sel), tts_keyboard(sel, lang, user["user_id"]))
-    db.set_state(cq.from_user.id, _make_state(cq.message.message_id, sel))
