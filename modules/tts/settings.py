@@ -27,5 +27,4 @@ VOICES = {
 # خروجی‌ها (هر کدوم یک فایل MP3)
 OUTPUTS = [
     {"mime": "audio/mpeg"},
-    {"mime": "audio/mpeg"},
 ]

@@ -1,5 +1,6 @@
 # modules/tts/handlers.py
 from io import BytesIO
+import time
 import db
 from utils import edit_or_send
 from config import DEBUG
@@ -110,90 +111,112 @@ def register(bot):
     )
     def on_text_to_tts(msg):
         user = db.get_or_create_user(msg.from_user)
+        user_id = user["user_id"]
         
-        # بررسی عضویت اجباری
-        from utils import check_force_sub, edit_or_send
-        settings = db.get_settings()
-        mode = (settings.get("FORCE_SUB_MODE") or "none").lower()
-        if mode in ("new","all"):
-            ok, txt, kb = check_force_sub(bot, user["user_id"], settings)
-            if not ok:
-                edit_or_send(bot, msg.chat.id, msg.message_id, txt, kb)
-                return
+        # 🔒 LOCK: جلوگیری از اجرای دوگانه
+        lock_key = f"tts_processing_{user_id}"
+        current_state = db.get_state(user_id) or ""
         
-        lang = db.get_user_lang(user["user_id"], "fa")
+        # اگر در حالت processing است، return کن (جلوگیری از duplicate)
+        if current_state.startswith("tts:processing"):
+            return
+            
+        # تغییر state به processing تا دیگه handler دوباره اجرا نشه
+        db.set_state(user_id, f"tts:processing:{int(time.time())}")
+        
+        try:
+            # بررسی عضویت اجباری
+            from utils import check_force_sub, edit_or_send
+            settings = db.get_settings()
+            mode = (settings.get("FORCE_SUB_MODE") or "none").lower()
+            if mode in ("new","all"):
+                ok, txt, kb = check_force_sub(bot, user_id, settings)
+                if not ok:
+                    edit_or_send(bot, msg.chat.id, msg.message_id, txt, kb)
+                    return
+            
+            lang = db.get_user_lang(user_id, "fa")
 
-        raw_state = db.get_state(user["user_id"]) or ""
-        last_menu_id, voice_name = _parse_state(raw_state)
-        
-        # بررسی صدای پیش‌فرض یا کاستوم
-        voice_id = VOICES.get(voice_name)
-        if not voice_id:
-            # اگر صدای پیش‌فرض نبود، از صداهای کاستوم کاربر بگیر
-            voice_id = db.get_user_voice(user["user_id"], voice_name)
+            last_menu_id, voice_name = _parse_state(current_state)
+            
+            # بررسی صدای پیش‌فرض یا کاستوم
+            voice_id = VOICES.get(voice_name)
             if not voice_id:
-                voice_id = VOICES[DEFAULT_VOICE_NAME]
-                voice_name = DEFAULT_VOICE_NAME
+                # اگر صدای پیش‌فرض نبود، از صداهای کاستوم کاربر بگیر
+                voice_id = db.get_user_voice(user_id, voice_name)
+                if not voice_id:
+                    voice_id = VOICES[DEFAULT_VOICE_NAME]
+                    voice_name = DEFAULT_VOICE_NAME
 
-        text = (msg.text or "").strip()
-        if not text:
-            return
+            text = (msg.text or "").strip()
+            if not text:
+                return
 
-        # لاگ مخصوص پنل ادمین (برای خروجی متن‌های TTS)
-        try:
-            db.log_tts_request(user["user_id"], text)
-        except Exception:
-            pass
+            # لاگ مخصوص پنل ادمین (برای خروجی متن‌های TTS)
+            try:
+                db.log_tts_request(user_id, text)
+            except Exception:
+                pass
 
-        # محاسبه هزینه: صداهای کاستوم ۲ کردیت، بقیه ۱ کردیت
-        is_custom_voice = db.get_user_voice(user["user_id"], voice_name) is not None
-        cost_per_char = 2 if is_custom_voice else CREDIT_PER_CHAR
-        cost = len(text) * cost_per_char
-        if user["credits"] < cost:
-            # state رو پاک نکن تا بتونیم منوی TTS رو بعداً پاک کنیم
-            from .keyboards import no_credit_keyboard
-            bot.send_message(msg.chat.id, NO_CREDIT(lang, user.get("credits", 0), cost), reply_markup=no_credit_keyboard(lang))
-            return
+            # محاسبه هزینه: صداهای کاستوم ۲ کردیت، بقیه ۱ کردیت
+            is_custom_voice = db.get_user_voice(user_id, voice_name) is not None
+            cost_per_char = 2 if is_custom_voice else CREDIT_PER_CHAR
+            cost = len(text) * cost_per_char
+            if user["credits"] < cost:
+                # state رو پاک نکن تا بتونیم منوی TTS رو بعداً پاک کنیم
+                from .keyboards import no_credit_keyboard
+                bot.send_message(msg.chat.id, NO_CREDIT(lang, user.get("credits", 0), cost), reply_markup=no_credit_keyboard(lang))
+                return
 
-        status = bot.send_message(msg.chat.id, PROCESSING(lang))
-        try:
-            # ساخت خروجی‌ها (دو MP3)
-            produced = [synthesize(text, voice_id, fmt["mime"]) for fmt in OUTPUTS]
-
-            # کسر کردیت
-            if not db.deduct_credits(user["user_id"], cost):
-                safe_del(bot, status.chat.id, status.message_id)
-                # موجودی را تازه‌سازی کن و پیام کمبود اعتبار را با موجودی واقعی بفرست
-                refreshed = db.get_user(user["user_id"]) or {}
+            # کسر کردیت قبل از API call
+            if not db.deduct_credits(user_id, cost):
+                refreshed = db.get_user(user_id) or {}
                 from .keyboards import no_credit_keyboard
                 bot.send_message(msg.chat.id, NO_CREDIT(lang, refreshed.get("credits", 0), cost), reply_markup=no_credit_keyboard(lang))
-                db.clear_state(user["user_id"])
                 return
+
+            status = bot.send_message(msg.chat.id, PROCESSING(lang))
+            
+            # 🎯 فقط یکبار API call
+            print(f"🔥 TTS REQUEST: user={user_id}, text_len={len(text)}, voice={voice_name}")
+            audio_data = synthesize(text, voice_id, "audio/mpeg")
+            print(f"✅ TTS RESPONSE: user={user_id}, audio_size={len(audio_data)} bytes")
 
             # پاک‌سازی پیام‌ها
             safe_del(bot, status.chat.id, status.message_id)
             if last_menu_id:
                 safe_del(bot, msg.chat.id, last_menu_id)
 
-            # ارسال فایل‌ها (بدون کپشن) با نام Vexa.mp3
-            for data in produced:
-                bio = BytesIO(data)
-                bio.name = "Vexa.mp3"
-                bot.send_document(msg.chat.id, document=bio)
+            # ارسال فایل (بدون کپشن) با نام Vexa.mp3
+            bio = BytesIO(audio_data)
+            bio.name = "Vexa.mp3"
+            bot.send_document(msg.chat.id, document=bio)
 
             # بازگرداندن منوی TTS با صدای فعلی
             new_menu = bot.send_message(
                 msg.chat.id,
                 ask_text(lang, voice_name),
-                reply_markup=tts_keyboard(voice_name, lang, user["user_id"])
+                reply_markup=tts_keyboard(voice_name, lang, user_id)
             )
-            db.set_state(user["user_id"], _make_state(new_menu.message_id, voice_name))
+            db.set_state(user_id, _make_state(new_menu.message_id, voice_name))
 
         except Exception as e:
-            safe_del(bot, status.chat.id, status.message_id)
+            # برگردان کردیت در صورت خطا
+            try:
+                db.add_credits(user_id, cost)
+                print(f"❌ TTS ERROR: user={user_id}, credits refunded={cost}")
+            except:
+                pass
+            safe_del(bot, status.chat.id if 'status' in locals() else None, status.message_id if 'status' in locals() else None)
             err = ERROR(lang)
             bot.send_message(msg.chat.id, err)
-            db.clear_state(user["user_id"])
+            db.clear_state(user_id)
+        
+        finally:
+            # پاک کردن state processing در هر صورت
+            current = db.get_state(user_id) or ""
+            if current.startswith("tts:processing"):
+                db.clear_state(user_id)
 
 def open_tts(bot, cq):
     user = db.get_or_create_user(cq.from_user)
