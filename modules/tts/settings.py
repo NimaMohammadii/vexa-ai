@@ -21,7 +21,7 @@ VOICES = {
     "Laura":     "7piC4m7q8WrpEAnMj5xC",
     "Maxon":     "scOwDtmlUjD3prqpp97I",
     "Jessica":   "cgSgspJ2msm6clMCkdW9",
-    "Grandpa 👨🏻‍🦳":   "NOpBlnGInO9m6vDvFkFC",
+    "Grandpa 👨🏻‍🦳":   "0dPqNXnhg2bmxQv1WKDp",
 }
 
 # خروجی‌ها (هر کدوم یک فایل MP3)
