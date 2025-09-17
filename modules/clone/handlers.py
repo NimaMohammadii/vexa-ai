@@ -3,15 +3,14 @@ import db
 from config import DEBUG
 from utils import edit_or_send
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
-from .service import clone_voice_with_cleanup  # صدا وقتی کاربر نام داد استفاده می‌شود
-
-STATE_WAIT_VOICE = "clone:wait_voice"
-STATE_WAIT_NAME  = "clone:wait_name"
+from .service import clone_voice_with_cleanup
+from .settings import STATE_WAIT_VOICE, STATE_WAIT_PAYMENT, STATE_WAIT_NAME, VOICE_CLONE_COST
+from .texts import MENU, PAYMENT_CONFIRM, NO_CREDIT_CLONE, ASK_NAME, SUCCESS, PAYMENT_SUCCESS, ERROR
+from .keyboards import payment_keyboard, no_credit_keyboard
 
 MENU_TXT   = "🧬 <b>ساخت صدای شخصی – Voice Clone</b>\n\n<b>اینجا می‌تونی صدای خودت یا هر صدایی که دوست داری رو شبیه‌سازی کنی و بعدش فقط با نوشتن متن، همون صدا برات صحبت کنه! 🫧</b>\n\n<b>یک ویس کوتاه (۱۵–۳۰ ثانیه) ارسال کن</b>"
-ASK_NAME   = "➕ <b>حالا یک اسم برای صدای جدیدت بفرست</b>"
-SUCCESS_TXT= "✅ <b>صدای شخصی ساخته شد و به لیست صداهای شما اضافه شد</b>"
-ERROR_TXT  = "❌ <b>خطا در ساخت صدا. دوباره تلاش کن</b>"
+SUCCESS_TXT= SUCCESS
+ERROR_TXT  = ERROR
 
 def _kb_home():
     kb = InlineKeyboardMarkup()
@@ -41,6 +40,53 @@ def register(bot):
             bot.answer_callback_query(cq.id)
         except Exception as e:
             if DEBUG: print("clone:open error", e)
+
+    @bot.callback_query_handler(func=lambda c: c.data == "clone:confirm_payment")
+    def _confirm_payment_cb(cq):
+        try:
+            user = db.get_or_create_user(cq.from_user)
+            user_id = user["user_id"]
+            lang = db.get_user_lang(user_id, "fa")
+            
+            # بررسی وجود state و voice data
+            current_state = db.get_state(user_id)
+            if current_state != STATE_WAIT_PAYMENT:
+                bot.answer_callback_query(cq.id, "❌ جلسه منقضی شده. دوباره تلاش کنید.", show_alert=True)
+                return
+                
+            if not hasattr(bot, "temp_voice_bytes") or user_id not in bot.temp_voice_bytes:
+                bot.answer_callback_query(cq.id, "❌ فایل صوتی یافت نشد. دوباره شروع کنید.", show_alert=True)
+                db.clear_state(user_id)
+                return
+            
+            # بررسی کردیت کافی
+            if user["credits"] < VOICE_CLONE_COST:
+                edit_or_send(bot, cq.message.chat.id, cq.message.message_id, 
+                           NO_CREDIT_CLONE(lang, user["credits"], VOICE_CLONE_COST), 
+                           no_credit_keyboard())
+                bot.answer_callback_query(cq.id)
+                return
+            
+            # کسر کردیت
+            if not db.deduct_credits(user_id, VOICE_CLONE_COST):
+                # دوبار چک کن (race condition)
+                refreshed_user = db.get_user(user_id) or {}
+                edit_or_send(bot, cq.message.chat.id, cq.message.message_id,
+                           NO_CREDIT_CLONE(lang, refreshed_user.get("credits", 0), VOICE_CLONE_COST),
+                           no_credit_keyboard())
+                bot.answer_callback_query(cq.id)
+                return
+            
+            # موفقیت - درخواست نام صدا
+            db.set_state(user_id, STATE_WAIT_NAME)
+            edit_or_send(bot, cq.message.chat.id, cq.message.message_id, 
+                        PAYMENT_SUCCESS + "\n\n" + ASK_NAME, None)
+            
+            bot.answer_callback_query(cq.id, "✅ کردیت پرداخت شد!", show_alert=True)
+            
+        except Exception as e:
+            if DEBUG: print("clone:confirm_payment error", e)
+            bot.answer_callback_query(cq.id, "❌ خطای سیستمی", show_alert=True)
 
     # قبول voice + audio + document(اگر audio/* باشد)
     @bot.message_handler(func=lambda m: db.get_state(m.from_user.id) == STATE_WAIT_VOICE,
@@ -82,8 +128,12 @@ def register(bot):
                 bot.temp_voice_bytes = {}
             bot.temp_voice_bytes[msg.from_user.id] = {"bytes": audio, "filename": fn, "mime": mime}
 
-            db.set_state(msg.from_user.id, STATE_WAIT_NAME)
-            bot.send_message(msg.chat.id, ASK_NAME)
+            # نمایش صفحه تایید پرداخت
+            user = db.get_or_create_user(msg.from_user)
+            lang = db.get_user_lang(user["user_id"], "fa")
+            
+            db.set_state(msg.from_user.id, STATE_WAIT_PAYMENT)
+            bot.send_message(msg.chat.id, PAYMENT_CONFIRM(lang, VOICE_CLONE_COST), reply_markup=payment_keyboard())
 
         except Exception as e:
             if DEBUG: print("clone:on_voice", e)
