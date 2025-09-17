@@ -3,7 +3,7 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 def menu_keyboard():
     kb = InlineKeyboardMarkup()
-    kb.add(InlineKeyboardButton("⬅️ بازگشت", callback_data="home:back"))
+    kb.add(InlineKeyboardButton("🔙 بازگشت", callback_data="home:back"))
     return kb
 
 def payment_keyboard():
@@ -17,7 +17,7 @@ def payment_keyboard():
 def no_credit_keyboard():
     kb = InlineKeyboardMarkup(row_width=2)
     kb.add(
-        InlineKeyboardButton("💳 خرید کردیت", callback_data="credit:menu"),
-        InlineKeyboardButton("⬅️ بازگشت", callback_data="home:back")
+        InlineKeyboardButton(" خرید کردیت", callback_data="credit:menu"),
+        InlineKeyboardButton("🔙 بازگشت", callback_data="home:back")
     )
     return kb
