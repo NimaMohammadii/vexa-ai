@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Vexa GPT-5 Mini App</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script>
+      window.__GPT_APP_CONFIG = {
+        apiUrl: "",
+        model: "gpt-4o-mini",
+        title: "GPT-5"
+      };
+    </script>
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <div class="app">
+      <header class="app__header">
+        <div class="brand">
+          <div class="brand__icon">🤖</div>
+          <div class="brand__meta">
+            <h1 class="brand__title">GPT-5</h1>
+            <p class="brand__subtitle">Vexa AI Assistant</p>
+          </div>
+        </div>
+        <button class="header__action" id="theme-toggle" type="button" aria-label="Toggle theme">
+          <span class="icon">🌙</span>
+        </button>
+      </header>
+
+      <main class="app__chat" id="chat">
+        <div class="message assistant intro">
+          <div class="avatar">🤖</div>
+          <div class="bubble">
+            <p class="primary">سلام! من دستیار هوشمند وکسا هستم.</p>
+            <p class="secondary">هر سوالی داری یا متنی می‌خوای ویرایش کنی، بنویس تا کمک کنم.</p>
+          </div>
+        </div>
+      </main>
+
+      <section class="app__suggestions" id="suggestions">
+        <button class="suggestion" data-prompt="یک کپشن اینستاگرامی برای معرفی محصول جدید بنویس">
+          کپشن اینستاگرام 📸
+        </button>
+        <button class="suggestion" data-prompt="یک برنامه تمرینی هفتگی برای کاهش وزن پیشنهاد بده">
+          برنامه تمرین 🏃
+        </button>
+        <button class="suggestion" data-prompt="کد پایتونی بنویس که لیست را مرتب کند">
+          کد پایتون 🐍
+        </button>
+      </section>
+
+      <footer class="app__composer">
+        <form id="composer" autocomplete="off">
+          <textarea
+            id="prompt-input"
+            rows="1"
+            placeholder="چیزی بنویس..."
+            required
+          ></textarea>
+          <div class="composer__controls">
+            <span class="tip">Shift + Enter برای خط جدید</span>
+            <button type="submit" id="send-btn">
+              <span class="label">ارسال</span>
+              <span class="icon">➤</span>
+            </button>
+          </div>
+        </form>
+      </footer>
+    </div>
+  </body>
+</html>
