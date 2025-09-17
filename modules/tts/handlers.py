@@ -53,7 +53,7 @@ def register(bot):
 
         if route.startswith("voice:"):
             name = route.split(":", 1)[1]
-
+            
             # بررسی وجود صدا در لیست پیش‌فرض یا کاستوم
             custom_voice_id = db.get_user_voice(user["user_id"], name)
             if name not in VOICES and not custom_voice_id:
@@ -73,7 +73,7 @@ def register(bot):
 
         if route.startswith("delete:"):
             voice_name = route.split(":", 1)[1]
-
+            
             # حذف صدای کاستوم
             custom_voice_id = db.get_user_voice(user["user_id"], voice_name)
             if custom_voice_id:
@@ -81,19 +81,19 @@ def register(bot):
                     # حذف از الون لبز
                     from modules.clone.service import delete_voice
                     delete_voice(custom_voice_id)
-
+                    
                     # حذف از دیتابیس
                     db.delete_user_voice_by_voice_id(custom_voice_id)
-
+                    
                     bot.answer_callback_query(cq.id, f"✅ صدای '{voice_name}' حذف شد")
-
+                    
                     # بازگشت به منوی انتخاب صدا
                     sel = DEFAULT_VOICE_NAME
                     edit_or_send(
-                        bot,
-                        cq.message.chat.id,
-                        cq.message.message_id,
-                        ask_text(lang, sel),
+                        bot, 
+                        cq.message.chat.id, 
+                        cq.message.message_id, 
+                        ask_text(lang, sel), 
                         tts_keyboard(sel, lang, user["user_id"])
                     )
                     db.set_state(cq.from_user.id, _make_state(cq.message.message_id, sel))
@@ -112,18 +112,18 @@ def register(bot):
     def on_text_to_tts(msg):
         user = db.get_or_create_user(msg.from_user)
         user_id = user["user_id"]
-
+        
         # 🔒 LOCK: جلوگیری از اجرای دوگانه
         lock_key = f"tts_processing_{user_id}"
         current_state = db.get_state(user_id) or ""
-
+        
         # اگر در حالت processing است، return کن (جلوگیری از duplicate)
         if current_state.startswith("tts:processing"):
             return
-
+            
         # تغییر state به processing تا دیگه handler دوباره اجرا نشه
         db.set_state(user_id, f"tts:processing:{int(time.time())}")
-
+        
         try:
             # بررسی عضویت اجباری
             from utils import check_force_sub, edit_or_send
@@ -134,11 +134,11 @@ def register(bot):
                 if not ok:
                     edit_or_send(bot, msg.chat.id, msg.message_id, txt, kb)
                     return
-
+            
             lang = db.get_user_lang(user_id, "fa")
 
             last_menu_id, voice_name = _parse_state(current_state)
-
+            
             # بررسی صدای پیش‌فرض یا کاستوم
             voice_id = VOICES.get(voice_name)
             if not voice_id:
@@ -158,23 +158,6 @@ def register(bot):
             except Exception:
                 pass
 
-            # جلوگیری از تبدیل متونی که شامل کلمات نامناسب هستند
-            banned_words = {"کیر", "کص", "کون", "کونت", "کیرم", "کصت", "کصتو"}
-            normalized = text
-            for ch in ".,!؟!،٫؛:/\\|":
-                normalized = normalized.replace(ch, " ")
-            tokens = normalized.split()
-            if any(word in text for word in banned_words) or any(word in tokens for word in banned_words):
-                bot.send_message(
-                    msg.chat.id,
-                    "❌ این کلمات حرف‌های نامناسبی هستند و نمی‌توانم تبدیل متن به صدا را انجام دهم."
-                )
-                db.set_state(
-                    user_id,
-                    _make_state((last_menu_id or msg.message_id), voice_name)
-                )
-                return
-
             # محاسبه هزینه: صداهای کاستوم ۲ کردیت، بقیه ۱ کردیت
             is_custom_voice = db.get_user_voice(user_id, voice_name) is not None
             cost_per_char = 2 if is_custom_voice else CREDIT_PER_CHAR
@@ -193,8 +176,8 @@ def register(bot):
                 return
 
             status = bot.send_message(msg.chat.id, PROCESSING(lang))
-
-            # 🎯 فقط یکبر API call
+            
+            # 🎯 فقط یکبار API call
             print(f"🔥 TTS REQUEST: user={user_id}, text_len={len(text)}, voice={voice_name}")
             audio_data = synthesize(text, voice_id, "audio/mpeg")
             print(f"✅ TTS RESPONSE: user={user_id}, audio_size={len(audio_data)} bytes")
@@ -228,7 +211,7 @@ def register(bot):
             err = ERROR(lang)
             bot.send_message(msg.chat.id, err)
             db.clear_state(user_id)
-
+        
         finally:
             # پاک کردن state processing در هر صورت
             current = db.get_state(user_id) or ""
