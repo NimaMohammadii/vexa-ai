@@ -9,7 +9,7 @@ def menu_keyboard():
 def payment_keyboard():
     kb = InlineKeyboardMarkup(row_width=2)
     kb.add(
-        InlineKeyboardButton("✅ تایید", callback_data="clone:confirm_payment"),
+        InlineKeyboardButton("✔️ تایید", callback_data="clone:confirm_payment"),
         InlineKeyboardButton("❌ لغو", callback_data="home:back")
     )
     return kb
