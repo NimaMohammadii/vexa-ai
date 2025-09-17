@@ -3,6 +3,7 @@ LABELS = {
     # Home
     "home_title": {"fa":"/help   منوی اصلی","en":"Main Menu","ar":"القائمة الرئيسية","tr":"Ana Menü","ru":"Главное меню","es":"Menú principal","de":"Hauptmenü","fr":"Menu principal"},
     "home_body":  {"fa":"یکی از گزینه‌های زیر را انتخاب کنید:","en":"Choose an option:","ar":"اختر خياراً:","tr":"Bir seçenek seçin:","ru":"Выберите опцию:","es":"Elige una opción:","de":"Wähle eine Option:","fr":"Choisissez une option :"},
+    "btn_gpt":    {"fa":"GPT-5 🤖","en":"GPT-5 🤖","ar":"GPT-5 🤖","tr":"GPT-5 🤖","ru":"GPT-5 🤖","es":"GPT-5 🤖","de":"GPT-5 🤖","fr":"GPT-5 🤖"},
     "btn_tts":    {"fa":"تبدیل متن به صدا 🎧","en":"Text to Speech 🎧","ar":"تحويل النص إلى صوت 🎧","tr":"Metinden Sese 🎧","ru":"Текст в речь 🎧","es":"Texto a voz 🎧","de":"Text zu Sprache 🎧","fr":"Texte en voix 🎧"},
     "btn_profile":{"fa":"پروفایل 🙋🏼‍♂️","en":"Profile 🙋🏼‍♂️","ar":"الملف الشخصي 🙋🏼‍♂️","tr":"Profil 🙋🏼‍♂️","ru":"Профиль 🙋🏼‍♂️","es":"Perfil 🙋🏼‍♂️","de":"Profil 🙋🏼‍♂️","fr":"Profil 🙋🏼‍♂️"},
     "btn_credit": {"fa":"خرید کردیـت 🛒","en":"Buy Credit 🛒","ar":"شراء الرصيد 🛒","tr":"Kredi Satın Al 🛒","ru":"Купить кредит 🛒","es":"Comprar crédito 🛒","de":"Guthaben kaufen 🛒","fr":"Acheter du crédit 🛒"},
@@ -45,6 +46,36 @@ def t(key: str, lang: str) -> str:
     return LABELS.get(key, {}).get(lang, LABELS.get(key, {}).get("en", key))
 
 LABELS.update({
+    "gpt_open": {
+        "fa": "🤖 <b>برای شروع گفت‌وگو، روی دکمه GPT-5 بزن.</b>",
+        "en": "🤖 <b>Tap the GPT-5 button to start chatting.</b>",
+        "ar": "🤖 <b>اضغط زر GPT-5 لبدء المحادثة.</b>",
+        "tr": "🤖 <b>Sohbete başlamak için GPT-5 düğmesine dokun.</b>",
+        "ru": "🤖 <b>Нажмите кнопку GPT-5, чтобы начать чат.</b>",
+        "es": "🤖 <b>Toca el botón GPT-5 para empezar a chatear.</b>",
+        "de": "🤖 <b>Tippe auf die GPT-5-Taste, um zu chatten.</b>",
+        "fr": "🤖 <b>Appuie sur le bouton GPT-5 pour commencer à discuter.</b>",
+    },
+    "gpt_unavailable": {
+        "fa": "⚙️ <b>لینک مینی‌اپ GPT هنوز تنظیم نشده است.</b>\nدر فایل محیطی مقدار <code>GPT_WEBAPP_URL</code> را قرار بده.",
+        "en": "⚙️ <b>The GPT mini app URL is not configured yet.</b>\nPlease set the <code>GPT_WEBAPP_URL</code> environment variable.",
+        "ar": "⚙️ <b>لم يتم ضبط رابط تطبيق GPT المصغر بعد.</b>\nيرجى تعيين المتغير <code>GPT_WEBAPP_URL</code>.",
+        "tr": "⚙️ <b>GPT mini uygulama bağlantısı henüz ayarlı değil.</b>\nLütfen <code>GPT_WEBAPP_URL</code> ortam değişkenini ayarla.",
+        "ru": "⚙️ <b>URL мини-приложения GPT пока не настроен.</b>\nУкажите переменную окружения <code>GPT_WEBAPP_URL</code>.",
+        "es": "⚙️ <b>La URL de la mini app de GPT aún no está configurada.</b>\nConfigura la variable de entorno <code>GPT_WEBAPP_URL</code>.",
+        "de": "⚙️ <b>Die URL der GPT-Mini-App ist noch nicht konfiguriert.</b>\nSetze die Umgebungsvariable <code>GPT_WEBAPP_URL</code>.",
+        "fr": "⚙️ <b>L'URL de la mini-app GPT n'est pas encore configurée.</b>\nDéfinis la variable d'environnement <code>GPT_WEBAPP_URL</code>.",
+    },
+    "gpt_unavailable_alert": {
+        "fa": "لطفاً متغیر GPT_WEBAPP_URL را تنظیم کن.",
+        "en": "Please set GPT_WEBAPP_URL first.",
+        "ar": "يرجى ضبط GPT_WEBAPP_URL أولاً.",
+        "tr": "Lütfen önce GPT_WEBAPP_URL değerini ayarla.",
+        "ru": "Сначала задайте GPT_WEBAPP_URL.",
+        "es": "Configura primero GPT_WEBAPP_URL.",
+        "de": "Setze zuerst GPT_WEBAPP_URL.",
+        "fr": "Définis d'abord GPT_WEBAPP_URL.",
+    },
     "back": {
         "fa": "🔙 بازگشت",
         "en": "🔙 Back",
