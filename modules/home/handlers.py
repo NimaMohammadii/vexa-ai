@@ -194,6 +194,21 @@ def register(bot):
         route = cq.data.split(":", 1)[1] if ":" in cq.data else ""
 
         if route in ("", "back"):
+            # پاک کردن پیام‌های clone اگر کاربر در حین process clone بوده
+            user_state = db.get_state(user["user_id"]) or ""
+            if user_state.startswith(("clone:wait_voice", "clone:wait_payment", "clone:wait_name")):
+                try:
+                    if hasattr(bot, "clone_start_messages") and user["user_id"] in bot.clone_start_messages:
+                        clone_msg_id = bot.clone_start_messages[user["user_id"]]
+                        bot.delete_message(cq.message.chat.id, clone_msg_id)
+                        del bot.clone_start_messages[user["user_id"]]
+                except Exception:
+                    pass
+                # پاک کردن state و temp data
+                db.clear_state(user["user_id"])
+                if hasattr(bot, "temp_voice_bytes") and user["user_id"] in bot.temp_voice_bytes:
+                    del bot.temp_voice_bytes[user["user_id"]]
+            
             edit_or_send(bot, cq.message.chat.id, cq.message.message_id, MAIN(lang), main_menu(lang))
             bot.answer_callback_query(cq.id)
             return
