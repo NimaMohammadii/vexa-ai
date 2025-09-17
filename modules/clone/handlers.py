@@ -67,22 +67,12 @@ def register(bot):
                 bot.answer_callback_query(cq.id)
                 return
             
-            # کسر کردیت
-            if not db.deduct_credits(user_id, VOICE_CLONE_COST):
-                # دوبار چک کن (race condition)
-                refreshed_user = db.get_user(user_id) or {}
-                edit_or_send(bot, cq.message.chat.id, cq.message.message_id,
-                           NO_CREDIT_CLONE(lang, refreshed_user.get("credits", 0), VOICE_CLONE_COST),
-                           no_credit_keyboard())
-                bot.answer_callback_query(cq.id)
-                return
-            
-            # موفقیت - درخواست نام صدا
+            # موفقیت - درخواست نام صدا (بدون کسر کردیت)
             db.set_state(user_id, STATE_WAIT_NAME)
             edit_or_send(bot, cq.message.chat.id, cq.message.message_id, 
                         PAYMENT_SUCCESS + "\n\n" + ASK_NAME, None)
             
-            bot.answer_callback_query(cq.id, "✅ کردیت پرداخت شد!", show_alert=True)
+            bot.answer_callback_query(cq.id, "✅ تایید شد!", show_alert=True)
             
         except Exception as e:
             if DEBUG: print("clone:confirm_payment error", e)
@@ -158,6 +148,15 @@ def register(bot):
                 db.clear_state(user_id)
                 return
             
+            # بررسی کردیت قبل از ساخت صدا
+            user = db.get_user(user_id)
+            if not user or user["credits"] < VOICE_CLONE_COST:
+                bot.reply_to(msg, "❌ کردیت کافی نیست.")
+                db.clear_state(user_id)
+                if hasattr(bot, "temp_voice_bytes") and user_id in bot.temp_voice_bytes:
+                    del bot.temp_voice_bytes[user_id]
+                return
+            
             voice_data = bot.temp_voice_bytes[user_id]
             audio_bytes = voice_data["bytes"]
             filename = voice_data["filename"]
@@ -165,6 +164,20 @@ def register(bot):
             
             # ساخت صدای شخصی با ElevenLabs (با پاک‌سازی خودکار)
             voice_id = clone_voice_with_cleanup(audio_bytes, voice_name, filename, mime)
+            
+            # فقط در صورت موفقیت، کردیت کم کن
+            if not db.deduct_credits(user_id, VOICE_CLONE_COST):
+                # اگر کردیت کم نشد، خطا بده و صدا رو پاک کن
+                try:
+                    from .service import delete_voice
+                    delete_voice(voice_id)
+                except:
+                    pass
+                bot.reply_to(msg, "❌ کردیت کافی نیست.")
+                db.clear_state(user_id)
+                if hasattr(bot, "temp_voice_bytes") and user_id in bot.temp_voice_bytes:
+                    del bot.temp_voice_bytes[user_id]
+                return
             
             # ذخیره در دیتابیس
             db.add_user_voice(user_id, voice_name, voice_id)
