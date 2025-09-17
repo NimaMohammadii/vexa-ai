@@ -1,4 +1,8 @@
 # main.py
+import os
+import threading
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+
 import telebot
 from config import BOT_TOKEN, DEBUG
 import db
@@ -33,6 +37,12 @@ if __name__ == "__main__":
     db.init_db()
     bot = create_bot()
     register_modules(bot)
+
+    port = int(os.environ.get("PORT", "8000"))
+    server = ThreadingHTTPServer(("0.0.0.0", port), SimpleHTTPRequestHandler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+
     if DEBUG:
         print("✅ Bot started (DEBUG)")
+        print(f"✅ Bot started (DEBUG) — HTTP server listening on 0.0.0.0:{port}")
     bot.infinity_polling(skip_pending=True, allowed_updates=["message","callback_query","pre_checkout_query","successful_payment"])
