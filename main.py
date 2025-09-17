@@ -11,6 +11,7 @@ from modules.profile import handlers as profile_handlers
 from modules.credit import handlers as credit_handlers
 from modules.invite import handlers as invite_handlers
 from modules.clone import handlers as clone_handlers
+from modules.gpt import handlers as gpt_handlers
 
 def create_bot():
     if not BOT_TOKEN:
@@ -26,6 +27,7 @@ def register_modules(bot: telebot.TeleBot):
     credit_handlers.register(bot)
     invite_handlers.register(bot)
     clone_handlers.register(bot)
+    gpt_handlers.register(bot)
 
 if __name__ == "__main__":
     db.init_db()
