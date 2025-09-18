@@ -2,101 +2,92 @@
 (() => {
   "use strict";
 
-  // Telegram WebApp polish (اختیاری، اگر در وب‌ویو تلگرام هستی)
-  const tg = window.Telegram?.WebApp;
-  if (tg) {
-    tg.ready();
-    tg.expand();
-    tg.disableVerticalSwipes?.();
-    tg.setHeaderColor?.("#0b0f14");
-    tg.setBackgroundColor?.("#0b0f14");
-  }
-
-  // --- Config ---
+  // پیکربندی
   const cfg = window.__GPT_APP_CONFIG || {};
   const origin = window.location.origin;
   const API_URL = (cfg.apiUrl || "").trim() || new URL("/api/gpt", origin).toString();
   const MODEL = (cfg.model || "gpt-4o-mini").trim() || "gpt-4o-mini";
   const SYSTEM_PROMPT =
-    (cfg.systemPrompt ||
-      "You are Vexa GPT-5, a friendly and professional AI assistant that answers clearly and concisely.");
+    cfg.systemPrompt || "You are Vexa GPT-5, a friendly and professional AI assistant.";
 
-  // --- DOM refs ---
+  // DOM
   const els = {
     chat: document.getElementById("chat"),
     form: document.getElementById("composer"),
     textarea: document.getElementById("prompt-input"),
     sendBtn: document.getElementById("send-btn"),
-    suggestions: Array.from(document.querySelectorAll(".suggestion")),
     newChat: document.getElementById("new-chat"),
   };
 
-  // Online/Offline indicator (اختیاری: می‌تونی اضافه‌اش کنی به هدر)
-  window.addEventListener("online", () => console.log("online"));
-  window.addEventListener("offline", () => console.log("offline"));
-
-  // --- State ---
-  const messages = [];   // {id, role:'user'|'ai', content, loading?, secondary?, ts}
+  // State
+  const messages = []; // {id, role:'user'|'ai', content, loading?, ts}
   const nodeMap = new Map();
 
   // Helpers
-  const rAF = (fn) => requestAnimationFrame(fn);
-  const scrollToBottom = () => {
-    try {
-      window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
-    } catch {}
-  };
-  const now = () => new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   const newId = () => (crypto?.randomUUID?.() || `${Date.now()}_${Math.random().toString(36).slice(2)}`);
-  const isRTL = (t = "") => /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/.test(t);
-
-  function setLoading(on) {
-    if (els.sendBtn) els.sendBtn.disabled = on;
-    if (els.textarea) els.textarea.disabled = on;
-  }
-
-  // Auto-resize textarea
-  function autoResize() {
+  const isRTL = (t="") => /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/.test(t);
+  const autoResize = () => {
     if (!els.textarea) return;
     els.textarea.style.height = "auto";
     els.textarea.style.height = `${Math.min(els.textarea.scrollHeight, 180)}px`;
-  }
-  els.textarea?.addEventListener("input", autoResize);
+  };
+  const scrollToBottom = () => {
+    try { window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }); } catch {}
+  };
+  const setLoading = (on) => {
+    els.textarea && (els.textarea.disabled = on);
+    els.sendBtn && (els.sendBtn.disabled = on);
+  };
 
-  // Append & render
-  function appendMessage(m) {
+  // init
+  els.textarea?.addEventListener("input", autoResize);
+  els.newChat?.addEventListener("click", resetChat);
+
+  els.form?.addEventListener("submit", (e) => { e.preventDefault(); send(); });
+  els.textarea?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
+  });
+
+  function resetChat(){
+    messages.splice(0, messages.length);
+    nodeMap.forEach(n => n.remove());
+    nodeMap.clear();
+    appendMessage({ role: "ai", content: "چت جدید شروع شد. بنویس." });
+    els.textarea.value = ""; autoResize(); els.textarea.focus();
+  }
+
+  function appendMessage(m){
     const id = m.id || newId();
-    const record = { ...m, id, ts: m.ts || Date.now() };
-    messages.push(record);
-    renderMessage(record);
+    const rec = { ...m, id, ts: m.ts || Date.now() };
+    messages.push(rec);
+    renderMessage(rec);
     return id;
   }
 
-  function updateMessage(id, patch) {
-    const idx = messages.findIndex((m) => m.id === id);
-    if (idx === -1) return;
-    messages[idx] = { ...messages[idx], ...patch };
-    renderMessage(messages[idx]);
+  function updateMessage(id, patch){
+    const i = messages.findIndex(m => m.id === id);
+    if (i === -1) return;
+    messages[i] = { ...messages[i], ...patch };
+    renderMessage(messages[i]);
   }
 
-  function renderMessage(m) {
+  function renderMessage(m){
     let node = nodeMap.get(m.id);
     const user = m.role === "user";
-    if (!node) {
+    if (!node){
       node = document.createElement("div");
-      node.className = `message ${user ? "user" : "ai"} animate-in`;
+      node.className = `msg ${user ? "user" : "ai"} fade-in`;
       node.innerHTML = `
-        <div class="avatar">${user ? "🙂" : "🤖"}</div>
         <div class="bubble ${user ? "user" : "ai"}">
-          <p class="primary"></p>
+          <p class="text"></p>
           <div class="meta">
             <time></time>
-            <div class="actions-row">
-              <button class="act" data-act="copy">کپی</button>
-              <button class="act" data-act="like">👍</button>
-              <button class="act" data-act="dislike">👎</button>
-              <button class="act" data-act="regen">⟲</button>
-              <button class="act" data-act="share">↗︎</button>
+            <div class="actions">
+              <button class="action" data-act="copy">کپی</button>
+              <button class="action" data-act="like">پسند</button>
+              <button class="action" data-act="dislike">نپسند</button>
+              <button class="action" data-act="regen">بازسازی</button>
+              <button class="action" data-act="share">اشتراک</button>
             </div>
           </div>
         </div>
@@ -104,137 +95,73 @@
       nodeMap.set(m.id, node);
       els.chat?.appendChild(node);
 
-      // actions
+      // actions (بدون ایموجی)
       node.querySelector('[data-act="copy"]')?.addEventListener("click", () => copyText(m.content));
-      node.querySelector('[data-act="like"]')?.addEventListener("click", () => toast("👍"));
-      node.querySelector('[data-act="dislike"]')?.addEventListener("click", () => toast("👎"));
-      node.querySelector('[data-act="regen"]')?.addEventListener("click", () => regenerateLast());
+      node.querySelector('[data-act="like"]')?.addEventListener("click", () => toast("بازخورد ثبت شد"));
+      node.querySelector('[data-act="dislike"]')?.addEventListener("click", () => toast("بازخورد ثبت شد"));
+      node.querySelector('[data-act="regen"]')?.addEventListener("click", () => regenerate());
       node.querySelector('[data-act="share"]')?.addEventListener("click", () => shareText(m.content));
     }
 
-    // content
+    const textEl = node.querySelector(".text");
+    const timeEl = node.querySelector("time");
     const bubble = node.querySelector(".bubble");
-    const p = node.querySelector(".primary");
-    const time = node.querySelector("time");
 
-    // loading state
-    if (m.loading) {
+    // loading
+    if (m.loading){
       bubble.classList.add("loading");
-      p.innerHTML =
-        'در حال فکر کردن<span class="dots"><span></span><span></span><span></span></span>';
+      textEl.innerHTML = `در حال فکر کردن<span class="dots"><i></i><i></i><i></i></span>`;
     } else {
       bubble.classList.remove("loading");
-      p.textContent = m.content || "";
+      textEl.textContent = m.content || "";
     }
 
-    // dir
-    if (p) p.setAttribute("dir", isRTL(m.content) ? "rtl" : "auto");
-    if (time) time.textContent = new Date(m.ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    textEl.setAttribute("dir", isRTL(m.content) ? "rtl" : "auto");
+    if (timeEl) timeEl.textContent = new Date(m.ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
-    // secondary line (error text)
-    let sec = bubble.querySelector(".secondary");
-    if (m.secondary) {
-      if (!sec) {
-        sec = document.createElement("p");
-        sec.className = "secondary";
-        bubble.appendChild(sec);
-      }
-      sec.textContent = m.secondary;
-    } else if (sec) {
-      sec.remove();
-    }
-
-    rAF(scrollToBottom);
+    requestAnimationFrame(scrollToBottom);
   }
 
-  // Suggestions → paste into input
-  els.suggestions.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      if (!els.textarea) return;
-      els.textarea.value = btn.textContent.trim();
-      autoResize();
-      els.textarea.focus();
-    });
-  });
-
-  // New chat
-  els.newChat?.addEventListener("click", () => {
-    messages.splice(0, messages.length);
-    nodeMap.forEach((n) => n.remove());
-    nodeMap.clear();
-
-    appendMessage({ role: "ai", content: "چت جدید شروع شد. بنویس ✨" });
-    els.textarea.value = "";
-    autoResize();
-    els.textarea.focus();
-  });
-
-  // Submit handlers
-  els.form?.addEventListener("submit", (e) => {
-    e.preventDefault();
-    send();
-  });
-
-  els.textarea?.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      send();
-    }
-  });
-
-  // Main send
-  async function send() {
+  async function send(){
     const txt = (els.textarea?.value || "").trim();
     if (!txt) return;
 
     const userId = appendMessage({ role: "user", content: txt });
-    els.textarea.value = "";
-    autoResize();
+    els.textarea.value = ""; autoResize();
 
     setLoading(true);
     const loaderId = appendMessage({ role: "ai", content: "", loading: true });
 
     try {
       const history = messages
-        .filter((m) => !m.loading)
+        .filter(m => !m.loading)
         .map(({ role, content }) => ({ role: role === "ai" ? "assistant" : "user", content }));
 
-      const data = await callGPT([
-        { role: "system", content: SYSTEM_PROMPT },
-        ...history,
-      ]);
+      const data = await callGPT([{ role: "system", content: SYSTEM_PROMPT }, ...history]);
 
       const content =
         data?.data?.choices?.[0]?.message?.content ||
         data?.choices?.[0]?.message?.content ||
-        data?.content ||
-        "";
+        data?.content || "";
 
-      updateMessage(loaderId, { role: "ai", loading: false, content: content || "پاسخی دریافت نشد." });
+      updateMessage(loaderId, { role:"ai", loading:false, content: content || "پاسخی دریافت نشد." });
     } catch (err) {
-      console.error(err);
       updateMessage(loaderId, {
-        role: "ai",
-        loading: false,
-        content: "متأسفم! اتصال برقرار نشد.",
-        secondary: String(err?.message || err || ""),
+        role: "ai", loading: false, content: "متأسفم! اتصال برقرار نشد.", secondary: String(err?.message || err || "")
       });
     } finally {
       setLoading(false);
     }
   }
 
-  // Backend call
-  async function callGPT(messages) {
+  async function callGPT(messages){
     if (!API_URL) throw new Error("API URL تنظیم نشده");
     const res = await fetch(API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ model: MODEL, messages }),
     });
-
-    let data = null;
-    try { data = await res.json(); } catch {}
+    let data = null; try { data = await res.json(); } catch {}
     if (!res.ok || (data && data.ok === false)) {
       const msg = (data && data.error) ? String(data.error) : `HTTP ${res.status}`;
       throw new Error(msg);
@@ -242,20 +169,9 @@
     return data;
   }
 
-  // Utils
-  async function copyText(text) {
-    try { await navigator.clipboard.writeText(text); toast("کپی شد ✅"); }
-    catch { toast("کپی نشد!"); }
-  }
-  function shareText(text) {
-    if (navigator.share) navigator.share({ text }).catch(()=>{});
-    else copyText(text);
-  }
-  function toast(msg) { console.log(msg); }
-  function regenerateLast() {
-    // دمو: آخرین پاسخ AI را کمی تغییر می‌دهیم
-    const last = [...messages].reverse().find(m => m.role === "ai" && !m.loading);
-    if (!last) return;
-    updateMessage(last.id, { content: (last.content || "") + " 🔄" });
-  }
+  // Utilities (بدون ایموجی/استیکر)
+  async function copyText(text){ try{ await navigator.clipboard.writeText(text); toast("کپی شد"); }catch{ toast("کپی نشد") } }
+  function shareText(text){ if (navigator.share) navigator.share({ text }).catch(()=>{}); else copyText(text); }
+  function toast(_msg){ /* محل سفارشی‌سازی نوتیف */ }
+  function regenerate(){ /* اینجا می‌تونی منطق بازسازی پاسخ را اضافه کنی */ }
 })();
