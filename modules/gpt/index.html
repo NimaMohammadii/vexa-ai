@@ -3,53 +3,69 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Vexa GPT-5 Mini App</title>
+    <title>Vexa • GPT-5</title>
 
-    <!-- مسیرهای نسبی را نسبت به /gpt/ ثابت می‌کند -->
+    <!-- همه مسیرهای نسبی را نسبت به /gpt/ ثابت می‌کند -->
     <base href="/gpt/">
 
+    <!-- سبک مینیمال و مدرن -->
     <link rel="stylesheet" href="styles.css" />
+
+    <!-- پیکربندی اپ (به /api/gpt وصل است) -->
     <script>
       window.__GPT_APP_CONFIG = {
         apiUrl: "/api/gpt",
         model: "gpt-4o-mini",
-        title: "GPT-5"
+        title: "GPT-5",
+        systemPrompt:
+          "You are Vexa GPT-5, a friendly and professional AI assistant that answers clearly and concisely."
       };
     </script>
+
+    <!-- اسکریپت اپ -->
     <script src="app.js" defer></script>
   </head>
+
   <body>
     <div class="app">
+      <!-- Header شبیه ChatGPT mobile -->
       <header class="app__header">
-        <div class="brand">
-          <div class="brand__icon">🤖</div>
-          <div class="brand__title">GPT-5</div>
-          <div id="theme-toggle" class="theme-toggle" title="تغییر تم">🌙</div>
+        <div class="toolbar">
+          <button class="icon-btn" aria-label="Menu">☰</button>
+          <h1 class="title"><span class="dot"></span><span class="t">GPT-5</span></h1>
+          <div class="actions">
+            <button class="pill-btn" id="new-chat" title="چت جدید">جدید</button>
+          </div>
         </div>
       </header>
 
-      <main id="chat" class="chat">
-        <div class="message message--bot">
+      <!-- ناحیه چت -->
+      <main id="chat" class="chat" aria-live="polite" aria-busy="false">
+        <!-- پیام خوش‌آمد -->
+        <div class="message ai animate-in">
           <div class="avatar">🤖</div>
-          <div class="bubble">
-            <h3>GPT-5</h3>
-            <p>سلام! من دستیار هوشمند وکسا هستم. هر سوالی داری یا متنی می‌خوای ویرایش کنی، بنویس تا کمک کنم.</p>
+          <div class="bubble ai">
+            <p class="primary">سلام! من دستیار وکسا هستم. هرچی می‌خوای بپرس ✨</p>
+            <div class="meta"><time></time></div>
           </div>
         </div>
       </main>
 
+      <!-- پیشنهادها -->
       <section class="suggestions">
-        <button class="suggestion">📸 کپشن اینستاگرام</button>
-        <button class="suggestion">🏃‍♂️ برنامه تمرین</button>
-        <button class="suggestion">🐍 کد پایتون</button>
+        <button class="suggestion">✍️ تولید کپشن اینستاگرام</button>
+        <button class="suggestion">📚 خلاصه کردن متن</button>
+        <button class="suggestion">🐍 نمونه کد پایتون</button>
       </section>
 
+      <!-- Composer پایین صفحه -->
       <footer class="composer">
-        <form id="composer">
-          <input id="prompt-input" type="text" placeholder="...چیزی بنویس (Shift + Enter برای خط جدید)" />
-          <button id="send-btn" type="submit">ارسال ➤</button>
+        <form id="composer" class="composer__form" aria-label="ارسال پیام">
+          <textarea id="prompt-input" placeholder="...چیزی بنویس (Shift + Enter خط جدید)"
+                    rows="1" autocomplete="off" autocapitalize="sentences"></textarea>
+          <button id="send-btn" class="send-btn" type="submit">ارسال</button>
         </form>
-        <div class="tip">برای خط جدید Shift + Enter</div>
+        <div class="tip">میانبرها: Enter ارسال • Shift+Enter خط جدید</div>
       </footer>
     </div>
   </body>
