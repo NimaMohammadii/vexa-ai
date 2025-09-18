@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Vexa • GPT-5</title>
+    <title>GPT-5</title>
 
     <!-- مسیرهای نسبی را نسبت به /gpt/ ثابت می‌کند -->
     <base href="/gpt/">
@@ -24,38 +24,35 @@
   </head>
   <body>
     <div class="app">
-      <!-- Header مینیمال -->
+      <!-- Header مینیمال، مثل ChatGPT -->
       <header class="header">
-        <button class="btn-ghost" aria-label="منو">≡</button>
-        <h1 class="title">GPT-5</h1>
-        <div class="header-actions">
+        <div class="header__inner">
+          <div class="header__spacer"></div>
+          <h1 class="header__title">GPT-5</h1>
           <button id="new-chat" class="btn-ghost" title="چت جدید">جدید</button>
         </div>
       </header>
 
-      <!-- ناحیهٔ گفتگو -->
+      <!-- جریان گفتگو -->
       <main id="chat" class="chat" aria-live="polite" aria-busy="false">
         <div class="msg ai fade-in">
-          <div class="bubble ai">
-            <p class="text">سلام! من دستیار وکسا هستم. هرچه می‌خواهی بپرس.</p>
-            <div class="meta"><time></time></div>
+          <div class="block">
+            سلام! من دستیار وکسا هستم. هرچه می‌خواهی بپرس.
           </div>
         </div>
       </main>
 
-      <!-- Composer -->
+      <!-- Composer پایین صفحه -->
       <footer class="composer">
         <form id="composer" class="composer__form" aria-label="ارسال پیام">
           <textarea
             id="prompt-input"
             placeholder="...چیزی بنویس (Shift + Enter خط جدید)"
-            rows="1"
-            autocomplete="off"
-            autocapitalize="sentences"
+            rows="1" autocomplete="off" autocapitalize="sentences"
           ></textarea>
           <button id="send-btn" class="send" type="submit">ارسال</button>
         </form>
-        <div class="hint">میانبرها: Enter ارسال • Shift+Enter خط جدید</div>
+        <div class="hint">Enter ارسال • Shift+Enter خط جدید</div>
       </footer>
     </div>
   </body>
