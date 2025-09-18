@@ -15,41 +15,36 @@ import telebot
 from config import BOT_TOKEN, DEBUG
 import db
 
-# ---- Telegram modules (هر کدام تابع register(bot) دارند) ----
+# ---- Telegram modules ----
 from modules.admin import handlers as admin_handlers
 from modules.home import handlers as home_handlers
 from modules.invite import handlers as invite_handlers
 from modules.lang import handlers as lang_handlers
 from modules.profile import handlers as profile_handlers
 from modules.tts import handlers as tts_handlers
-from modules.gpt import handlers as gpt_handlers  # دکمه/وب‌اپ تلگرام
-
-# سرویس GPT برای هندلر HTTP
-from modules.gpt import service as gpt_service
-
+from modules.gpt import handlers as gpt_handlers
+from modules.gpt import service as gpt_service  # برای /api/gpt
 
 # ========================= Mini-App HTTP Server =========================
-
 STATIC_DIR = Path(__file__).resolve().parent / "modules" / "gpt"
 API_ENDPOINT = "/api/gpt"
-
+_GPT_PREFIX = "/gpt"         # هرچی با /gpt/ شروع شد باید به ریشه استاتیک مپ شود
 
 class MiniAppHTTPRequestHandler(SimpleHTTPRequestHandler):
     """
     سرو کامل مینی‌اپ (index.html, app.js, styles.css)
-    + روت POST برای /api/gpt که به OpenAI وصل می‌شود (از modules.gpt.service).
+    + روت POST برای /api/gpt که به OpenAI وصل می‌شود (modules.gpt.service).
     """
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, directory=str(STATIC_DIR), **kwargs)
 
-    # فقط در حالت DEBUG لاگ بزن
+    # لاگ فقط در DEBUG
     def log_message(self, format: str, *args: Any) -> None:  # noqa: A003
         if DEBUG:
             super().log_message(format, *args)
 
     # ------------------------ Helpers ------------------------
-
     def _normalized_path(self) -> str:
         return urlparse(self.path).path
 
@@ -71,17 +66,7 @@ class MiniAppHTTPRequestHandler(SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(json.dumps(obj, ensure_ascii=False).encode("utf-8"))
 
-    def _map_static_path(self, path: str) -> Optional[str]:
-        """
-        /  ، /gpt ، /gpt/  → همیشه index.html
-        بقیه مسیرها را به SimpleHTTPRequestHandler واگذار می‌کنیم.
-        """
-        if path in ("/", "/gpt", "/gpt/"):
-            return "/index.html"
-        return None
-
     # ------------------------ API: POST /api/gpt ------------------------
-
     def do_POST(self) -> None:  # noqa: N802
         if self._normalized_path() != API_ENDPOINT:
             self.send_error(HTTPStatus.NOT_FOUND, "Not Found")
@@ -123,15 +108,34 @@ class MiniAppHTTPRequestHandler(SimpleHTTPRequestHandler):
             self._json(HTTPStatus.BAD_GATEWAY, {"ok": False, "error": str(exc)})
 
     # ------------------------ Static GET ------------------------
-
     def do_GET(self) -> None:  # noqa: N802
-        mapped = self._map_static_path(self._normalized_path())
-        if mapped is not None:
-            self.path = mapped
-        super().doGET() if hasattr(super(), "doGET") else super().do_GET()  # سازگاری
+        path = self._normalized_path()
+
+        # 1) /gpt → /gpt/ (برای درست‌شدن مسیرهای نسبی)
+        if path == _GPT_PREFIX:
+            self.send_response(HTTPStatus.MOVED_PERMANENTLY)
+            self.send_header("Location", _GPT_PREFIX + "/")
+            self.end_headers()
+            return
+
+        # 2) "/", "/gpt/" → index.html
+        if path == "/" or path == _GPT_PREFIX + "/":
+            self.path = "/index.html"
+            return super().do_GET()
+
+        # 3) هرچیزی که با /gpt/ شروع می‌شود را به ریشه استاتیک مپ کن:
+        #    /gpt/styles.css  -> /styles.css
+        #    /gpt/app.js      -> /app.js
+        #    /gpt/anything    -> /anything
+        if path.startswith(_GPT_PREFIX + "/"):
+            stripped = path[len(_GPT_PREFIX):]  # حذف "/gpt"
+            self.path = stripped if stripped else "/index.html"
+            return super().do_GET()
+
+        # 4) سایر مسیرها را عادی سرو کن
+        return super().do_GET()
 
     def end_headers(self) -> None:
-        # از کش جلوگیری کن تا اپ همیشه تازه لود شود
         self.send_header("Cache-Control", "no-store")
         super().end_headers()
 
@@ -142,51 +146,36 @@ def start_http_server(port: int) -> ThreadingHTTPServer:
     thread.start()
     return server
 
-
 # ========================= Telegram Bot Wiring =========================
-
 def create_bot() -> telebot.TeleBot:
     if not BOT_TOKEN:
         raise RuntimeError("BOT_TOKEN is not set")
-    # parse_mode=None تا کنترل Markdown/HTML به عهده‌ی ماژول‌ها باشد
     return telebot.TeleBot(BOT_TOKEN, parse_mode=None)
 
-
 def register_modules(bot: telebot.TeleBot) -> None:
-    # ترتیب ثبت ماژول‌ها
     admin_handlers.register(bot)
     lang_handlers.register(bot)
     home_handlers.register(bot)
     invite_handlers.register(bot)
     profile_handlers.register(bot)
     tts_handlers.register(bot)
-    gpt_handlers.register(bot)   # دکمه/وب‌اپ GPT داخل منو
-
+    gpt_handlers.register(bot)
 
 def main() -> None:
-    # DB & Bot
     db.init_db()
     bot = create_bot()
     register_modules(bot)
 
-    # HTTP mini-app server
     port = int(os.environ.get("PORT", "8000"))
     start_http_server(port)
     if DEBUG:
         print(f"✅ HTTP server listening on 0.0.0.0:{port}")
         print(f"✅ Serving GPT mini-app from: {STATIC_DIR}")
 
-    # Telegram long polling
     bot.infinity_polling(
         skip_pending=True,
-        allowed_updates=[
-            "message",
-            "callback_query",
-            "pre_checkout_query",
-            "successful_payment",
-        ],
+        allowed_updates=["message","callback_query","pre_checkout_query","successful_payment"],
     )
-
 
 if __name__ == "__main__":
     main()
