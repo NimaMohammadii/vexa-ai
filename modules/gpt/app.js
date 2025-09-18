@@ -2,23 +2,24 @@
 (() => {
   "use strict";
 
-  // --- Telegram WebApp setup ---
-  const tg = window.Telegram ? window.Telegram.WebApp : null;
+  // Telegram WebApp polish (اختیاری، اگر در وب‌ویو تلگرام هستی)
+  const tg = window.Telegram?.WebApp;
   if (tg) {
     tg.ready();
     tg.expand();
     tg.disableVerticalSwipes?.();
-    tg.setHeaderColor?.("#0e1117");
-    tg.setBackgroundColor?.("#0e1117");
+    tg.setHeaderColor?.("#0b0f14");
+    tg.setBackgroundColor?.("#0b0f14");
   }
 
-  // --- Theme & config ---
+  // --- Config ---
   const cfg = window.__GPT_APP_CONFIG || {};
   const origin = window.location.origin;
   const API_URL = (cfg.apiUrl || "").trim() || new URL("/api/gpt", origin).toString();
   const MODEL = (cfg.model || "gpt-4o-mini").trim() || "gpt-4o-mini";
   const SYSTEM_PROMPT =
-    (cfg.systemPrompt || "You are Vexa GPT-5, a friendly and professional AI assistant that answers clearly and concisely.");
+    (cfg.systemPrompt ||
+      "You are Vexa GPT-5, a friendly and professional AI assistant that answers clearly and concisely.");
 
   // --- DOM refs ---
   const els = {
@@ -27,22 +28,47 @@
     textarea: document.getElementById("prompt-input"),
     sendBtn: document.getElementById("send-btn"),
     suggestions: Array.from(document.querySelectorAll(".suggestion")),
-    themeToggle: document.getElementById("theme-toggle"),
-    title: document.querySelector(".brand__title"),
+    newChat: document.getElementById("new-chat"),
   };
 
-  if (cfg.title && els.title) els.title.textContent = cfg.title;
+  // Online/Offline indicator (اختیاری: می‌تونی اضافه‌اش کنی به هدر)
+  window.addEventListener("online", () => console.log("online"));
+  window.addEventListener("offline", () => console.log("offline"));
 
   // --- State ---
-  const messages = []; // {id, role:'system'|'user'|'assistant', content, loading?, secondary?}
-  const nodeMap = new Map(); // id -> DOM node
+  const messages = [];   // {id, role:'user'|'ai', content, loading?, secondary?, ts}
+  const nodeMap = new Map();
 
-  // --- UI helpers ---
+  // Helpers
+  const rAF = (fn) => requestAnimationFrame(fn);
+  const scrollToBottom = () => {
+    try {
+      window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+    } catch {}
+  };
+  const now = () => new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const newId = () => (crypto?.randomUUID?.() || `${Date.now()}_${Math.random().toString(36).slice(2)}`);
+  const isRTL = (t = "") => /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/.test(t);
+
+  function setLoading(on) {
+    if (els.sendBtn) els.sendBtn.disabled = on;
+    if (els.textarea) els.textarea.disabled = on;
+  }
+
+  // Auto-resize textarea
+  function autoResize() {
+    if (!els.textarea) return;
+    els.textarea.style.height = "auto";
+    els.textarea.style.height = `${Math.min(els.textarea.scrollHeight, 180)}px`;
+  }
+  els.textarea?.addEventListener("input", autoResize);
+
+  // Append & render
   function appendMessage(m) {
-    const id = m.id || (crypto?.randomUUID?.() || String(Date.now()));
-    const rec = { ...m, id };
-    messages.push(rec);
-    renderMessage(rec);
+    const id = m.id || newId();
+    const record = { ...m, id, ts: m.ts || Date.now() };
+    messages.push(record);
+    renderMessage(record);
     return id;
   }
 
@@ -55,144 +81,181 @@
 
   function renderMessage(m) {
     let node = nodeMap.get(m.id);
+    const user = m.role === "user";
     if (!node) {
       node = document.createElement("div");
-      node.className = "message";
+      node.className = `message ${user ? "user" : "ai"} animate-in`;
       node.innerHTML = `
-        <div class="avatar"></div>
-        <div class="bubble"></div>
+        <div class="avatar">${user ? "🙂" : "🤖"}</div>
+        <div class="bubble ${user ? "user" : "ai"}">
+          <p class="primary"></p>
+          <div class="meta">
+            <time></time>
+            <div class="actions-row">
+              <button class="act" data-act="copy">کپی</button>
+              <button class="act" data-act="like">👍</button>
+              <button class="act" data-act="dislike">👎</button>
+              <button class="act" data-act="regen">⟲</button>
+              <button class="act" data-act="share">↗︎</button>
+            </div>
+          </div>
+        </div>
       `;
       nodeMap.set(m.id, node);
       els.chat?.appendChild(node);
+
+      // actions
+      node.querySelector('[data-act="copy"]')?.addEventListener("click", () => copyText(m.content));
+      node.querySelector('[data-act="like"]')?.addEventListener("click", () => toast("👍"));
+      node.querySelector('[data-act="dislike"]')?.addEventListener("click", () => toast("👎"));
+      node.querySelector('[data-act="regen"]')?.addEventListener("click", () => regenerateLast());
+      node.querySelector('[data-act="share"]')?.addEventListener("click", () => shareText(m.content));
     }
 
-    node.className = `message ${m.role}${m.loading ? " loading" : ""}`;
-    const avatar = node.querySelector(".avatar");
+    // content
     const bubble = node.querySelector(".bubble");
-    if (avatar) avatar.textContent = m.role === "user" ? "🙂" : "🤖";
+    const p = node.querySelector(".primary");
+    const time = node.querySelector("time");
 
-    if (!bubble) return;
+    // loading state
     if (m.loading) {
-      bubble.innerHTML =
-        '<span>در حال فکر کردن</span><span class="dots"><span></span><span></span><span></span></span>';
-      return;
+      bubble.classList.add("loading");
+      p.innerHTML =
+        'در حال فکر کردن<span class="dots"><span></span><span></span><span></span></span>';
+    } else {
+      bubble.classList.remove("loading");
+      p.textContent = m.content || "";
     }
 
-    bubble.innerHTML = "";
-    const p = document.createElement("p");
-    p.className = "primary";
-    p.textContent = m.content || "";
-    bubble.appendChild(p);
+    // dir
+    if (p) p.setAttribute("dir", isRTL(m.content) ? "rtl" : "auto");
+    if (time) time.textContent = new Date(m.ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
+    // secondary line (error text)
+    let sec = bubble.querySelector(".secondary");
     if (m.secondary) {
-      const s = document.createElement("p");
-      s.className = "secondary";
-      s.textContent = m.secondary;
-      bubble.appendChild(s);
+      if (!sec) {
+        sec = document.createElement("p");
+        sec.className = "secondary";
+        bubble.appendChild(sec);
+      }
+      sec.textContent = m.secondary;
+    } else if (sec) {
+      sec.remove();
     }
 
-    requestAnimationFrame(scrollToBottom);
+    rAF(scrollToBottom);
   }
 
-  function setLoading(on) {
-    if (els.sendBtn) els.sendBtn.disabled = on;
-    if (els.textarea) els.textarea.disabled = on;
-  }
-
-  function autoResize() {
-    if (!els.textarea) return;
-    els.textarea.style.height = "auto";
-    els.textarea.style.height = `${Math.min(els.textarea.scrollHeight, 180)}px`;
-  }
-  els.textarea?.addEventListener("input", autoResize);
-
-  function scrollToBottom() {
-    try {
-      window.scrollTo({ top: document.body.scrollHeight });
-    } catch {}
-  }
-
-  // --- API call ---
-  async function callAssistant(history) {
-    if (!API_URL) {
-      await new Promise((r) => setTimeout(r, 500));
-      return {
-        role: "assistant",
-        content: "به‌زودی به سرور GPT متصل می‌شوم (demo).",
-      };
-    }
-
-    const payload = {
-      model: MODEL,
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        ...history.map(({ role, content }) => ({ role, content })),
-      ],
-    };
-
-    const res = await fetch(API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+  // Suggestions → paste into input
+  els.suggestions.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (!els.textarea) return;
+      els.textarea.value = btn.textContent.trim();
+      autoResize();
+      els.textarea.focus();
     });
+  });
 
-    let data = null;
-    try { data = await res.json(); } catch (_) {}
+  // New chat
+  els.newChat?.addEventListener("click", () => {
+    messages.splice(0, messages.length);
+    nodeMap.forEach((n) => n.remove());
+    nodeMap.clear();
 
-    // سرور ما در خطا هم 200 می‌دهد ولی ok=false
-    if (!res.ok || (data && data.ok === false)) {
-      const msg = (data && data.error) ? String(data.error) : `Request failed ${res.status}`;
-      throw new Error(msg);
-    }
+    appendMessage({ role: "ai", content: "چت جدید شروع شد. بنویس ✨" });
+    els.textarea.value = "";
+    autoResize();
+    els.textarea.focus();
+  });
 
-    const content =
-      data?.data?.choices?.[0]?.message?.content ||
-      data?.choices?.[0]?.message?.content ||
-      data?.content || "";
-
-    return { role: "assistant", content: content || "پاسخی دریافت نشد، دوباره تلاش کن." };
-  }
-
-  // --- Submit handler ---
-  async function handleSubmit(e) {
+  // Submit handlers
+  els.form?.addEventListener("submit", (e) => {
     e.preventDefault();
+    send();
+  });
+
+  els.textarea?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      send();
+    }
+  });
+
+  // Main send
+  async function send() {
     const txt = (els.textarea?.value || "").trim();
     if (!txt) return;
 
     const userId = appendMessage({ role: "user", content: txt });
     els.textarea.value = "";
     autoResize();
-    setLoading(true);
 
-    const loadingId = appendMessage({ role: "assistant", content: "", loading: true });
+    setLoading(true);
+    const loaderId = appendMessage({ role: "ai", content: "", loading: true });
 
     try {
       const history = messages
-        .filter((m) => !m.loading && m.role !== "system")
-        .map(({ role, content }) => ({ role, content }));
+        .filter((m) => !m.loading)
+        .map(({ role, content }) => ({ role: role === "ai" ? "assistant" : "user", content }));
 
-      const assistant = await callAssistant(history);
-      updateMessage(loadingId, { ...assistant, loading: false });
+      const data = await callGPT([
+        { role: "system", content: SYSTEM_PROMPT },
+        ...history,
+      ]);
+
+      const content =
+        data?.data?.choices?.[0]?.message?.content ||
+        data?.choices?.[0]?.message?.content ||
+        data?.content ||
+        "";
+
+      updateMessage(loaderId, { role: "ai", loading: false, content: content || "پاسخی دریافت نشد." });
     } catch (err) {
       console.error(err);
-      updateMessage(loadingId, {
-        role: "assistant",
+      updateMessage(loaderId, {
+        role: "ai",
         loading: false,
         content: "متأسفم! اتصال برقرار نشد.",
         secondary: String(err?.message || err || ""),
       });
     } finally {
       setLoading(false);
-      scrollToBottom();
     }
   }
 
-  // --- Events ---
-  els.form?.addEventListener("submit", handleSubmit);
-  els.textarea?.addEventListener("keydown", (ev) => {
-    if (ev.key === "Enter" && !ev.shiftKey) {
-      ev.preventDefault();
-      els.form?.requestSubmit();
+  // Backend call
+  async function callGPT(messages) {
+    if (!API_URL) throw new Error("API URL تنظیم نشده");
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: MODEL, messages }),
+    });
+
+    let data = null;
+    try { data = await res.json(); } catch {}
+    if (!res.ok || (data && data.ok === false)) {
+      const msg = (data && data.error) ? String(data.error) : `HTTP ${res.status}`;
+      throw new Error(msg);
     }
-  });
+    return data;
+  }
+
+  // Utils
+  async function copyText(text) {
+    try { await navigator.clipboard.writeText(text); toast("کپی شد ✅"); }
+    catch { toast("کپی نشد!"); }
+  }
+  function shareText(text) {
+    if (navigator.share) navigator.share({ text }).catch(()=>{});
+    else copyText(text);
+  }
+  function toast(msg) { console.log(msg); }
+  function regenerateLast() {
+    // دمو: آخرین پاسخ AI را کمی تغییر می‌دهیم
+    const last = [...messages].reverse().find(m => m.role === "ai" && !m.loading);
+    if (!last) return;
+    updateMessage(last.id, { content: (last.content || "") + " 🔄" });
+  }
 })();
