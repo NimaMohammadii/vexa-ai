@@ -18,7 +18,7 @@ VOICES = {
     "Paniz":       "BZgkqPqms7Kj9ulSkVzn",
     "Alexandra": "kdmDKE6EkgrWrrykO9Qt",
     "Laura":     "7piC4m7q8WrpEAnMj5xC",
-    "Maxon":     "scOwDtmlUjD3prqpp97I",
+    "Maxon":     "0dPqNXnhg2bmxQv1WKDp",
     "Jessica":   "cgSgspJ2msm6clMCkdW9",
 }
 
