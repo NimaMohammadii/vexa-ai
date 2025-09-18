@@ -199,7 +199,7 @@ def start_http_server(port: int) -> ThreadingHTTPServer:
 def create_bot() -> telebot.TeleBot:
     if not BOT_TOKEN:
         raise RuntimeError("❌ BOT_TOKEN در secrets تعریف نشده")
-    return telebot.TeleBot(BOT_TOKEN, parse_mode=None)
+    return telebot.TeleBot(BOT_TOKEN, parse_mode="HTML")
 
 def register_modules(bot: telebot.TeleBot) -> None:
     admin_handlers.register(bot)
