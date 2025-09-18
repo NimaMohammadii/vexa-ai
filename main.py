@@ -99,12 +99,18 @@ class MiniAppHTTPRequestHandler(SimpleHTTPRequestHandler):
             self.send_header("Location", "/gpt/")
             self.end_headers()
             return
+            mapped = self._map_static_path(self.path)
+        if mapped is not None:
+            self.path = mapped
         super().do_GET()
 
     def do_HEAD(self) -> None:  # noqa: N802
         self.path = self._path_without_query()
         if self.path in ("/", "/gpt"):
             self.path = "/gpt/"
+            mapped = self._map_static_path(self.path)
+        if mapped is not None:
+            self.path = mapped
         super().do_HEAD()
 
     # ---- Helpers ------------------------------------------------------------
