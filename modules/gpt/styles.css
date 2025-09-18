@@ -1,136 +1,113 @@
 :root{
   color-scheme: dark;
-  --bg: #0b0e11;         /* پس‌زمینهٔ عمیق */
-  --panel: #0f1317;      /* پنل‌ها */
-  --ink: #e6edf3;        /* متن اصلی */
-  --ink-dim: #9aa4b2;    /* متن کمرنگ */
-  --line: 1px solid rgba(255,255,255,.06);
-  --soft: 1px solid rgba(255,255,255,.05);
 
-  --accent: #7fb3ff;     /* آبی ملایم */
-  --mint: #5fe1b8;       /* سبز نعنایی */
-  --focus: rgba(127,179,255,.25);
+  /* پالت مینیمال شبیه ChatGPT */
+  --bg: #0b0e11;        /* پس‌زمینه‌ی عمیق */
+  --ink: #e6edf3;       /* متن اصلی */
+  --ink-dim: #9aa4b2;   /* متن کمرنگ */
+  --panel: #0f1317;     /* پنل‌ها */
 
-  --r-lg: 16px;
-  --r-md: 12px;
-  --shadow-1: 0 6px 22px rgba(0,0,0,.35), 0 2px 8px rgba(0,0,0,.22);
-  --glass: rgba(15,19,23,.6);
+  /* بلاک‌ها (بسیار ساده، بدون گرادیان/نئون/کادر) */
+  --block-ai:   #0f1419; /* AI */
+  --block-user: #121820; /* User */
+
+  /* فوکِس نرم */
+  --focus: rgba(127,179,255,.22);
+
+  /* ابعاد */
+  --r-lg: 14px;
 }
 
-*{box-sizing:border-box; -webkit-tap-highlight-color: transparent}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
 html,body{height:100%}
 body{
   margin:0;
-  background:
-    radial-gradient(1100px 520px at 80% -10%, rgba(127,179,255,.15), transparent 60%),
-    radial-gradient(900px 500px at -10% 0%, rgba(95,225,184,.12), transparent 55%),
-    var(--bg);
-  color:var(--ink);
-  font: 15px/1.6 -apple-system,BlinkMacSystemFont,"SF Pro Text","IRANSans",system-ui,Segoe UI,Roboto,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji";
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.65 -apple-system, BlinkMacSystemFont, "SF Pro Text", "IRANSans",
+        system-ui, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
 }
 
-/* Shell */
-.app{max-width: 900px; margin: 0 auto; padding: 12px 12px 120px}
+/* کانتینر */
+.app{max-width: 900px; margin: 0 auto; padding: 0 12px 120px}
 
-/* Header شبیه ChatGPT: ساده، بدون آیکون/استیکر */
+/* Header مینیمال (شبیه ChatGPT: عنوان وسط، اکشن سمت راست) */
 .header{
   position: sticky; top: 0; z-index: 10;
-  display: flex; align-items: center; gap: 8px;
-  padding: 10px 12px;
   background: linear-gradient(to bottom, rgba(11,14,17,.85), rgba(11,14,17,.55) 40%, transparent);
   backdrop-filter: blur(6px) saturate(140%);
-  border-bottom: var(--line);
 }
-.title{font-weight: 700; font-size: 16px; letter-spacing: .2px}
-.header-actions{margin-inline-start: auto}
+.header__inner{
+  height: 52px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+}
+.header__title{ margin:0; text-align:center; font-weight:700; font-size:16px; letter-spacing:.2px }
+.header__spacer{ width: 64px }
 .btn-ghost{
-  height: 36px; padding: 0 12px;
-  border-radius: 10px; border: var(--soft); color: var(--ink);
-  background: rgba(255,255,255,.05); cursor: pointer;
+  justify-self: end;
+  height: 36px; padding: 0 12px; border-radius: 10px;
+  background: transparent; color: var(--ink);
+  border: 1px solid rgba(255,255,255,.08);
+  cursor: pointer;
 }
-.btn-ghost:active{transform: translateY(1px); opacity: .9}
+.btn-ghost:active{ transform: translateY(1px); opacity: .9 }
 
-/* Chat stream */
-.chat{display:flex; flex-direction:column; gap: 12px; padding: 10px 4px 0}
-.msg{display:flex}
-.msg.ai{justify-content:flex-start}
-.msg.user{justify-content:flex-end}
+/* جریان چت – بلاک‌های ساده بدون کادر */
+.chat{ display:flex; flex-direction:column; gap: 10px; padding: 10px 0 0 }
+.msg{ display:flex }
+.msg.ai{ justify-content:flex-start }
+.msg.user{ justify-content:flex-end }
 
-.bubble{
-  max-width: 80%;
-  border: var(--soft);
-  border-radius: var(--r-lg);
-  box-shadow: var(--shadow-1);
+.block{
+  max-width: 780px;
   padding: 12px 14px;
+  border-radius: var(--r-lg);
+  white-space: pre-wrap;
+  font-size: 15px;
+  line-height: 1.65;
 }
-.bubble.ai{
-  background: #10151b;   /* شبیه ChatGPT: بلوک ساده برای AI */
-}
-.bubble.user{
-  background: #1b222b;   /* حباب تیره برای کاربر */
-}
+.msg.ai .block   { background: var(--block-ai); }
+.msg.user .block { background: var(--block-user); }
 
-.text{margin:0; white-space: pre-wrap; font-size: 15px}
-.meta{
-  margin-top: 6px; display:flex; gap:8px; align-items:center;
-  color: var(--ink-dim); font-size: 11px
-}
-
-/* اکشن‌های زیر پیام (متنی، بدون ایموجی/استیکر) */
-.actions{display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap}
-.action{
-  padding: .35rem .55rem; font-size: 12px; color: var(--ink);
-  border: var(--soft); border-radius: 10px; background: rgba(255,255,255,.05);
-  cursor: pointer; user-select: none;
-  transition: transform .08s ease, background .18s ease;
-}
-.action:active{transform: translateY(1px); opacity: .9}
-
-/* Loading / typing indicator */
-.loading .text{opacity:.85}
-.dots{display:inline-flex; gap:6px; margin-inline-start:6px; vertical-align:middle}
-.dots i{width:6px; height:6px; border-radius:999px; background: currentColor; opacity:.55; animation: d 1.3s infinite ease-in-out}
-.dots i:nth-child(2){animation-delay:.2s}
-.dots i:nth-child(3){animation-delay:.4s}
-@keyframes d{0%,80%,100%{transform:scale(.6);opacity:.4}40%{transform:scale(1);opacity:1}}
-
-/* Composer */
+/* Composer پایین – بدون نئون/سایه اغراق‌آمیز */
 .composer{
   position: fixed; inset-inline: 0; bottom: 12px;
-  display: grid; place-items: center; pointer-events: none;
+  display: grid; place-items: center;
 }
 .composer__form{
   width: min(900px, calc(100% - 24px));
-  display: grid; grid-template-columns: 1fr 108px; gap: 10px;
-  pointer-events: auto; padding: 10px;
-  background: var(--glass); backdrop-filter: blur(12px) saturate(140%);
-  border: var(--line); border-radius: 18px; box-shadow: var(--shadow-1);
+  display: grid; grid-template-columns: 1fr 96px; gap: 10px;
 }
 #prompt-input{
   width: 100%; max-height: 180px; resize: none; outline: none;
-  border: 1px solid rgba(255,255,255,.08);
   background: #0e1318; color: var(--ink);
+  border: 1px solid rgba(255,255,255,.08);
   border-radius: 12px; padding: 12px 14px;
 }
-#prompt-input::placeholder{color: #7a8594}
-#prompt-input:focus{border-color: var(--accent); box-shadow: 0 0 0 3px var(--focus)}
+#prompt-input::placeholder{ color: #7a8594 }
+#prompt-input:focus{ border-color: #7fb3ff; box-shadow: 0 0 0 3px var(--focus) }
 .send{
-  border: 0; border-radius: 12px; color: #fff; font-weight: 700;
-  background: linear-gradient(135deg, var(--accent), var(--mint));
+  border: 0; border-radius: 12px; color: #0b0e11; font-weight: 700;
+  background: #cfe3ff; /* دکمه روشن، بدون گرادیان/نئون */
   padding: 12px 14px; cursor: pointer;
-  box-shadow: 0 10px 24px rgba(127,179,255,.35);
-  transition: transform .08s ease, opacity .2s ease;
 }
-.send:disabled{opacity:.6; box-shadow: none; cursor: default}
-.send:active{transform: translateY(1px)}
-.hint{margin-top:6px; text-align:center; color: var(--ink-dim); font-size: 12px}
+.send:disabled{ opacity: .6; cursor: default }
+.send:active{ transform: translateY(1px) }
+.hint{ margin-top: 6px; text-align: center; color: var(--ink-dim); font-size: 12px }
 
-/* Animations */
-.fade-in{animation: fade .22s ease both}
-@keyframes fade{from{opacity:0; transform: translateY(4px)} to{opacity:1; transform:none}}
+/* تایپینگ ایندیکیتر */
+.loading .block{ opacity: .95 }
+.dots{ display:inline-flex; gap:6px; margin-inline-start:6px; vertical-align:middle }
+.dots i{ width:6px; height:6px; border-radius:999px; background: currentColor; opacity:.55; animation: d 1.2s infinite ease-in-out }
+.dots i:nth-child(2){ animation-delay: .18s }
+.dots i:nth-child(3){ animation-delay: .36s }
+@keyframes d{ 0%,80%,100%{ transform: scale(.6); opacity:.4 } 40%{ transform: scale(1); opacity: 1 } }
 
-/* Responsive */
+/* ورود نرم پیام‌ها */
+.fade-in{ animation: fade .2s ease both }
+@keyframes fade{ from{ opacity:0; transform: translateY(4px) } to{ opacity:1; transform:none } }
+
+/* ریسپانسیو */
 @media (max-width: 520px){
-  .composer__form{grid-template-columns: 1fr 96px}
-  .send{font-size: 14px}
+  .composer__form{ grid-template-columns: 1fr 84px }
+  .send{ font-size: 14px }
 }
