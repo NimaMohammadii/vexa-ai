@@ -23,23 +23,26 @@ from modules.lang import handlers as lang_handlers
 from modules.profile import handlers as profile_handlers
 from modules.tts import handlers as tts_handlers
 from modules.gpt import handlers as gpt_handlers
-from modules.gpt import service as gpt_service  # برای /api/gpt
+
+# GPT service (برای تماس با API)
+from modules.gpt.service import GPTServiceError, chat_completion
 
 # ========================= Mini-App HTTP Server =========================
 STATIC_DIR = Path(__file__).resolve().parent / "modules" / "gpt"
 API_ENDPOINT = "/api/gpt"
-_GPT_PREFIX = "/gpt"         # هرچی با /gpt/ شروع شد باید به ریشه استاتیک مپ شود
+GPT_PREFIX = "/gpt"  # هر آدرسی با /gpt/ باید به استاتیک‌ها مپ شود
+
 
 class MiniAppHTTPRequestHandler(SimpleHTTPRequestHandler):
     """
     سرو کامل مینی‌اپ (index.html, app.js, styles.css)
-    + روت POST برای /api/gpt که به OpenAI وصل می‌شود (modules.gpt.service).
+    + روت‌های API: /api/gpt  و  /api/health
     """
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, directory=str(STATIC_DIR), **kwargs)
 
-    # لاگ فقط در DEBUG
+    # فقط در DEBUG لاگ بزن
     def log_message(self, format: str, *args: Any) -> None:  # noqa: A003
         if DEBUG:
             super().log_message(format, *args)
@@ -59,82 +62,128 @@ class MiniAppHTTPRequestHandler(SimpleHTTPRequestHandler):
         except Exception:
             return None
 
+    @staticmethod
+    def _is_non_empty_list(value: Any) -> bool:
+        return isinstance(value, list) and bool(value)
+
+    @staticmethod
+    def _coerce_float(value: Any) -> Optional[float]:
+        if value is None:
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def _coerce_int(value: Any) -> Optional[int]:
+        if value is None:
+            return None
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return None
+
     def _json(self, status: int, obj: Dict[str, Any]) -> None:
+        payload = json.dumps(obj, ensure_ascii=False).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(payload)))
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
-        self.wfile.write(json.dumps(obj, ensure_ascii=False).encode("utf-8"))
+        self.wfile.write(payload)
+
+    # ------------------------ API: GET /api/health ------------------------
+    def _health(self) -> None:
+        # بدون لو دادن کلید، فقط وجودش را اعلام می‌کنیم
+        try:
+            from config import GPT_API_KEY, GPT_MODEL  # import محلی برای به‌روز بودن
+            ok = bool(GPT_API_KEY)
+            self._json(
+                HTTPStatus.OK,
+                {"ok": True, "gpt_key_present": ok, "model": (GPT_MODEL or "gpt-4o-mini")},
+            )
+        except Exception as exc:
+            self._json(HTTPStatus.OK, {"ok": False, "error": f"health error: {exc}"})
 
     # ------------------------ API: POST /api/gpt ------------------------
     def do_POST(self) -> None:  # noqa: N802
-        if self._normalized_path() != API_ENDPOINT:
+        path = self._normalized_path()
+        if path != API_ENDPOINT:
             self.send_error(HTTPStatus.NOT_FOUND, "Not Found")
             return
 
         payload = self._read_json_payload()
         if not isinstance(payload, dict):
-            self._json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "invalid json"})
+            self._json(HTTPStatus.OK, {"ok": False, "error": "invalid json"})
             return
 
-        prompt = (payload.get("prompt") or "").strip()
-        history = payload.get("history") or []          # [{role, content}, ...]
-        model = (payload.get("model") or "gpt-4o-mini").strip()
-        system_prompt = payload.get("systemPrompt")
-
-        if not prompt:
-            self._json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": "empty prompt"})
+        messages = payload.get("messages")
+        if not self._is_non_empty_list(messages):
+            self._json(HTTPStatus.OK, {"ok": False, "error": "messages must be a non-empty list"})
             return
 
-        # فقط رول‌های مجاز را عبور بده
-        safe_history = [
-            {"role": m.get("role"), "content": m.get("content")}
-            for m in history
-            if isinstance(m, dict)
-            and m.get("role") in {"system", "user", "assistant"}
-            and isinstance(m.get("content"), str)
-        ]
+        model = payload.get("model")
+        temperature = self._coerce_float(payload.get("temperature"))
+        top_p = self._coerce_float(payload.get("top_p"))
+        max_tokens = self._coerce_int(payload.get("max_tokens"))
 
         try:
-            data = gpt_service.request_chat(
-                prompt=prompt,
-                history=safe_history,
+            data = chat_completion(
+                messages=messages,
                 model=model,
-                system_prompt=system_prompt,
+                temperature=temperature,
+                top_p=top_p,
+                max_tokens=max_tokens,
             )
-            reply = gpt_service.extract_message_text(data) or ""
-            self._json(HTTPStatus.OK, {"ok": True, "reply": reply, "raw": data})
-        except gpt_service.GPTServiceError as exc:
-            self._json(HTTPStatus.BAD_GATEWAY, {"ok": False, "error": str(exc)})
+            # موفق
+            self._json(HTTPStatus.OK, {"ok": True, "data": data})
+            return
+        except GPTServiceError as exc:
+            # خطای قابل‌پیش‌بینی سمت GPT (کلید اشتباه، مدل نامعتبر، ...)
+            if DEBUG:
+                print("GPT API error:", exc)
+            self._json(HTTPStatus.OK, {"ok": False, "error": str(exc)})
+            return
+        except Exception as exc:  # خطای غیرمنتظره
+            if DEBUG:
+                print("Unexpected GPT handler error:", exc)
+            self._json(HTTPStatus.OK, {"ok": False, "error": "internal server error"})
+            return
 
     # ------------------------ Static GET ------------------------
     def do_GET(self) -> None:  # noqa: N802
         path = self._normalized_path()
 
-        # 1) /gpt → /gpt/ (برای درست‌شدن مسیرهای نسبی)
-        if path == _GPT_PREFIX:
+        # Health
+        if path == "/api/health":
+            self._health()
+            return
+
+        # /gpt → /gpt/ (برای اصلاح مسیرهای نسبی)
+        if path == GPT_PREFIX:
             self.send_response(HTTPStatus.MOVED_PERMANENTLY)
-            self.send_header("Location", _GPT_PREFIX + "/")
+            self.send_header("Location", f"{GPT_PREFIX}/")
             self.end_headers()
             return
 
-        # 2) "/", "/gpt/" → index.html
-        if path == "/" or path == _GPT_PREFIX + "/":
+        # "/" و "/gpt/" → index.html
+        if path in ("/", f"{GPT_PREFIX}/"):
             self.path = "/index.html"
-            return super().do_GET()
+            super().do_GET()
+            return
 
-        # 3) هرچیزی که با /gpt/ شروع می‌شود را به ریشه استاتیک مپ کن:
-        #    /gpt/styles.css  -> /styles.css
-        #    /gpt/app.js      -> /app.js
-        #    /gpt/anything    -> /anything
-        if path.startswith(_GPT_PREFIX + "/"):
-            stripped = path[len(_GPT_PREFIX):]  # حذف "/gpt"
-            self.path = stripped if stripped else "/index.html"
-            return super().do_GET()
+        # هر چیزی با /gpt/ شروع شود به ریشه استاتیک مپ کن
+        if path.startswith(f"{GPT_PREFIX}/"):
+            stripped = path[len(GPT_PREFIX):]  # حذف "/gpt"
+            self.path = stripped or "/index.html"
+            super().do_GET()
+            return
 
-        # 4) سایر مسیرها را عادی سرو کن
-        return super().do_GET()
+        # سایر مسیرها
+        super().do_GET()
 
+    # جلوگیری از کش
     def end_headers(self) -> None:
         self.send_header("Cache-Control", "no-store")
         super().end_headers()
@@ -149,7 +198,7 @@ def start_http_server(port: int) -> ThreadingHTTPServer:
 # ========================= Telegram Bot Wiring =========================
 def create_bot() -> telebot.TeleBot:
     if not BOT_TOKEN:
-        raise RuntimeError("BOT_TOKEN is not set")
+        raise RuntimeError("❌ BOT_TOKEN در secrets تعریف نشده")
     return telebot.TeleBot(BOT_TOKEN, parse_mode=None)
 
 def register_modules(bot: telebot.TeleBot) -> None:
@@ -174,7 +223,7 @@ def main() -> None:
 
     bot.infinity_polling(
         skip_pending=True,
-        allowed_updates=["message","callback_query","pre_checkout_query","successful_payment"],
+        allowed_updates=["message", "callback_query", "pre_checkout_query", "successful_payment"],
     )
 
 if __name__ == "__main__":
