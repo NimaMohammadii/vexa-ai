@@ -5,13 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Vexa • GPT-5</title>
 
-    <!-- همه مسیرهای نسبی را نسبت به /gpt/ ثابت می‌کند -->
+    <!-- مسیرهای نسبی را نسبت به /gpt/ ثابت می‌کند -->
     <base href="/gpt/">
 
-    <!-- سبک مینیمال و مدرن -->
     <link rel="stylesheet" href="styles.css" />
 
-    <!-- پیکربندی اپ (به /api/gpt وصل است) -->
     <script>
       window.__GPT_APP_CONFIG = {
         apiUrl: "/api/gpt",
@@ -22,50 +20,42 @@
       };
     </script>
 
-    <!-- اسکریپت اپ -->
     <script src="app.js" defer></script>
   </head>
-
   <body>
     <div class="app">
-      <!-- Header شبیه ChatGPT mobile -->
-      <header class="app__header">
-        <div class="toolbar">
-          <button class="icon-btn" aria-label="Menu">☰</button>
-          <h1 class="title"><span class="dot"></span><span class="t">GPT-5</span></h1>
-          <div class="actions">
-            <button class="pill-btn" id="new-chat" title="چت جدید">جدید</button>
-          </div>
+      <!-- Header مینیمال -->
+      <header class="header">
+        <button class="btn-ghost" aria-label="منو">≡</button>
+        <h1 class="title">GPT-5</h1>
+        <div class="header-actions">
+          <button id="new-chat" class="btn-ghost" title="چت جدید">جدید</button>
         </div>
       </header>
 
-      <!-- ناحیه چت -->
+      <!-- ناحیهٔ گفتگو -->
       <main id="chat" class="chat" aria-live="polite" aria-busy="false">
-        <!-- پیام خوش‌آمد -->
-        <div class="message ai animate-in">
-          <div class="avatar">🤖</div>
+        <div class="msg ai fade-in">
           <div class="bubble ai">
-            <p class="primary">سلام! من دستیار وکسا هستم. هرچی می‌خوای بپرس ✨</p>
+            <p class="text">سلام! من دستیار وکسا هستم. هرچه می‌خواهی بپرس.</p>
             <div class="meta"><time></time></div>
           </div>
         </div>
       </main>
 
-      <!-- پیشنهادها -->
-      <section class="suggestions">
-        <button class="suggestion">✍️ تولید کپشن اینستاگرام</button>
-        <button class="suggestion">📚 خلاصه کردن متن</button>
-        <button class="suggestion">🐍 نمونه کد پایتون</button>
-      </section>
-
-      <!-- Composer پایین صفحه -->
+      <!-- Composer -->
       <footer class="composer">
         <form id="composer" class="composer__form" aria-label="ارسال پیام">
-          <textarea id="prompt-input" placeholder="...چیزی بنویس (Shift + Enter خط جدید)"
-                    rows="1" autocomplete="off" autocapitalize="sentences"></textarea>
-          <button id="send-btn" class="send-btn" type="submit">ارسال</button>
+          <textarea
+            id="prompt-input"
+            placeholder="...چیزی بنویس (Shift + Enter خط جدید)"
+            rows="1"
+            autocomplete="off"
+            autocapitalize="sentences"
+          ></textarea>
+          <button id="send-btn" class="send" type="submit">ارسال</button>
         </form>
-        <div class="tip">میانبرها: Enter ارسال • Shift+Enter خط جدید</div>
+        <div class="hint">میانبرها: Enter ارسال • Shift+Enter خط جدید</div>
       </footer>
     </div>
   </body>
