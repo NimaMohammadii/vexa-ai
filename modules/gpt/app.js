@@ -203,12 +203,25 @@
       };
     }
 
+    const transcript = history.filter(
+      (item) => item && typeof item.content === "string" && item.content.trim()
+    );
+
+    const lastMessage = transcript[transcript.length - 1];
+    if (!lastMessage || lastMessage.role !== "user") {
+      throw new Error("Invalid conversation state: last message must be from user");
+    }
+
+    const previous = transcript.slice(0, -1).map(({ role, content }) => ({
+      role,
+      content,
+    }));
+
     const payload = {
+      prompt: lastMessage.content,
+      history: previous,
       model: MODEL,
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        ...history.map(({ role, content }) => ({ role, content })),
-      ],
+      systemPrompt: SYSTEM_PROMPT,
     };
 
     const res = await fetch(API_URL, {
@@ -220,8 +233,12 @@
     if (!res.ok) throw new Error(`Request failed ${res.status}`);
     const data = await res.json();
 
-    const content =
-      data?.choices?.[0]?.message?.content || data?.content || "";
+    if (!data?.ok) {
+      const message = data?.error || "GPT service returned an error";
+      throw new Error(message);
+    }
+
+    const content = data?.reply || "";
     return {
       role: "assistant",
       content: content || "پاسخی دریافت نشد، لطفاً دوباره تلاش کن.",
