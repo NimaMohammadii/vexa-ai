@@ -1,6 +1,7 @@
 # main.py
 import os
 import threading
+from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 import telebot
