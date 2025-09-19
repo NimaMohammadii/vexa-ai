@@ -40,10 +40,28 @@ def resolve_gpt_api_key() -> str:
     except Exception:
         return ""
 
+    # دریافت کلید از تنظیمات دیتابیس؛ برخی از نصب‌ها کلیدها را با حروف کوچک ذخیره کرده‌اند
     for key_name in ("GPT_API", "GPT_API_KEY", "OPENAI_API_KEY"):
         value = db.get_setting(key_name)
         if value and str(value).strip():
             return str(value).strip()
+
+        # تلاش برای خواندن نسخه‌ی حروف کوچک همان کلید (برای سازگاری با داده‌های قدیمی)
+        value = db.get_setting(key_name.lower())
+        if value and str(value).strip():
+            return str(value).strip()
+
+    # در صورتی که کلید با نام متفاوت اما معادل ذخیره شده باشد، کل جدول settings را جست‌وجو می‌کنیم
+    try:
+        settings = db.get_settings()
+    except Exception:
+        settings = {}
+
+    for key, value in settings.items():
+        if key and key.lower() in {"gpt_api", "gpt_api_key", "openai_api_key"}:
+            candidate = str(value).strip()
+            if candidate:
+                return candidate
 
     return ""
 
