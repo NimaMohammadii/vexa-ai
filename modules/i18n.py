@@ -65,6 +65,8 @@ LABELS.update({
         "es": "⌛️ <b>Dame un segundo, preparo una respuesta con un toque travieso...</b>",
         "de": "⌛️ <b>Einen Moment, ich rühre eine freche Antwort zusammen...</b>",
         "fr": "⌛️ <b>Un instant, je mijote une réponse un brin espiègle...</b>",
+    },
+    "gpt_intro": {
         "fa": "🤖 <b>سلام! من GPT-5 شوخ‌طبع هستم، هرچی تو ذهنت داری بفرست تا باهم گپ بزنیم.</b>\n💳 <b>هزینه هر پیام: {cost} کردیت</b>\n🕵️‍♀️ <b>برای جست‌وجوی وب دستور /websearch رو بزن.</b>",
         "en": "🤖 <b>Hey! I'm the playful GPT-5 sidekick—drop anything on your mind and let's chat.</b>\n💳 <b>Cost per message: {cost} credits</b>\n🕵️‍♀️ <b>Use /websearch whenever you need web results.</b>",
         "ar": "🤖 <b>مرحباً! أنا GPT-5 المرح، أرسل ما تريد ولننطلق بالدردشة.</b>\n💳 <b>تكلفة كل رسالة: {cost} رصيداً</b>\n🕵️‍♀️ <b>استخدم /websearch عند الحاجة لبحث الويب.</b>",
@@ -113,6 +115,7 @@ LABELS.update({
         "es": "✅ <b>Por ahora es todo; vuelve cuando quieras agitar un poco la conversación.</b>",
         "de": "✅ <b>Für den Moment reicht's – komm wieder, wenn wir gemeinsam etwas Wirbel machen sollen.</b>",
         "fr": "✅ <b>C'est tout pour l'instant ; reviens quand tu voudras remettre un peu d'ambiance.</b>",
+    },
     "gpt_reset": {
         "fa": "✅ <b>چت قبلی پاک شد؛ یه موضوع تازه رو کن!</b>",
         "en": "✅ <b>Chat history cleared—hit me with something new!</b>",
@@ -212,6 +215,8 @@ LABELS.update({
         "es": "⚠️ <b>La búsqueda tuvo un problema: {error}</b>",
         "de": "⚠️ <b>Bei der Suche ist ein Fehler aufgetreten: {error}</b>",
         "fr": "⚠️ <b>La recherche a rencontré un problème : {error}</b>",
+    },
+    "gpt_search_enabled": {
         "fa": "🔍 <b>دستور /websearch فعال شد! بگو دنبال چی بگردم (هر پیام {cost} کردیت).</b>",
         "en": "🔍 <b>/websearch activated! Tell me what to hunt for (each message costs {cost} credits).</b>",
         "ar": "🔍 <b>تم تفعيل /websearch! أخبرني عما أبحث عنه (كل رسالة {cost} رصيداً).</b>",

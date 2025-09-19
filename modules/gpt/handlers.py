@@ -57,23 +57,21 @@ def _ensure_gpt_ready(lang: str) -> Optional[str]:
 
 
 def _respond(bot, status_message, lang: str, text: str, reply_markup=None) -> None:
-def _respond(bot, status_message, lang: str, text: str) -> None:
     safe_text = text if ("<" in text or ">" in text) else html.escape(text)
+    kb = reply_markup if reply_markup is not None else _chat_keyboard(lang)
     try:
         bot.edit_message_text(
             safe_text,
             chat_id=status_message.chat.id,
             message_id=status_message.message_id,
-            reply_markup=reply_markup,
-            reply_markup=_chat_keyboard(lang),
+            reply_markup=kb,
             parse_mode="HTML",
         )
     except Exception:
         bot.send_message(
             status_message.chat.id,
             safe_text,
-            reply_markup=reply_markup,
-            reply_markup=_chat_keyboard(lang),
+            reply_markup=kb,
             parse_mode="HTML",
         )
 
