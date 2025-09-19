@@ -8,6 +8,12 @@ from modules.home.keyboards import main_menu
 from modules.i18n import t
 
 
+def _send_language_menu(bot, user, chat_id, message_id=None):
+    lang = db.get_user_lang(user["user_id"], "fa")
+    if message_id is None:
+        bot.send_message(chat_id, TITLE(lang), reply_markup=lang_menu(lang, lang), parse_mode="HTML")
+    else:
+        edit_or_send(bot, chat_id, message_id, TITLE(lang), lang_menu(lang, lang))
 def _send_language_menu(bot, user, chat_id, message_id):
     lang = db.get_user_lang(user["user_id"], "fa")
     edit_or_send(bot, chat_id, message_id, TITLE(lang), lang_menu(lang, lang))
@@ -17,6 +23,7 @@ def register(bot):
     @bot.message_handler(commands=["language"])
     def language_cmd(msg):
         user = db.get_or_create_user(msg.from_user)
+        _send_language_menu(bot, user, msg.chat.id)
         _send_language_menu(bot, user, msg.chat.id, msg.message_id)
 
     @bot.callback_query_handler(func=lambda c: c.data and c.data.startswith("lang:"))
