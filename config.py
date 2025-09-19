@@ -15,8 +15,13 @@ DEBUG = os.getenv("DEBUG", "true").lower() == "true"
 
 def _first_non_empty(*values: Optional[str]) -> str:
     for value in values:
-        if value:
-            return value
+        if value is None:
+            continue
+
+        candidate = str(value).strip()
+        if candidate:
+            return candidate
+
     return ""
 
 
@@ -58,8 +63,8 @@ GPT_TOP_P = min(1.0, max(0.0, _parse_float(os.getenv("GPT_TOP_P"), 1.0)))
 GPT_MAX_TOKENS = max(0, _parse_int(os.getenv("GPT_MAX_TOKENS"), 0))
 GPT_MESSAGE_COST = _parse_float(os.getenv("GPT_MESSAGE_COST", "1.2"), 1.2)
 
-GPT_RESPONSE_CHAR_LIMIT = max(0, _parse_int(os.getenv("GPT_RESPONSE_CHAR_LIMIT", "600"), 600))
-
- main
-GPT_RESPONSE_CHAR_LIMIT = max(0, _parse_int(os.getenv("GPT_RESPONSE_CHAR_LIMIT", "1200"), 1200))
+GPT_RESPONSE_CHAR_LIMIT = max(
+    0,
+    _parse_int(os.getenv("GPT_RESPONSE_CHAR_LIMIT", "1200"), 1200),
+)
 
