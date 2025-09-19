@@ -142,6 +142,10 @@ def register(bot):
                 edit_or_send(bot, msg.chat.id, msg.message_id, txt, kb); return
 
         _handle_referral(bot, msg, user)
+        bot.send_message(
+            msg.chat.id,
+            "Please choose your language first.\nUse <code>/language</code> to open the language menu."
+        )
         current_state = db.get_state(user["user_id"]) or ""
         if current_state:
             db.clear_state(user["user_id"])
