@@ -3,7 +3,7 @@ LABELS = {
     # Home
     "home_title": {"fa":"/help   منوی اصلی","en":"Main Menu","ar":"القائمة الرئيسية","tr":"Ana Menü","ru":"Главное меню","es":"Menú principal","de":"Hauptmenü","fr":"Menu principal"},
     "home_body":  {"fa":"یکی از گزینه‌های زیر را انتخاب کنید:","en":"Choose an option:","ar":"اختر خياراً:","tr":"Bir seçenek seçin:","ru":"Выберите опцию:","es":"Elige una opción:","de":"Wähle eine Option:","fr":"Choisissez une option :"},
-    "btn_gpt":    {"fa":"GPT-5 🤖","en":"GPT-5 🤖","ar":"GPT-5 🤖","tr":"GPT-5 🤖","ru":"GPT-5 🤖","es":"GPT-5 🤖","de":"GPT-5 🤖","fr":"GPT-5 🤖"},
+    "btn_gpt":    {"fa":"GPT-5 🫧","en":"GPT-5 🫧","ar":"GPT-5 🫧","tr":"GPT-5 🫧","ru":"GPT-5 🫧","es":"GPT-5 🫧","de":"GPT-5 🤖","fr":"GPT-5 🤖"},
     "btn_tts":    {"fa":"تبدیل متن به صدا 🎧","en":"Text to Speech 🎧","ar":"تحويل النص إلى صوت 🎧","tr":"Metinden Sese 🎧","ru":"Текст в речь 🎧","es":"Texto a voz 🎧","de":"Text zu Sprache 🎧","fr":"Texte en voix 🎧"},
     "btn_profile":{"fa":"پروفایل 🙋🏼‍♂️","en":"Profile 🙋🏼‍♂️","ar":"الملف الشخصي 🙋🏼‍♂️","tr":"Profil 🙋🏼‍♂️","ru":"Профиль 🙋🏼‍♂️","es":"Perfil 🙋🏼‍♂️","de":"Profil 🙋🏼‍♂️","fr":"Profil 🙋🏼‍♂️"},
     "btn_credit": {"fa":"خرید کردیـت 🛒","en":"Buy Credit 🛒","ar":"شراء الرصيد 🛒","tr":"Kredi Satın Al 🛒","ru":"Купить кредит 🛒","es":"Comprar crédito 🛒","de":"Guthaben kaufen 🛒","fr":"Acheter du crédit 🛒"},
@@ -47,7 +47,7 @@ def t(key: str, lang: str) -> str:
 
 LABELS.update({
     "gpt_open": {
-        "fa": "💳 <b>هزینه هر پیام: {cost} کردیت</b>\n✍️ <b>سوالت رو همین‌جا بنویس.</b>\n🔍 <b>برای قیمت یا خبر لحظه‌ای خودم سرچ می‌کنم.</b>",
+        "fa": "<b>😊 سلام٫ چه کمکی از دستم برمیاد ؟</b>",
         "en": "💳 <b>Each message costs {cost} credits.</b>\n✍️ <b>Type your question right here.</b>\n🔍 <b>I automatically look up live prices or news.</b>",
         "ar": "💳 <b>تكلفة كل رسالة: {cost} رصيداً.</b>\n✍️ <b>اكتب سؤالك هنا مباشرة.</b>\n🔍 <b>أبحث تلقائياً عن الأسعار أو الأخبار اللحظية.</b>",
         "tr": "💳 <b>Her mesaj: {cost} kredi.</b>\n✍️ <b>Sorunu buraya yaz.</b>\n🔍 <b>Fiyat ya da güncel haber gerekiyorsa otomatik ararım.</b>",
