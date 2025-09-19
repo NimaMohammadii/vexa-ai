@@ -32,7 +32,6 @@ from .service import (
 )
 
 GPT_STATE = "gpt:chat"
-GPT_SEARCH_STATE = "gpt:search"
 
 PRICE_KEYWORDS = {
     "قیمت",
@@ -87,7 +86,6 @@ def _back_keyboard(lang: str) -> InlineKeyboardMarkup:
 
 def _chat_keyboard(lang: str) -> InlineKeyboardMarkup:
     kb = InlineKeyboardMarkup()
-    kb.add(InlineKeyboardButton(t("gpt_search", lang), callback_data="gpt:search"))
     kb.add(InlineKeyboardButton(t("back", lang), callback_data="home:back"))
     return kb
 
@@ -333,28 +331,6 @@ def register(bot):
         else:
             bot.answer_callback_query(cq.id, show_alert=True, text=t("gpt_not_configured_alert", lang))
 
-    @bot.callback_query_handler(func=lambda c: c.data == "gpt:search")
-    def enable_manual_search(cq):
-        user = db.get_or_create_user(cq.from_user)
-        if user.get("banned"):
-            bot.answer_callback_query(cq.id, "⛔️")
-            return
-
-        lang = db.get_user_lang(user["user_id"], "fa")
-        db.touch_last_seen(user["user_id"])
-
-        error = _ensure_gpt_ready(lang)
-        if error:
-            bot.answer_callback_query(cq.id, show_alert=True, text=t("gpt_not_configured_alert", lang))
-            return
-
-        db.set_state(user["user_id"], GPT_SEARCH_STATE)
-        prompt = t("gpt_search_prompt", lang).format(cost=_format_credits(GPT_SEARCH_MESSAGE_COST))
-        notice = t("gpt_search_enabled", lang).format(cost=_format_credits(GPT_SEARCH_MESSAGE_COST))
-
-        bot.answer_callback_query(cq.id, text=notice)
-        bot.send_message(cq.message.chat.id, prompt, parse_mode="HTML")
-
     def _is_gpt_message(message) -> bool:
         state = db.get_state(message.from_user.id) or ""
         return state.startswith("gpt:")
@@ -377,12 +353,6 @@ def register(bot):
         if error:
             bot.reply_to(msg, error, parse_mode="HTML")
             db.clear_state(user["user_id"])
-            return
-
-        state = db.get_state(user["user_id"]) or ""
-
-        if state == GPT_SEARCH_STATE:
-            _process_search_query(bot, user["user_id"], msg.chat.id, lang, text)
             return
 
         if _should_use_search(text):

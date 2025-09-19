@@ -47,14 +47,14 @@ def t(key: str, lang: str) -> str:
 
 LABELS.update({
     "gpt_open": {
-        "fa": "🤖 <b>سلام! هرچی دوست داری بپرس.</b>\n💳 <b>هزینه هر پیام: {cost} کردیت</b>\n🔍 <b>سوال‌های قیمت یا خبر لحظه‌ای رو خودم سرچ می‌کنم.</b>",
-        "en": "🤖 <b>Hi! Ask me anything.</b>\n💳 <b>Each message costs {cost} credits.</b>\n🔍 <b>I search automatically for live prices or news.</b>",
-        "ar": "🤖 <b>مرحباً! اسأل ما تشاء.</b>\n💳 <b>تكلفة كل رسالة: {cost} رصيداً</b>\n🔍 <b>إذا احتجت سعراً أو خبراً حديثاً سأبحث تلقائياً.</b>",
-        "tr": "🤖 <b>Selam! Aklına geleni sor.</b>\n💳 <b>Her mesaj: {cost} kredi</b>\n🔍 <b>Fiyat ya da güncel haber gerekirse otomatik ararım.</b>",
-        "ru": "🤖 <b>Привет! Спрашивай что угодно.</b>\n💳 <b>Каждое сообщение стоит {cost} кредитов.</b>\n🔍 <b>За актуальными ценами и новостями я обращусь к поиску автоматически.</b>",
-        "es": "🤖 <b>¡Hola! Pregúntame lo que quieras.</b>\n💳 <b>Cada mensaje cuesta {cost} créditos.</b>\n🔍 <b>Buscaré automáticamente precios o noticias en vivo.</b>",
-        "de": "🤖 <b>Hi! Frag, was du willst.</b>\n💳 <b>Jede Nachricht kostet {cost} Guthaben.</b>\n🔍 <b>Aktuelle Preise oder News suche ich automatisch.</b>",
-        "fr": "🤖 <b>Salut ! Pose-moi tes questions.</b>\n💳 <b>Chaque message coûte {cost} crédits.</b>\n🔍 <b>Je cherche automatiquement les prix ou actus en direct.</b>",
+        "fa": "💳 <b>هزینه هر پیام: {cost} کردیت</b>\n✍️ <b>سوالت رو همین‌جا بنویس.</b>\n🔍 <b>برای قیمت یا خبر لحظه‌ای خودم سرچ می‌کنم.</b>",
+        "en": "💳 <b>Each message costs {cost} credits.</b>\n✍️ <b>Type your question right here.</b>\n🔍 <b>I automatically look up live prices or news.</b>",
+        "ar": "💳 <b>تكلفة كل رسالة: {cost} رصيداً.</b>\n✍️ <b>اكتب سؤالك هنا مباشرة.</b>\n🔍 <b>أبحث تلقائياً عن الأسعار أو الأخبار اللحظية.</b>",
+        "tr": "💳 <b>Her mesaj: {cost} kredi.</b>\n✍️ <b>Sorunu buraya yaz.</b>\n🔍 <b>Fiyat ya da güncel haber gerekiyorsa otomatik ararım.</b>",
+        "ru": "💳 <b>Каждое сообщение стоит {cost} кредитов.</b>\n✍️ <b>Просто напиши свой вопрос здесь.</b>\n🔍 <b>Актуальные цены и новости я найду автоматически.</b>",
+        "es": "💳 <b>Cada mensaje cuesta {cost} créditos.</b>\n✍️ <b>Escribe tu pregunta aquí mismo.</b>\n🔍 <b>Busco automáticamente precios o noticias en vivo.</b>",
+        "de": "💳 <b>Jede Nachricht kostet {cost} Guthaben.</b>\n✍️ <b>Schreib deine Frage direkt hier.</b>\n🔍 <b>Aktuelle Preise oder News suche ich automatisch.</b>",
+        "fr": "💳 <b>Chaque message coûte {cost} crédits.</b>\n✍️ <b>Écris ta question juste ici.</b>\n🔍 <b>Je cherche automatiquement les prix ou actus en direct.</b>",
     },
     "gpt_wait": {
         "fa": "⌛️ <b>یه لحظه صبر کن، دارم یه جواب کوتاه آماده می‌کنم...</b>",
@@ -85,16 +85,6 @@ LABELS.update({
         "es": "♻️ Nuevo chat",
         "de": "♻️ Neuer Chat",
         "fr": "♻️ Nouveau chat",
-    },
-    "gpt_search": {
-        "fa": "🔍 جستجو در وب",
-        "en": "🔍 Web search",
-        "ar": "🔍 بحث ويب",
-        "tr": "🔍 Web araması",
-        "ru": "🔍 Веб-поиск",
-        "es": "🔍 Búsqueda web",
-        "de": "🔍 Websuche",
-        "fr": "🔍 Recherche web",
     },
     "gpt_end": {
         "fa": "✅ <b>فعلاً تا همین‌جا؛ هر وقت حسش بود برگرد تا دوباره شلوغش کنیم.</b>",
@@ -186,16 +176,6 @@ LABELS.update({
         "de": "<b>GPT ist nicht konfiguriert.</b>",
         "fr": "<b>GPT n'est pas configuré.</b>",
     },
-    "gpt_search_prompt": {
-        "fa": "🔍 <b>جستجوی خودکار فعاله؛ فقط بپرس چی میخوای بدونی. هر جستجو {cost} کردیت هزینه داره.</b>",
-        "en": "🔍 <b>Auto search is on—just ask what you need. Each search costs {cost} credits.</b>",
-        "ar": "🔍 <b>البحث التلقائي مفعّل؛ فقط اسأل ما تريد معرفته. كل بحث يكلف {cost} رصيداً.</b>",
-        "tr": "🔍 <b>Otomatik arama açık; ne öğrenmek istediğini sor. Her arama {cost} kredi.</b>",
-        "ru": "🔍 <b>Автопоиск включён — просто спроси, что нужно. Каждый поиск стоит {cost} кредитов.</b>",
-        "es": "🔍 <b>La búsqueda automática está activa; solo pregunta. Cada búsqueda cuesta {cost} créditos.</b>",
-        "de": "🔍 <b>Die automatische Suche ist aktiv; frag einfach. Jede Suche kostet {cost} Guthaben.</b>",
-        "fr": "🔍 <b>La recherche automatique est activée ; pose ta question. Chaque recherche coûte {cost} crédits.</b>",
-    },
     "gpt_search_error": {
         "fa": "⚠️ <b>جستجو به مشکل خورد: {error}</b>",
         "en": "⚠️ <b>Search hit a snag: {error}</b>",
@@ -205,16 +185,6 @@ LABELS.update({
         "es": "⚠️ <b>La búsqueda tuvo un problema: {error}</b>",
         "de": "⚠️ <b>Bei der Suche ist ein Fehler aufgetreten: {error}</b>",
         "fr": "⚠️ <b>La recherche a rencontré un problème : {error}</b>",
-    },
-    "gpt_search_enabled": {
-        "fa": "🔍 <b>جستجوی خودکار روشنه؛ هر جستجو {cost} کردیت حساب میشه.</b>",
-        "en": "🔍 <b>Auto search is ready; each lookup costs {cost} credits.</b>",
-        "ar": "🔍 <b>البحث التلقائي جاهز؛ كل استعلام يكلف {cost} رصيداً.</b>",
-        "tr": "🔍 <b>Otomatik arama hazır; her sorgu {cost} kredi.</b>",
-        "ru": "🔍 <b>Автопоиск готов; каждый запрос стоит {cost} кредитов.</b>",
-        "es": "🔍 <b>La búsqueda automática está lista; cada consulta cuesta {cost} créditos.</b>",
-        "de": "🔍 <b>Die automatische Suche ist bereit; jede Abfrage kostet {cost} Guthaben.</b>",
-        "fr": "🔍 <b>La recherche automatique est prête ; chaque requête coûte {cost} crédits.</b>",
     },
     "gpt_search_no_results": {
         "fa": "🔎 <b>چیزی پیدا نکردم؛ اگه خواستی دقیق‌تر بگو دوباره می‌گردم.</b>",
