@@ -518,6 +518,7 @@ def web_search(query: str, max_results: int = 3) -> List[Dict[str, str]]:
             if text or url:
                 results.append({"title": title, "url": url, "snippet": text})
 
+    _collect(payload.get("Results") or [])
     _collect(payload.get("RelatedTopics") or [])
 
     trimmed = results[: max_results if max_results and max_results > 0 else 3]
