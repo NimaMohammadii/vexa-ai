@@ -81,7 +81,12 @@ GPT_API_KEY_PREFIX = os.getenv("GPT_API_KEY_PREFIX")
 if GPT_API_KEY_PREFIX is None:
     GPT_API_KEY_PREFIX = "Bearer "
 
-GPT_ASSISTANT_ID = (os.getenv("GPT_ASSISTANT_ID") or os.getenv("OPENAI_ASSISTANT_ID") or "").strip()
+GPT_ASSISTANT_ID = (
+    os.getenv("GPT_ASSISTANT_ID")
+    or os.getenv("OPENAI_ASSISTANT_ID")
+    or os.getenv("ASSISTANT_ID")
+    or ""
+).strip()
 
 _DEFAULT_SYSTEM_PROMPT = (
     "You are Vexa GPT. Reply in the user's language with concise, direct answers."
