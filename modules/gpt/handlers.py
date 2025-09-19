@@ -24,7 +24,10 @@ from .service import (
     build_default_messages,
     chat_completion,
     extract_message_text,
+ codex/implement-gpt-5-menu-with-credit-handling-z0myf5
     resolve_gpt_api_key,
+
+ main
     web_search,
 )
 

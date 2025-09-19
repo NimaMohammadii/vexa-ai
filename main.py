@@ -13,6 +13,7 @@ from modules.invite import handlers as invite_handlers
 from modules.lang import handlers as lang_handlers
 from modules.profile import handlers as profile_handlers
 from modules.credit import handlers as credit_handlers
+from modules.clone import handlers as clone_handlers
 from modules.tts import handlers as tts_handlers
 from modules.gpt import handlers as gpt_handlers
 
@@ -29,6 +30,7 @@ def register_modules(bot: telebot.TeleBot) -> None:
     invite_handlers.register(bot)
     profile_handlers.register(bot)
     credit_handlers.register (bot)
+    clone_handlers.register(bot)
     tts_handlers.register(bot)
     gpt_handlers.register(bot)
 
