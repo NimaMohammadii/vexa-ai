@@ -29,12 +29,32 @@ class GPTServiceError(RuntimeError):
     """Raised when the upstream GPT provider returns an error."""
 
 
+def resolve_gpt_api_key() -> str:
+    """Return the configured GPT API key from env or dynamic settings."""
+
+    if GPT_API_KEY:
+        return GPT_API_KEY
+
+    try:
+        import db  # local import to avoid circular dependency at module import time
+    except Exception:
+        return ""
+
+    for key_name in ("GPT_API", "GPT_API_KEY", "OPENAI_API_KEY"):
+        value = db.get_setting(key_name)
+        if value and str(value).strip():
+            return str(value).strip()
+
+    return ""
+
+
 def _build_headers() -> Dict[str, str]:
-    if not GPT_API_KEY:
+    api_key = resolve_gpt_api_key()
+    if not api_key:
         raise GPTServiceError("GPT API key is not configured. Set GPT_API in secrets.")
 
     header_name = GPT_API_KEY_HEADER or "Authorization"
-    header_value = f"{GPT_API_KEY_PREFIX or ''}{GPT_API_KEY}".strip()
+    header_value = f"{GPT_API_KEY_PREFIX or ''}{api_key}".strip()
 
     headers = {"Content-Type": "application/json"}
     headers[header_name] = header_value
@@ -148,3 +168,58 @@ def extract_message_text(data: Dict[str, Any]) -> str:
     message = choices[0].get("message") if isinstance(choices[0], dict) else None
     content = message.get("content") if isinstance(message, dict) else None
     return content or ""
+
+
+def web_search(query: str, max_results: int = 3) -> List[Dict[str, str]]:
+    """Perform a lightweight web search using the DuckDuckGo instant answer API."""
+
+    q = (query or "").strip()
+    if not q:
+        return []
+
+    try:
+        response = requests.get(
+            "https://api.duckduckgo.com/",
+            params={"q": q, "format": "json", "no_redirect": "1", "no_html": "1"},
+            timeout=10,
+        )
+    except requests.RequestException as exc:  # pragma: no cover - network failure
+        raise GPTServiceError(f"Search request failed: {exc}") from exc
+
+    try:
+        payload = response.json()
+    except ValueError as exc:
+        if DEBUG:
+            print("Search API returned non-JSON response:", response.text)
+        raise GPTServiceError("Invalid response from search provider") from exc
+
+    results: List[Dict[str, str]] = []
+
+    abstract = payload.get("AbstractText") or payload.get("Abstract")
+    abstract_url = payload.get("AbstractURL")
+    if abstract:
+        results.append(
+            {
+                "title": payload.get("Heading") or q,
+                "url": abstract_url or payload.get("AbstractURL") or payload.get("AbstractSource") or "",
+                "snippet": abstract,
+            }
+        )
+
+    def _collect(items):
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            if "Topics" in item:
+                _collect(item.get("Topics") or [])
+                continue
+            text = item.get("Text") or item.get("Result") or ""
+            url = item.get("FirstURL") or item.get("URL") or ""
+            title = item.get("Title") or text[:80] or q
+            if text or url:
+                results.append({"title": title, "url": url, "snippet": text})
+
+    _collect(payload.get("RelatedTopics") or [])
+
+    trimmed = results[: max_results if max_results and max_results > 0 else 3]
+    return trimmed
