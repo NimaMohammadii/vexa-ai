@@ -15,8 +15,13 @@ DEBUG = os.getenv("DEBUG", "true").lower() == "true"
 
 def _first_non_empty(*values: Optional[str]) -> str:
     for value in values:
-        if value:
-            return value
+        if value is None:
+            continue
+
+        candidate = str(value).strip()
+        if candidate:
+            return candidate
+
     return ""
 
 
