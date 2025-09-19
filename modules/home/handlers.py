@@ -175,7 +175,11 @@ def register(bot):
         lang = db.get_user_lang(msg.from_user.id, "fa")
         edit_or_send(bot, msg.chat.id, msg.message_id, MAIN(lang), main_menu(lang))
 
-    @bot.callback_query_handler(func=lambda c: c.data and c.data.startswith("home:"))
+    @bot.callback_query_handler(
+        func=lambda c: c.data
+        and c.data.startswith("home:")
+        and c.data != "home:gpt_chat"
+    )
     def home_router(cq):
         user = db.get_or_create_user(cq.from_user)
         db.touch_last_seen(user["user_id"])

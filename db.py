@@ -46,6 +46,13 @@ def init_db():
             text TEXT,
             created_at INTEGER
         )""")
+        cur.execute("""CREATE TABLE IF NOT EXISTS gpt_messages(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            role TEXT NOT NULL,
+            content TEXT NOT NULL,
+            created_at INTEGER NOT NULL
+        )""")
         # 🟢 جدول جدید برای صداهای اختصاصی
         cur.execute("""CREATE TABLE IF NOT EXISTS user_voices(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -246,6 +253,47 @@ def log_message(user_id, direction, text):
         cur = con.cursor()
         cur.execute("""INSERT INTO messages(user_id,direction,text,created_at)
                        VALUES(?,?,?,?)""", (user_id, direction, text[:4000], int(time.time())))
+        con.commit()
+
+
+def log_gpt_message(user_id: int, role: str, content: str) -> None:
+    role_value = str(role or "assistant").strip() or "assistant"
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            """INSERT INTO gpt_messages(user_id, role, content, created_at)
+                   VALUES(?,?,?,?)""",
+            (user_id, role_value, (content or "")[:6000], int(time.time())),
+        )
+        con.commit()
+
+
+def get_recent_gpt_messages(user_id: int, limit: int) -> list[dict[str, str]]:
+    lim = max(0, int(limit or 0))
+    if lim == 0:
+        return []
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            """SELECT role, content
+                   FROM gpt_messages
+                   WHERE user_id=?
+                   ORDER BY id DESC
+                   LIMIT ?""",
+            (user_id, lim),
+        )
+        rows = cur.fetchall() or []
+    return [
+        {"role": role, "content": content}
+        for role, content in reversed(rows)
+        if (role or "").strip() and (content or "").strip()
+    ]
+
+
+def clear_gpt_history(user_id: int) -> None:
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute("DELETE FROM gpt_messages WHERE user_id=?", (user_id,))
         con.commit()
 
 def export_users_csv(path="users.csv"):
