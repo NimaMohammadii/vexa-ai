@@ -40,10 +40,27 @@ def resolve_gpt_api_key() -> str:
     except Exception:
         return ""
 
+    try:
+        settings = db.get_settings()
+    except Exception:
+        if DEBUG:
+            print("Unable to load GPT API key from settings table")
+        return ""
+
+    # Try exact keys first to keep backwards compatibility with existing rows.
     for key_name in ("GPT_API", "GPT_API_KEY", "OPENAI_API_KEY"):
-        value = db.get_setting(key_name)
-        if value and str(value).strip():
-            return str(value).strip()
+        value = settings.get(key_name)
+        candidate = (str(value).strip() if value is not None else "")
+        if candidate:
+            return candidate
+
+    # Some installations may have stored the keys using a different case.
+    lowered = {str(k).lower(): v for k, v in settings.items()}
+    for key_name in ("GPT_API", "GPT_API_KEY", "OPENAI_API_KEY"):
+        value = lowered.get(key_name.lower())
+        candidate = (str(value).strip() if value is not None else "")
+        if candidate:
+            return candidate
 
     return ""
 
