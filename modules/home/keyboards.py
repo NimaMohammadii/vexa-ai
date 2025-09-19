@@ -1,17 +1,11 @@
 # modules/home/keyboards.py
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from modules.i18n import t
-from config import GPT_WEBAPP_URL
 
 def main_menu(lang: str):
     kb = InlineKeyboardMarkup()
-    gpt_button = (
-        InlineKeyboardButton(t("btn_gpt", lang), web_app=WebAppInfo(GPT_WEBAPP_URL))
-        if GPT_WEBAPP_URL
-        else InlineKeyboardButton(t("btn_gpt", lang), callback_data="home:gpt_unavailable")
-    )
     kb.row(
-        gpt_button,
+        InlineKeyboardButton(t("btn_gpt", lang), callback_data="home:gpt_chat"),
         InlineKeyboardButton(t("btn_tts", lang), callback_data="home:tts")
     )
     kb.row(

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from telebot.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
+from telebot.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 import db
 from config import (
@@ -12,7 +12,6 @@ from config import (
     GPT_API_KEY,
     GPT_HISTORY_LIMIT,
     GPT_SYSTEM_PROMPT,
-    GPT_WEBAPP_URL,
 )
 from modules.i18n import t
 from utils import check_force_sub, edit_or_send
@@ -35,8 +34,6 @@ def _back_keyboard(lang: str) -> InlineKeyboardMarkup:
 def _chat_keyboard(lang: str) -> InlineKeyboardMarkup:
     kb = InlineKeyboardMarkup()
     kb.add(InlineKeyboardButton(t("gpt_new_chat", lang), callback_data="gpt:new"))
-    if GPT_WEBAPP_URL:
-        kb.add(InlineKeyboardButton(t("btn_gpt_webapp", lang), web_app=WebAppInfo(GPT_WEBAPP_URL)))
     kb.add(InlineKeyboardButton(t("back", lang), callback_data="home:back"))
     return kb
 
@@ -143,14 +140,6 @@ def register(bot):
             bot.answer_callback_query(cq.id)
         else:
             bot.answer_callback_query(cq.id, show_alert=True, text=t("gpt_not_configured_alert", lang))
-
-    @bot.callback_query_handler(func=lambda c: c.data == "home:gpt_unavailable")
-    def gpt_unavailable(cq):
-        user = db.get_or_create_user(cq.from_user)
-        lang = db.get_user_lang(user["user_id"], "fa")
-        db.touch_last_seen(user["user_id"])
-        edit_or_send(bot, cq.message.chat.id, cq.message.message_id, t("gpt_unavailable", lang), _back_keyboard(lang))
-        bot.answer_callback_query(cq.id, show_alert=True, text=t("gpt_unavailable_alert", lang))
 
     @bot.callback_query_handler(func=lambda c: c.data == "gpt:new")
     def reset_chat(cq):

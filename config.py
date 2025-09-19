@@ -56,4 +56,3 @@ GPT_TEMPERATURE = min(2.0, max(0.0, _parse_float(os.getenv("GPT_TEMPERATURE"), 0
 GPT_TOP_P = min(1.0, max(0.0, _parse_float(os.getenv("GPT_TOP_P"), 1.0)))
 GPT_MAX_TOKENS = max(0, _parse_int(os.getenv("GPT_MAX_TOKENS"), 0))
 
-GPT_WEBAPP_URL = (os.getenv("GPT_WEBAPP_URL", "") or "").strip()
