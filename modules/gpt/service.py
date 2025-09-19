@@ -34,10 +34,26 @@ _COMMON_KEY_NAMES = {
     "gpt_api_key",
     "openai_api",
     "openai_api_key",
+    "openai_key",
+    "openai_token",
     "api_key",
     "apikey",
+    "api_token",
     "token",
 }
+
+_DIRECT_SETTING_NAMES = (
+    "GPT_API",
+    "GPT_API_KEY",
+    "GPTAPI",
+    "OPENAI_API",
+    "OPENAI_API_KEY",
+    "OPENAI_KEY",
+    "OPENAI_TOKEN",
+    "OPENAI_SECRET_KEY",
+)
+
+_cached_api_key: Optional[str] = None
 
 
 def _clean_candidate(text: str) -> str:
@@ -135,69 +151,60 @@ def _extract_api_key(value: Any, *, allow_loose: bool = False) -> str:
     return _extract_from_structure(value, allow_loose=allow_loose)
 
 
-def resolve_gpt_api_key() -> str:
+def resolve_gpt_api_key(force_refresh: bool = False) -> str:
     """Return the configured GPT API key from env or dynamic settings."""
 
+    global _cached_api_key
+
+    if not force_refresh and _cached_api_key:
+        return _cached_api_key
+
     if GPT_API_KEY:
-        return GPT_API_KEY
+        _cached_api_key = GPT_API_KEY
+        return _cached_api_key
 
     try:
         import db  # local import to avoid circular dependency at module import time
     except Exception:
+        _cached_api_key = ""
         return ""
 
-    # دریافت کلید از تنظیمات دیتابیس؛ برخی از نصب‌ها کلیدها را با حروف کوچک ذخیره کرده‌اند
-    for key_name in ("GPT_API", "GPT_API_KEY", "OPENAI_API_KEY"):
-        value = db.get_setting(key_name)
-        candidate = _extract_api_key(value, allow_loose=True)
-        if candidate:
-            return candidate
+    # ابتدا تلاش می‌کنیم کلید را از نام‌های رایج (با در نظر گرفتن نسخه حروف کوچک) بخوانیم
+    for key_name in _DIRECT_SETTING_NAMES:
+        variants = {key_name, key_name.lower(), key_name.replace("_", ""), key_name.replace("_", "-")}
+        for variant in variants:
+            if not variant:
+                continue
+            value = db.get_setting(variant)
+            candidate = _extract_api_key(value, allow_loose=True)
+            if candidate:
+                _cached_api_key = candidate
+                return candidate
 
-        # تلاش برای خواندن نسخه‌ی حروف کوچک همان کلید (برای سازگاری با داده‌های قدیمی)
-        value = db.get_setting(key_name.lower())
-        candidate = _extract_api_key(value, allow_loose=True)
-        if candidate:
-            return candidate
-
-    # در صورتی که کلید با نام متفاوت اما معادل ذخیره شده باشد، کل جدول settings را جست‌وجو می‌کنیم
     try:
         settings = db.get_settings()
     except Exception:
         settings = {}
 
-    # ابتدا بر اساس نام کلید‌های مرتبط با GPT یا OpenAI جست‌وجو می‌کنیم
+    # سپس کل جدول تنظیمات را جست‌وجو می‌کنیم تا کلیدهای مرتبط با GPT/OpenAI را بیابیم
     for key, value in settings.items():
         key_name = str(key or "").lower()
         if not key_name:
             continue
-        if key_name in _COMMON_KEY_NAMES or any(term in key_name for term in ("gpt", "openai")):
-            candidate = _extract_api_key(value, allow_loose=True)
-            if candidate:
-                return candidate
+        allow_loose = key_name in _COMMON_KEY_NAMES or any(term in key_name for term in ("gpt", "openai"))
+        candidate = _extract_api_key(value, allow_loose=allow_loose)
+        if candidate:
+            _cached_api_key = candidate
+            return candidate
 
-    # در نهایت، اگر هنوز کلیدی پیدا نشده بود، تمام مقادیر را برای رشته‌هایی شبیه به کلید بررسی می‌کنیم
+    # در نهایت، تمام مقادیر باقی‌مانده را با قواعد سخت‌گیرانه بررسی می‌کنیم
     for value in settings.values():
         candidate = _extract_api_key(value, allow_loose=False)
         if candidate:
+            _cached_api_key = candidate
             return candidate
 
-        # تلاش برای خواندن نسخه‌ی حروف کوچک همان کلید (برای سازگاری با داده‌های قدیمی)
-        value = db.get_setting(key_name.lower())
-        if value and str(value).strip():
-            return str(value).strip()
-
-    # در صورتی که کلید با نام متفاوت اما معادل ذخیره شده باشد، کل جدول settings را جست‌وجو می‌کنیم
-    try:
-        settings = db.get_settings()
-    except Exception:
-        settings = {}
-
-    for key, value in settings.items():
-        if key and key.lower() in {"gpt_api", "gpt_api_key", "openai_api_key"}:
-            candidate = str(value).strip()
-            if candidate:
-                return candidate
-
+    _cached_api_key = ""
     return ""
 
 
