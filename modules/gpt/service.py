@@ -29,6 +29,112 @@ class GPTServiceError(RuntimeError):
     """Raised when the upstream GPT provider returns an error."""
 
 
+_COMMON_KEY_NAMES = {
+    "gpt_api",
+    "gpt_api_key",
+    "openai_api",
+    "openai_api_key",
+    "api_key",
+    "apikey",
+    "token",
+}
+
+
+def _clean_candidate(text: str) -> str:
+    """Normalise a text snippet that may contain an API key."""
+
+    candidate = (text or "").strip()
+    candidate = candidate.strip('"')
+    candidate = candidate.strip("'")
+    if not candidate:
+        return ""
+
+    if candidate.startswith(("{", "[")):
+        # Likely JSON; let the caller decode separately
+        return candidate
+
+    if "sk-" in candidate:
+        candidate = candidate[candidate.index("sk-") :]
+
+    # Stop at obvious separators to avoid trailing punctuation
+    for separator in ("\n", "\r", "\t", " ", ",", ";"):
+        if separator in candidate:
+            candidate = candidate.split(separator, 1)[0]
+
+    candidate = candidate.strip()
+    candidate = candidate.strip('"')
+    candidate = candidate.strip("'")
+    if not candidate:
+        return ""
+
+    return candidate
+
+
+def _looks_like_api_key(text: str, *, allow_loose: bool) -> bool:
+    """Heuristic check to make sure we only return plausible API keys."""
+
+    if not text or " " in text:
+        return False
+
+    lowered = text.lower()
+    if lowered.startswith(("sk-", "rk-", "gpt-", "gpt_")):
+        return True
+
+    if lowered.startswith(("http://", "https://")):
+        return False
+
+    return allow_loose and len(text) >= 24
+
+
+def _extract_from_structure(value: Any, *, allow_loose: bool) -> str:
+    """Recursively inspect a nested structure (possibly JSON) for an API key."""
+
+    if value is None:
+        return ""
+
+    if isinstance(value, (list, tuple, set)):
+        for item in value:
+            candidate = _extract_from_structure(item, allow_loose=allow_loose)
+            if candidate:
+                return candidate
+        return ""
+
+    if isinstance(value, dict):
+        for key, item in value.items():
+            key_name = str(key or "").lower()
+            candidate = _extract_from_structure(
+                item,
+                allow_loose=allow_loose or key_name in _COMMON_KEY_NAMES or any(term in key_name for term in ("gpt", "openai")),
+            )
+            if candidate:
+                return candidate
+        return ""
+
+    text = _clean_candidate(str(value))
+    if not text:
+        return ""
+
+    if text.startswith(("{", "[")):
+        try:
+            parsed = json.loads(text)
+        except Exception:
+            # Fall through to direct heuristics if parsing fails
+            parsed = None
+        else:
+            return _extract_from_structure(parsed, allow_loose=allow_loose)
+
+    if _looks_like_api_key(text, allow_loose=allow_loose):
+        return text
+
+    return ""
+
+
+def _extract_api_key(value: Any, *, allow_loose: bool = False) -> str:
+    """Helper to extract an API key from arbitrary stored values."""
+
+    return _extract_from_structure(value, allow_loose=allow_loose)
+
+
 def resolve_gpt_api_key() -> str:
     """Return the configured GPT API key from env or dynamic settings."""
 
@@ -40,10 +146,40 @@ def resolve_gpt_api_key() -> str:
     except Exception:
         return ""
 
+    # دریافت کلید از تنظیمات دیتابیس؛ برخی از نصب‌ها کلیدها را با حروف کوچک ذخیره کرده‌اند
     for key_name in ("GPT_API", "GPT_API_KEY", "OPENAI_API_KEY"):
         value = db.get_setting(key_name)
-        if value and str(value).strip():
-            return str(value).strip()
+        candidate = _extract_api_key(value, allow_loose=True)
+        if candidate:
+            return candidate
+
+        # تلاش برای خواندن نسخه‌ی حروف کوچک همان کلید (برای سازگاری با داده‌های قدیمی)
+        value = db.get_setting(key_name.lower())
+        candidate = _extract_api_key(value, allow_loose=True)
+        if candidate:
+            return candidate
+
+    # در صورتی که کلید با نام متفاوت اما معادل ذخیره شده باشد، کل جدول settings را جست‌وجو می‌کنیم
+    try:
+        settings = db.get_settings()
+    except Exception:
+        settings = {}
+
+    # ابتدا بر اساس نام کلید‌های مرتبط با GPT یا OpenAI جست‌وجو می‌کنیم
+    for key, value in settings.items():
+        key_name = str(key or "").lower()
+        if not key_name:
+            continue
+        if key_name in _COMMON_KEY_NAMES or any(term in key_name for term in ("gpt", "openai")):
+            candidate = _extract_api_key(value, allow_loose=True)
+            if candidate:
+                return candidate
+
+    # در نهایت، اگر هنوز کلیدی پیدا نشده بود، تمام مقادیر را برای رشته‌هایی شبیه به کلید بررسی می‌کنیم
+    for value in settings.values():
+        candidate = _extract_api_key(value, allow_loose=False)
+        if candidate:
+            return candidate
 
     return ""
 
