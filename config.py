@@ -48,11 +48,14 @@ if GPT_API_KEY_PREFIX is None:
     GPT_API_KEY_PREFIX = "Bearer "
 
 _DEFAULT_SYSTEM_PROMPT = (
-    "You are Vexa GPT-5, a friendly and professional AI assistant that answers clearly and concisely."
+    "You are Vexa GPT-5, a friendly and professional AI assistant. Respond in short, direct answers"
+    " of at most three brief paragraphs and avoid unnecessary filler."
 )
 GPT_SYSTEM_PROMPT = (os.getenv("GPT_SYSTEM_PROMPT") or _DEFAULT_SYSTEM_PROMPT).strip() or _DEFAULT_SYSTEM_PROMPT
 GPT_HISTORY_LIMIT = max(1, _parse_int(os.getenv("GPT_HISTORY_LIMIT", "6"), 6))
 GPT_TEMPERATURE = min(2.0, max(0.0, _parse_float(os.getenv("GPT_TEMPERATURE"), 0.7)))
 GPT_TOP_P = min(1.0, max(0.0, _parse_float(os.getenv("GPT_TOP_P"), 1.0)))
 GPT_MAX_TOKENS = max(0, _parse_int(os.getenv("GPT_MAX_TOKENS"), 0))
+GPT_MESSAGE_COST = _parse_float(os.getenv("GPT_MESSAGE_COST", "1"), 1.0)
+GPT_RESPONSE_CHAR_LIMIT = max(0, _parse_int(os.getenv("GPT_RESPONSE_CHAR_LIMIT", "600"), 600))
 

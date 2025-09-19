@@ -148,3 +148,58 @@ def extract_message_text(data: Dict[str, Any]) -> str:
     message = choices[0].get("message") if isinstance(choices[0], dict) else None
     content = message.get("content") if isinstance(message, dict) else None
     return content or ""
+
+
+def web_search(query: str, max_results: int = 3) -> List[Dict[str, str]]:
+    """Perform a lightweight web search using the DuckDuckGo instant answer API."""
+
+    q = (query or "").strip()
+    if not q:
+        return []
+
+    try:
+        response = requests.get(
+            "https://api.duckduckgo.com/",
+            params={"q": q, "format": "json", "no_redirect": "1", "no_html": "1"},
+            timeout=10,
+        )
+    except requests.RequestException as exc:  # pragma: no cover - network failure
+        raise GPTServiceError(f"Search request failed: {exc}") from exc
+
+    try:
+        payload = response.json()
+    except ValueError as exc:
+        if DEBUG:
+            print("Search API returned non-JSON response:", response.text)
+        raise GPTServiceError("Invalid response from search provider") from exc
+
+    results: List[Dict[str, str]] = []
+
+    abstract = payload.get("AbstractText") or payload.get("Abstract")
+    abstract_url = payload.get("AbstractURL")
+    if abstract:
+        results.append(
+            {
+                "title": payload.get("Heading") or q,
+                "url": abstract_url or payload.get("AbstractURL") or payload.get("AbstractSource") or "",
+                "snippet": abstract,
+            }
+        )
+
+    def _collect(items):
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            if "Topics" in item:
+                _collect(item.get("Topics") or [])
+                continue
+            text = item.get("Text") or item.get("Result") or ""
+            url = item.get("FirstURL") or item.get("URL") or ""
+            title = item.get("Title") or text[:80] or q
+            if text or url:
+                results.append({"title": title, "url": url, "snippet": text})
+
+    _collect(payload.get("RelatedTopics") or [])
+
+    trimmed = results[: max_results if max_results and max_results > 0 else 3]
+    return trimmed

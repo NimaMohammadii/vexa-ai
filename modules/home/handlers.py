@@ -142,6 +142,12 @@ def register(bot):
                 edit_or_send(bot, msg.chat.id, msg.message_id, txt, kb); return
 
         _handle_referral(bot, msg, user)
+        current_state = db.get_state(user["user_id"]) or ""
+        if current_state:
+            db.clear_state(user["user_id"])
+        if current_state.startswith("gpt:"):
+            db.clear_gpt_history(user["user_id"])
+
         lang = db.get_user_lang(user["user_id"], "fa")
         edit_or_send(bot, msg.chat.id, msg.message_id, MAIN(lang), main_menu(lang))
 
@@ -175,7 +181,11 @@ def register(bot):
         lang = db.get_user_lang(msg.from_user.id, "fa")
         edit_or_send(bot, msg.chat.id, msg.message_id, MAIN(lang), main_menu(lang))
 
-    @bot.callback_query_handler(func=lambda c: c.data and c.data.startswith("home:"))
+    @bot.callback_query_handler(
+        func=lambda c: c.data
+        and c.data.startswith("home:")
+        and c.data != "home:gpt_chat"
+    )
     def home_router(cq):
         user = db.get_or_create_user(cq.from_user)
         db.touch_last_seen(user["user_id"])
