@@ -29,12 +29,32 @@ class GPTServiceError(RuntimeError):
     """Raised when the upstream GPT provider returns an error."""
 
 
+def resolve_gpt_api_key() -> str:
+    """Return the configured GPT API key from env or dynamic settings."""
+
+    if GPT_API_KEY:
+        return GPT_API_KEY
+
+    try:
+        import db  # local import to avoid circular dependency at module import time
+    except Exception:
+        return ""
+
+    for key_name in ("GPT_API", "GPT_API_KEY", "OPENAI_API_KEY"):
+        value = db.get_setting(key_name)
+        if value and str(value).strip():
+            return str(value).strip()
+
+    return ""
+
+
 def _build_headers() -> Dict[str, str]:
-    if not GPT_API_KEY:
+    api_key = resolve_gpt_api_key()
+    if not api_key:
         raise GPTServiceError("GPT API key is not configured. Set GPT_API in secrets.")
 
     header_name = GPT_API_KEY_HEADER or "Authorization"
-    header_value = f"{GPT_API_KEY_PREFIX or ''}{GPT_API_KEY}".strip()
+    header_value = f"{GPT_API_KEY_PREFIX or ''}{api_key}".strip()
 
     headers = {"Content-Type": "application/json"}
     headers[header_name] = header_value

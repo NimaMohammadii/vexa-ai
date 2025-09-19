@@ -24,6 +24,10 @@ from .service import (
     build_default_messages,
     chat_completion,
     extract_message_text,
+ codex/implement-gpt-5-menu-with-credit-handling-z0myf5
+    resolve_gpt_api_key,
+
+ main
     web_search,
 )
 
@@ -48,7 +52,7 @@ def _chat_keyboard(lang: str) -> InlineKeyboardMarkup:
 
 
 def _ensure_gpt_ready(lang: str) -> Optional[str]:
-    if not GPT_API_KEY:
+    if not (GPT_API_KEY or resolve_gpt_api_key()):
         return t("gpt_not_configured", lang)
     if not GPT_SYSTEM_PROMPT:
         return t("gpt_not_configured", lang)
