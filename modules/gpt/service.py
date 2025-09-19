@@ -34,10 +34,26 @@ _COMMON_KEY_NAMES = {
     "gpt_api_key",
     "openai_api",
     "openai_api_key",
+    "openai_key",
+    "openai_token",
     "api_key",
     "apikey",
+    "api_token",
     "token",
 }
+
+_DIRECT_SETTING_NAMES = (
+    "GPT_API",
+    "GPT_API_KEY",
+    "GPTAPI",
+    "OPENAI_API",
+    "OPENAI_API_KEY",
+    "OPENAI_KEY",
+    "OPENAI_TOKEN",
+    "OPENAI_SECRET_KEY",
+)
+
+_cached_api_key: Optional[str] = None
 
 
 def _clean_candidate(text: str) -> str:
@@ -135,23 +151,42 @@ def _extract_api_key(value: Any, *, allow_loose: bool = False) -> str:
     return _extract_from_structure(value, allow_loose=allow_loose)
 
 
-def resolve_gpt_api_key() -> str:
+def resolve_gpt_api_key(force_refresh: bool = False) -> str:
     """Return the configured GPT API key from env or dynamic settings."""
 
+    global _cached_api_key
+
+    if not force_refresh and _cached_api_key:
+        return _cached_api_key
+
     if GPT_API_KEY:
-        return GPT_API_KEY
+        _cached_api_key = GPT_API_KEY
+        return _cached_api_key
 
     try:
         import db  # local import to avoid circular dependency at module import time
     except Exception:
+        _cached_api_key = ""
         return ""
 
     # ابتدا تلاش می‌کنیم کلید را از نام‌های رایج (با در نظر گرفتن نسخه حروف کوچک) بخوانیم
+ codex/activate-gpt-api-access-for-all-users-nc4le1
+    for key_name in _DIRECT_SETTING_NAMES:
+        variants = {key_name, key_name.lower(), key_name.replace("_", ""), key_name.replace("_", "-")}
+        for variant in variants:
+            if not variant:
+                continue
+            value = db.get_setting(variant)
+            candidate = _extract_api_key(value, allow_loose=True)
+            if candidate:
+                _cached_api_key = candidate
+
     for key_name in ("GPT_API", "GPT_API_KEY", "OPENAI_API_KEY"):
         for variant in {key_name, key_name.lower()}:
             value = db.get_setting(variant)
             candidate = _extract_api_key(value, allow_loose=True)
             if candidate:
+ main
                 return candidate
 
     try:
@@ -167,14 +202,23 @@ def resolve_gpt_api_key() -> str:
         allow_loose = key_name in _COMMON_KEY_NAMES or any(term in key_name for term in ("gpt", "openai"))
         candidate = _extract_api_key(value, allow_loose=allow_loose)
         if candidate:
+ codex/activate-gpt-api-access-for-all-users-nc4le1
+            _cached_api_key = candidate
+
+ main
             return candidate
 
     # در نهایت، تمام مقادیر باقی‌مانده را با قواعد سخت‌گیرانه بررسی می‌کنیم
     for value in settings.values():
         candidate = _extract_api_key(value, allow_loose=False)
         if candidate:
+            _cached_api_key = candidate
             return candidate
 
+ codex/activate-gpt-api-access-for-all-users-nc4le1
+    _cached_api_key = ""
+
+ main
     return ""
 
 
