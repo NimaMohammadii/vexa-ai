@@ -146,57 +146,34 @@ def resolve_gpt_api_key() -> str:
     except Exception:
         return ""
 
-    # دریافت کلید از تنظیمات دیتابیس؛ برخی از نصب‌ها کلیدها را با حروف کوچک ذخیره کرده‌اند
+    # ابتدا تلاش می‌کنیم کلید را از نام‌های رایج (با در نظر گرفتن نسخه حروف کوچک) بخوانیم
     for key_name in ("GPT_API", "GPT_API_KEY", "OPENAI_API_KEY"):
-        value = db.get_setting(key_name)
-        candidate = _extract_api_key(value, allow_loose=True)
-        if candidate:
-            return candidate
-
-        # تلاش برای خواندن نسخه‌ی حروف کوچک همان کلید (برای سازگاری با داده‌های قدیمی)
-        value = db.get_setting(key_name.lower())
-        candidate = _extract_api_key(value, allow_loose=True)
-        if candidate:
-            return candidate
-
-    # در صورتی که کلید با نام متفاوت اما معادل ذخیره شده باشد، کل جدول settings را جست‌وجو می‌کنیم
-    try:
-        settings = db.get_settings()
-    except Exception:
-        settings = {}
-
-    # ابتدا بر اساس نام کلید‌های مرتبط با GPT یا OpenAI جست‌وجو می‌کنیم
-    for key, value in settings.items():
-        key_name = str(key or "").lower()
-        if not key_name:
-            continue
-        if key_name in _COMMON_KEY_NAMES or any(term in key_name for term in ("gpt", "openai")):
+        for variant in {key_name, key_name.lower()}:
+            value = db.get_setting(variant)
             candidate = _extract_api_key(value, allow_loose=True)
             if candidate:
                 return candidate
 
-    # در نهایت، اگر هنوز کلیدی پیدا نشده بود، تمام مقادیر را برای رشته‌هایی شبیه به کلید بررسی می‌کنیم
-    for value in settings.values():
-        candidate = _extract_api_key(value, allow_loose=False)
-        if candidate:
-            return candidate
-
-        # تلاش برای خواندن نسخه‌ی حروف کوچک همان کلید (برای سازگاری با داده‌های قدیمی)
-        value = db.get_setting(key_name.lower())
-        if value and str(value).strip():
-            return str(value).strip()
-
-    # در صورتی که کلید با نام متفاوت اما معادل ذخیره شده باشد، کل جدول settings را جست‌وجو می‌کنیم
     try:
         settings = db.get_settings()
     except Exception:
         settings = {}
 
+    # سپس کل جدول تنظیمات را جست‌وجو می‌کنیم تا کلیدهای مرتبط با GPT/OpenAI را بیابیم
     for key, value in settings.items():
-        if key and key.lower() in {"gpt_api", "gpt_api_key", "openai_api_key"}:
-            candidate = str(value).strip()
-            if candidate:
-                return candidate
+        key_name = str(key or "").lower()
+        if not key_name:
+            continue
+        allow_loose = key_name in _COMMON_KEY_NAMES or any(term in key_name for term in ("gpt", "openai"))
+        candidate = _extract_api_key(value, allow_loose=allow_loose)
+        if candidate:
+            return candidate
+
+    # در نهایت، تمام مقادیر باقی‌مانده را با قواعد سخت‌گیرانه بررسی می‌کنیم
+    for value in settings.values():
+        candidate = _extract_api_key(value, allow_loose=False)
+        if candidate:
+            return candidate
 
     return ""
 
