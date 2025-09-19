@@ -469,6 +469,32 @@ def extract_message_text(data: Dict[str, Any]) -> str:
     return ""
 
 
+_search_session: Optional[requests.Session] = None
+
+
+def _get_search_session() -> requests.Session:
+    """Return a cached requests session that bypasses proxy settings."""
+
+    global _search_session
+    if _search_session is None:
+        session = requests.Session()
+        # Using proxies in restricted environments (like some hosting providers)
+        # may cause 403 responses. We explicitly disable proxy usage to ensure
+        # the DuckDuckGo API remains reachable.
+        session.trust_env = False
+        session.headers.update(
+            {
+                "User-Agent": (
+                    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                    "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                ),
+                "Accept": "application/json",
+            }
+        )
+        _search_session = session
+    return _search_session
+
+
 def web_search(query: str, max_results: int = 3) -> List[Dict[str, str]]:
     """Perform a lightweight web search using the DuckDuckGo instant answer API."""
 
@@ -477,13 +503,32 @@ def web_search(query: str, max_results: int = 3) -> List[Dict[str, str]]:
         return []
 
     try:
-        response = requests.get(
+        session = _get_search_session()
+        response = session.get(
             "https://api.duckduckgo.com/",
             params={"q": q, "format": "json", "no_redirect": "1", "no_html": "1"},
             timeout=10,
         )
-    except requests.RequestException as exc:  # pragma: no cover - network failure
-        raise GPTServiceError(f"Search request failed: {exc}") from exc
+        response.raise_for_status()
+    except requests.RequestException:
+        # Fall back to the default behaviour (which respects environment proxies)
+        # in case the direct connection is blocked but a proxy is required.
+        try:
+            response = requests.get(
+                "https://api.duckduckgo.com/",
+                params={"q": q, "format": "json", "no_redirect": "1", "no_html": "1"},
+                timeout=10,
+                headers={
+                    "User-Agent": (
+                        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                        "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                    ),
+                    "Accept": "application/json",
+                },
+            )
+            response.raise_for_status()
+        except requests.RequestException as exc:  # pragma: no cover - network failure
+            raise GPTServiceError(f"Search request failed: {exc}") from exc
 
     try:
         payload = response.json()
