@@ -41,6 +41,13 @@ def _back_keyboard(lang: str) -> InlineKeyboardMarkup:
     return kb
 
 
+def _chat_keyboard(lang: str) -> InlineKeyboardMarkup:
+    kb = InlineKeyboardMarkup()
+    kb.add(InlineKeyboardButton(t("gpt_new_chat", lang), callback_data="gpt:new"))
+    kb.add(InlineKeyboardButton(t("back", lang), callback_data="home:back"))
+    return kb
+
+
 def _ensure_gpt_ready(lang: str) -> Optional[str]:
     if not (GPT_API_KEY or resolve_gpt_api_key()):
         return t("gpt_not_configured", lang)
@@ -50,6 +57,7 @@ def _ensure_gpt_ready(lang: str) -> Optional[str]:
 
 
 def _respond(bot, status_message, lang: str, text: str, reply_markup=None) -> None:
+def _respond(bot, status_message, lang: str, text: str) -> None:
     safe_text = text if ("<" in text or ">" in text) else html.escape(text)
     try:
         bot.edit_message_text(
@@ -57,6 +65,7 @@ def _respond(bot, status_message, lang: str, text: str, reply_markup=None) -> No
             chat_id=status_message.chat.id,
             message_id=status_message.message_id,
             reply_markup=reply_markup,
+            reply_markup=_chat_keyboard(lang),
             parse_mode="HTML",
         )
     except Exception:
@@ -64,6 +73,7 @@ def _respond(bot, status_message, lang: str, text: str, reply_markup=None) -> No
             status_message.chat.id,
             safe_text,
             reply_markup=reply_markup,
+            reply_markup=_chat_keyboard(lang),
             parse_mode="HTML",
         )
 
@@ -278,6 +288,13 @@ def register(bot):
             bot.reply_to(msg, "⛔️ دسترسی شما مسدود است.")
             return
 
+    @bot.message_handler(commands=["websearch", "search", "web"])
+    def activate_search(msg):
+        user = db.get_or_create_user(msg.from_user)
+        if user.get("banned"):
+            bot.reply_to(msg, "⛔️ دسترسی شما مسدود است.")
+            return
+
         lang = db.get_user_lang(user["user_id"], "fa")
         db.touch_last_seen(user["user_id"])
 
@@ -300,6 +317,9 @@ def register(bot):
         db.set_state(user["user_id"], GPT_SEARCH_STATE)
         prompt = t("gpt_search_prompt", lang).format(cost=_format_credits(GPT_SEARCH_MESSAGE_COST))
         edit_or_send(bot, msg.chat.id, msg.message_id, prompt, None)
+        db.set_state(user["user_id"], GPT_SEARCH_STATE)
+        prompt = t("gpt_search_prompt", lang).format(cost=_format_credits(GPT_SEARCH_MESSAGE_COST))
+        edit_or_send(bot, msg.chat.id, msg.message_id, prompt, _chat_keyboard(lang))
 
     def _is_gpt_message(message) -> bool:
         state = db.get_state(message.from_user.id) or ""
@@ -329,6 +349,26 @@ def register(bot):
 
         if state == GPT_SEARCH_STATE:
             _process_search_query(bot, user["user_id"], msg.chat.id, lang, text)
+            if not _charge_for_message(bot, user["user_id"], msg.chat.id, lang, GPT_SEARCH_MESSAGE_COST):
+                db.set_state(user["user_id"], GPT_STATE)
+                return
+
+            history = _load_history(user["user_id"])
+            try:
+                results = web_search(text, max_results=3)
+            except GPTServiceError as exc:
+                results = []
+                if DEBUG:
+                    print("Web search error:", exc)
+            search_context = _build_search_context(text, results)
+            messages = build_default_messages(history, text)
+            messages.insert(-1, {"role": "system", "content": search_context})
+
+            db.log_gpt_message(user["user_id"], "user", f"[search] {text}")
+
+            thinking = bot.send_message(msg.chat.id, t("gpt_wait", lang), parse_mode="HTML")
+            _handle_chat_completion(bot, user["user_id"], msg.chat.id, lang, messages, thinking)
+            db.set_state(user["user_id"], GPT_STATE)
             return
 
         if not _charge_for_message(bot, user["user_id"], msg.chat.id, lang, GPT_MESSAGE_COST):
