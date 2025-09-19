@@ -1,5 +1,17 @@
 import os
+from pathlib import Path
 from typing import Optional
+
+from dotenv import load_dotenv
+
+# Load environment variables from a .env file if present.
+# We call load_dotenv twice: once with the default search behaviour (which
+# respects the current working directory), and once explicitly pointing to a
+# .env file that sits next to this config module. This ensures the bot works
+# whether it is started from the project root or from another working
+# directory.
+load_dotenv()
+load_dotenv(Path(__file__).resolve().parent / ".env")
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ELEVEN_API_KEY = os.getenv("ELEVEN_API_KEY")
