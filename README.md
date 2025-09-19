@@ -5,7 +5,8 @@
 برای فعال‌سازی دستیار GPT داخل ربات تلگرام متغیرهای محیطی زیر را مقداردهی کنید:
 
 - `GPT_API` یا `GPT_API_KEY` یا `OPENAI_API_KEY` — کلید دسترسی به سرویس GPT (الزامی).
-- `GPT_API_URL` — آدرس سرویس چت، پیش‌فرض `https://api.openai.com/v1/chat/completions`.
+- `GPT_MODE` — نوع سرویس GPT؛ مقدار `assistant` از OpenAI Assistants/Responses استفاده می‌کند (پیش‌فرض `chat`).
+- `GPT_API_URL` — آدرس سرویس چت؛ برای حالت `assistant` به‌صورت پیش‌فرض `https://api.openai.com/v1/responses` است.
 - `GPT_MODEL` — نام مدل، پیش‌فرض `gpt-4o-mini`.
 - `GPT_API_TIMEOUT` — زمان انتظار درخواست بر حسب ثانیه، پیش‌فرض `45`.
 - `GPT_API_KEY_HEADER` و `GPT_API_KEY_PREFIX` — در صورت نیاز به هدر سفارشی برای کلید.
@@ -14,6 +15,9 @@
 - `GPT_TEMPERATURE` — میزان خلاقیت پاسخ‌ها (۰ تا ۲، پیش‌فرض `0.7`).
 - `GPT_TOP_P` — مقدار `top_p` برای نمونه‌گیری هسته‌ای (۰ تا ۱، پیش‌فرض `1`).
 - `GPT_MAX_TOKENS` — سقف توکن برای هر پاسخ (۰ یعنی بدون محدودیت جداگانه).
+- `GPT_ASSISTANT_ID` — در صورت استفاده از Assistants API می‌توانید شناسه دستیار از پیش ساخته‌شده را وارد کنید (اختیاری).
+
+در صورتی که بخواهید ربات از OpenAI Assistant/Responses استفاده کند، کافی است متغیر `GPT_MODE=assistant` را تنظیم کنید. در این حالت، پیام‌ها همانند قبل از تاریخچه محلی ساخته شده و به اندپوینت جدید (`/v1/responses`) ارسال می‌شوند و در صورت وجود `GPT_ASSISTANT_ID` همان دستیار از پیش ساخته‌شده اجرا خواهد شد.
 
 ## امکانات ربات
 

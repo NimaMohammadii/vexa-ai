@@ -15,14 +15,21 @@ from config import (
     GPT_API_KEY_PREFIX,
     GPT_API_TIMEOUT,
     GPT_API_URL,
+    GPT_ASSISTANT_ID,
     GPT_MAX_TOKENS,
     GPT_MODEL,
+    GPT_MODE,
     GPT_SYSTEM_PROMPT,
     GPT_TEMPERATURE,
     GPT_TOP_P,
 )
 
 _ALLOWED_ROLES = {"system", "user", "assistant"}
+_ASSISTANT_MODES = {"assistant"}
+
+
+def _is_assistant_mode() -> bool:
+    return (GPT_MODE or "").lower() in _ASSISTANT_MODES
 
 
 class GPTServiceError(RuntimeError):
@@ -226,6 +233,8 @@ def _build_headers() -> Dict[str, str]:
 
     headers = {"Content-Type": "application/json"}
     headers[header_name] = header_value
+    if _is_assistant_mode():
+        headers.setdefault("OpenAI-Beta", "assistants=v2")
     return headers
 
 
@@ -258,17 +267,14 @@ def build_default_messages(history: Iterable[Dict[str, str]], user_text: str) ->
     return messages
 
 
-def _prepare_payload(
-    messages: List[Dict[str, Any]],
-    model: Optional[str] = None,
-    temperature: Optional[float] = None,
-    top_p: Optional[float] = None,
-    max_tokens: Optional[int] = None,
+def _prepare_chat_payload(
+    normalised: List[Dict[str, str]],
+    *,
+    model: Optional[str],
+    temperature: Optional[float],
+    top_p: Optional[float],
+    max_tokens: Optional[int],
 ) -> Dict[str, Any]:
-    if not isinstance(messages, list) or not messages:
-        raise GPTServiceError("messages must be a non-empty list")
-
-    normalised = [_normalise_message(message) for message in messages]
     chosen_model = (model or GPT_MODEL or "gpt-4o-mini").strip() or "gpt-4o-mini"
 
     payload: Dict[str, Any] = {
@@ -283,6 +289,70 @@ def _prepare_payload(
         payload["max_tokens"] = limit
 
     return payload
+
+
+def _prepare_assistant_payload(
+    normalised: List[Dict[str, str]],
+    *,
+    model: Optional[str],
+    temperature: Optional[float],
+    top_p: Optional[float],
+    max_tokens: Optional[int],
+) -> Dict[str, Any]:
+    chosen_model = (model or GPT_MODEL or "gpt-4o-mini").strip() or "gpt-4o-mini"
+
+    # The Responses API expects the conversation history under the "input" key.
+    payload: Dict[str, Any] = {
+        "model": chosen_model,
+        "input": [
+            {
+                "role": item.get("role", "assistant"),
+                "content": item.get("content", ""),
+            }
+            for item in normalised
+        ],
+        "temperature": temperature if temperature is not None else GPT_TEMPERATURE,
+        "top_p": top_p if top_p is not None else GPT_TOP_P,
+    }
+
+    if GPT_ASSISTANT_ID:
+        payload["assistant_id"] = GPT_ASSISTANT_ID
+
+    limit = max_tokens if max_tokens is not None else GPT_MAX_TOKENS
+    if limit > 0:
+        payload["max_output_tokens"] = limit
+
+    return payload
+
+
+def _prepare_payload(
+    messages: List[Dict[str, Any]],
+    model: Optional[str] = None,
+    temperature: Optional[float] = None,
+    top_p: Optional[float] = None,
+    max_tokens: Optional[int] = None,
+) -> Dict[str, Any]:
+    if not isinstance(messages, list) or not messages:
+        raise GPTServiceError("messages must be a non-empty list")
+
+    normalised = [_normalise_message(message) for message in messages]
+
+    if _is_assistant_mode():
+        return _prepare_assistant_payload(
+            normalised,
+            model=model,
+            temperature=temperature,
+            top_p=top_p,
+            max_tokens=max_tokens,
+        )
+
+    return _prepare_chat_payload(
+        normalised,
+        model=model,
+        temperature=temperature,
+        top_p=top_p,
+        max_tokens=max_tokens,
+    )
 
 
 def chat_completion(
@@ -330,12 +400,73 @@ def chat_completion(
 def extract_message_text(data: Dict[str, Any]) -> str:
     """Utility helper to get the assistant message content from the API response."""
 
-    choices = data.get("choices") if isinstance(data, dict) else None
-    if not choices:
+    if not isinstance(data, dict):
         return ""
-    message = choices[0].get("message") if isinstance(choices[0], dict) else None
-    content = message.get("content") if isinstance(message, dict) else None
-    return content or ""
+
+    # Legacy chat-completions format
+    choices = data.get("choices")
+    if isinstance(choices, list) and choices:
+        first_choice = choices[0]
+        if isinstance(first_choice, dict):
+            message = first_choice.get("message")
+            if isinstance(message, dict):
+                content = message.get("content")
+                if isinstance(content, str) and content.strip():
+                    return content
+
+    # Responses API helpers
+    output_text = data.get("output_text")
+    if isinstance(output_text, str) and output_text.strip():
+        return output_text.strip()
+
+    texts: List[str] = []
+
+    def _extract_from_blocks(blocks: Any) -> None:
+        if not isinstance(blocks, list):
+            return
+        for block in blocks:
+            if not isinstance(block, dict):
+                continue
+            if isinstance(block.get("text"), str):
+                txt = block.get("text", "")
+            elif isinstance(block.get("value"), str):
+                txt = block.get("value", "")
+            elif isinstance(block.get("content"), str):
+                txt = block.get("content", "")
+            else:
+                txt = ""
+            if not txt and block.get("type") == "output_text" and isinstance(block.get("text"), str):
+                txt = block.get("text", "")
+            if isinstance(txt, str) and txt.strip():
+                texts.append(txt.strip())
+
+    output = data.get("output")
+    if isinstance(output, list):
+        for item in output:
+            if not isinstance(item, dict):
+                continue
+            content = item.get("content")
+            if isinstance(content, str) and content.strip():
+                texts.append(content.strip())
+            _extract_from_blocks(content)
+            message = item.get("message")
+            if isinstance(message, dict):
+                msg_content = message.get("content")
+                if isinstance(msg_content, str) and msg_content.strip():
+                    texts.append(msg_content.strip())
+                _extract_from_blocks(msg_content)
+
+    message = data.get("message")
+    if isinstance(message, dict):
+        msg_content = message.get("content")
+        if isinstance(msg_content, str) and msg_content.strip():
+            texts.append(msg_content.strip())
+        _extract_from_blocks(msg_content)
+
+    if texts:
+        return "\n".join(texts).strip()
+
+    return ""
 
 
 def web_search(query: str, max_results: int = 3) -> List[Dict[str, str]]:
