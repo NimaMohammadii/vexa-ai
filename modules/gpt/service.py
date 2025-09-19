@@ -170,7 +170,6 @@ def resolve_gpt_api_key(force_refresh: bool = False) -> str:
         return ""
 
     # ابتدا تلاش می‌کنیم کلید را از نام‌های رایج (با در نظر گرفتن نسخه حروف کوچک) بخوانیم
- codex/activate-gpt-api-access-for-all-users-nc4le1
     for key_name in _DIRECT_SETTING_NAMES:
         variants = {key_name, key_name.lower(), key_name.replace("_", ""), key_name.replace("_", "-")}
         for variant in variants:
