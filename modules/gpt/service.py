@@ -170,6 +170,7 @@ def resolve_gpt_api_key(force_refresh: bool = False) -> str:
         return ""
 
     # ابتدا تلاش می‌کنیم کلید را از نام‌های رایج (با در نظر گرفتن نسخه حروف کوچک) بخوانیم
+ codex/activate-gpt-api-access-for-all-users-nc4le1
     for key_name in _DIRECT_SETTING_NAMES:
         variants = {key_name, key_name.lower(), key_name.replace("_", ""), key_name.replace("_", "-")}
         for variant in variants:
@@ -179,6 +180,13 @@ def resolve_gpt_api_key(force_refresh: bool = False) -> str:
             candidate = _extract_api_key(value, allow_loose=True)
             if candidate:
                 _cached_api_key = candidate
+
+    for key_name in ("GPT_API", "GPT_API_KEY", "OPENAI_API_KEY"):
+        for variant in {key_name, key_name.lower()}:
+            value = db.get_setting(variant)
+            candidate = _extract_api_key(value, allow_loose=True)
+            if candidate:
+ main
                 return candidate
 
     try:
@@ -194,7 +202,10 @@ def resolve_gpt_api_key(force_refresh: bool = False) -> str:
         allow_loose = key_name in _COMMON_KEY_NAMES or any(term in key_name for term in ("gpt", "openai"))
         candidate = _extract_api_key(value, allow_loose=allow_loose)
         if candidate:
+ codex/activate-gpt-api-access-for-all-users-nc4le1
             _cached_api_key = candidate
+
+ main
             return candidate
 
     # در نهایت، تمام مقادیر باقی‌مانده را با قواعد سخت‌گیرانه بررسی می‌کنیم
@@ -204,7 +215,10 @@ def resolve_gpt_api_key(force_refresh: bool = False) -> str:
             _cached_api_key = candidate
             return candidate
 
+ codex/activate-gpt-api-access-for-all-users-nc4le1
     _cached_api_key = ""
+
+ main
     return ""
 
 
