@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Optional
 
+import html
+
 from telebot.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 import db
@@ -13,6 +15,7 @@ from config import (
     GPT_HISTORY_LIMIT,
     GPT_SYSTEM_PROMPT,
     GPT_MESSAGE_COST,
+    GPT_SEARCH_MESSAGE_COST,
     GPT_RESPONSE_CHAR_LIMIT,
 )
 from modules.i18n import t
@@ -38,16 +41,6 @@ def _back_keyboard(lang: str) -> InlineKeyboardMarkup:
     return kb
 
 
-def _chat_keyboard(lang: str) -> InlineKeyboardMarkup:
-    kb = InlineKeyboardMarkup()
-    kb.row(
-        InlineKeyboardButton(t("gpt_new_chat", lang), callback_data="gpt:new"),
-        InlineKeyboardButton(t("gpt_search", lang), callback_data="gpt:search"),
-    )
-    kb.add(InlineKeyboardButton(t("back", lang), callback_data="home:back"))
-    return kb
-
-
 def _ensure_gpt_ready(lang: str) -> Optional[str]:
     if not (GPT_API_KEY or resolve_gpt_api_key()):
         return t("gpt_not_configured", lang)
@@ -56,21 +49,22 @@ def _ensure_gpt_ready(lang: str) -> Optional[str]:
     return None
 
 
-def _respond(bot, status_message, lang: str, text: str) -> None:
+def _respond(bot, status_message, lang: str, text: str, reply_markup=None) -> None:
+    safe_text = text if ("<" in text or ">" in text) else html.escape(text)
     try:
         bot.edit_message_text(
-            text,
+            safe_text,
             chat_id=status_message.chat.id,
             message_id=status_message.message_id,
-            reply_markup=_chat_keyboard(lang),
-            parse_mode=None,
+            reply_markup=reply_markup,
+            parse_mode="HTML",
         )
     except Exception:
         bot.send_message(
             status_message.chat.id,
-            text,
-            reply_markup=_chat_keyboard(lang),
-            parse_mode=None,
+            safe_text,
+            reply_markup=reply_markup,
+            parse_mode="HTML",
         )
 
 
@@ -84,23 +78,36 @@ def _format_credits(value: float) -> str:
     return f"{num:.1f}".rstrip("0").rstrip(".")
 
 
-def _send_no_credit(bot, chat_id: int, lang: str, balance: float) -> None:
+def _send_no_credit(bot, chat_id: int, lang: str, balance: float, cost: float) -> None:
     kb = InlineKeyboardMarkup()
     kb.add(InlineKeyboardButton(t("btn_credit", lang), callback_data="home:credit"))
     text = t("gpt_no_credit", lang).format(
-        cost=_format_credits(GPT_MESSAGE_COST),
+        cost=_format_credits(cost),
         balance=_format_credits(balance),
     )
-    bot.send_message(chat_id, text, reply_markup=kb)
+    bot.send_message(chat_id, text, reply_markup=kb, parse_mode="HTML")
 
 
-def _charge_for_message(bot, user_id: int, chat_id: int, lang: str) -> bool:
-    if db.deduct_credits(user_id, GPT_MESSAGE_COST):
+def _charge_for_message(bot, user_id: int, chat_id: int, lang: str, cost: float) -> bool:
+    if db.deduct_credits(user_id, cost):
         return True
     refreshed = db.get_user(user_id)
     balance = (refreshed or {}).get("credits", 0)
-    _send_no_credit(bot, chat_id, lang, balance)
+    _send_no_credit(bot, chat_id, lang, balance, cost)
     return False
+
+
+def _refund_credits(user_id: int, amount: float) -> None:
+    try:
+        numeric_amount = float(amount)
+    except (TypeError, ValueError):
+        return
+    if numeric_amount <= 0:
+        return
+    try:
+        db.add_credits(user_id, numeric_amount)
+    except Exception:
+        pass
 
 
 def _trim_answer(answer: str) -> str:
@@ -120,16 +127,60 @@ def _finish_chat(bot, chat_id: int, message_id: int, user_id: int, lang: str) ->
     edit_or_send(bot, chat_id, message_id, text, main_menu(lang))
 
 
-def _start_chat(bot, chat_id: int, message_id: int, user_id: int, lang: str) -> bool:
+def _start_chat(
+    bot,
+    chat_id: int,
+    message_id: int,
+    user_id: int,
+    lang: str,
+    *,
+    reset_history: bool = True,
+) -> bool:
     error = _ensure_gpt_ready(lang)
     if error:
         edit_or_send(bot, chat_id, message_id, error, _back_keyboard(lang))
         return False
 
     db.set_state(user_id, GPT_STATE)
+    if reset_history:
+        db.clear_gpt_history(user_id)
     text = t("gpt_open", lang).format(cost=_format_credits(GPT_MESSAGE_COST))
-    edit_or_send(bot, chat_id, message_id, text, _chat_keyboard(lang))
+    edit_or_send(bot, chat_id, message_id, text, None)
     return True
+
+
+def _process_search_query(bot, user_id: int, chat_id: int, lang: str, query: str) -> None:
+    text = (query or "").strip()
+    if not text:
+        return
+
+    cost = GPT_SEARCH_MESSAGE_COST
+    if not _charge_for_message(bot, user_id, chat_id, lang, cost):
+        db.set_state(user_id, GPT_STATE)
+        return
+
+    history = _load_history(user_id)
+    try:
+        results = web_search(text, max_results=3)
+    except GPTServiceError as exc:
+        _refund_credits(user_id, cost)
+        db.set_state(user_id, GPT_STATE)
+        error_html = t("gpt_search_error", lang).format(error=html.escape(str(exc)))
+        bot.send_message(chat_id, error_html, parse_mode="HTML")
+        return
+
+    if not results:
+        bot.send_message(chat_id, t("gpt_search_no_results", lang), parse_mode="HTML")
+
+    search_context = _build_search_context(text, results)
+    messages = build_default_messages(history, text)
+    messages.insert(-1, {"role": "system", "content": search_context})
+
+    db.log_gpt_message(user_id, "user", f"[search] {text}")
+
+    thinking = bot.send_message(chat_id, t("gpt_wait", lang), parse_mode="HTML")
+    _handle_chat_completion(bot, user_id, chat_id, lang, messages, thinking, cost=cost)
+    db.set_state(user_id, GPT_STATE)
 
 
 def _handle_force_sub(bot, user_id: int, lang: str, chat_id: int, message_id: int) -> bool:
@@ -177,20 +228,32 @@ def _build_search_context(query: str, results: list[dict[str, str]]) -> str:
     return "\n".join(base)
 
 
-def _handle_chat_completion(bot, user_id: int, chat_id: int, lang: str, messages, thinking):
+def _handle_chat_completion(
+    bot,
+    user_id: int,
+    chat_id: int,
+    lang: str,
+    messages,
+    thinking,
+    *,
+    cost: float = 0,
+):
     try:
         data = chat_completion(messages)
         answer = (extract_message_text(data) or "").strip()
         if not answer:
             answer = t("gpt_empty", lang)
         answer = _trim_answer(answer)
+        bold_answer = f"<b>{html.escape(answer)}</b>"
         db.log_gpt_message(user_id, "assistant", answer)
-        _respond(bot, thinking, lang, answer)
+        _respond(bot, thinking, lang, bold_answer)
     except GPTServiceError as exc:
-        _respond(bot, thinking, lang, t("gpt_error", lang).format(error=str(exc)))
+        _refund_credits(user_id, cost)
+        _respond(bot, thinking, lang, t("gpt_error", lang).format(error=html.escape(str(exc))))
     except Exception as exc:  # pragma: no cover - unexpected failure
         if DEBUG:
             print("GPT chat handler error:", exc)
+        _refund_credits(user_id, cost)
         _respond(bot, thinking, lang, t("gpt_error", lang).format(error=t("gpt_error_unknown", lang)))
 
 
@@ -207,11 +270,7 @@ def register(bot):
         if not _handle_force_sub(bot, user["user_id"], lang, msg.chat.id, msg.message_id):
             return
 
-        state = db.get_state(user["user_id"]) or ""
-        if state.startswith("gpt:"):
-            _finish_chat(bot, msg.chat.id, msg.message_id, user["user_id"], lang)
-        else:
-            _start_chat(bot, msg.chat.id, msg.message_id, user["user_id"], lang)
+        _start_chat(bot, msg.chat.id, msg.message_id, user["user_id"], lang, reset_history=True)
 
     @bot.message_handler(commands=["endgpt", "stopgpt"])
     def stop_gpt(msg):
@@ -233,36 +292,40 @@ def register(bot):
             bot.answer_callback_query(cq.id)
             return
 
-        current_state = db.get_state(user["user_id"]) or ""
-        if current_state.startswith("gpt:"):
-            _finish_chat(bot, cq.message.chat.id, cq.message.message_id, user["user_id"], lang)
-            bot.answer_callback_query(cq.id, text=t("gpt_end", lang), show_alert=False)
-            return
-
-        if _start_chat(bot, cq.message.chat.id, cq.message.message_id, user["user_id"], lang):
+        if _start_chat(bot, cq.message.chat.id, cq.message.message_id, user["user_id"], lang, reset_history=True):
             bot.answer_callback_query(cq.id)
         else:
             bot.answer_callback_query(cq.id, show_alert=True, text=t("gpt_not_configured_alert", lang))
 
-    @bot.callback_query_handler(func=lambda c: c.data == "gpt:new")
-    def reset_chat(cq):
-        user = db.get_or_create_user(cq.from_user)
-        lang = db.get_user_lang(user["user_id"], "fa")
-        db.touch_last_seen(user["user_id"])
-        db.clear_gpt_history(user["user_id"])
-        db.set_state(user["user_id"], GPT_STATE)
-        edit_or_send(bot, cq.message.chat.id, cq.message.message_id, t("gpt_reset", lang), _chat_keyboard(lang))
-        bot.answer_callback_query(cq.id, text=t("gpt_reset_toast", lang), show_alert=False)
+    @bot.message_handler(commands=["websearch", "search", "web"])
+    def activate_search(msg):
+        user = db.get_or_create_user(msg.from_user)
+        if user.get("banned"):
+            bot.reply_to(msg, "⛔️ دسترسی شما مسدود است.")
+            return
 
-    @bot.callback_query_handler(func=lambda c: c.data == "gpt:search")
-    def start_search(cq):
-        user = db.get_or_create_user(cq.from_user)
         lang = db.get_user_lang(user["user_id"], "fa")
         db.touch_last_seen(user["user_id"])
+
+        error = _ensure_gpt_ready(lang)
+        if error:
+            bot.reply_to(msg, error, parse_mode="HTML")
+            return
+
+        query = ""
+        if msg.text:
+            parts = msg.text.split(maxsplit=1)
+            if len(parts) > 1:
+                query = parts[1].strip()
+
+        if query:
+            db.set_state(user["user_id"], GPT_STATE)
+            _process_search_query(bot, user["user_id"], msg.chat.id, lang, query)
+            return
+
         db.set_state(user["user_id"], GPT_SEARCH_STATE)
-        prompt = t("gpt_search_prompt", lang).format(cost=_format_credits(GPT_MESSAGE_COST))
-        edit_or_send(bot, cq.message.chat.id, cq.message.message_id, prompt, _chat_keyboard(lang))
-        bot.answer_callback_query(cq.id)
+        prompt = t("gpt_search_prompt", lang).format(cost=_format_credits(GPT_SEARCH_MESSAGE_COST))
+        edit_or_send(bot, msg.chat.id, msg.message_id, prompt, None)
 
     def _is_gpt_message(message) -> bool:
         state = db.get_state(message.from_user.id) or ""
@@ -284,36 +347,18 @@ def register(bot):
 
         error = _ensure_gpt_ready(lang)
         if error:
-            bot.reply_to(msg, error)
+            bot.reply_to(msg, error, parse_mode="HTML")
             db.clear_state(user["user_id"])
             return
 
         state = db.get_state(user["user_id"]) or ""
 
         if state == GPT_SEARCH_STATE:
-            if not _charge_for_message(bot, user["user_id"], msg.chat.id, lang):
-                db.set_state(user["user_id"], GPT_STATE)
-                return
-
-            history = _load_history(user["user_id"])
-            try:
-                results = web_search(text, max_results=3)
-            except GPTServiceError as exc:
-                results = []
-                if DEBUG:
-                    print("Web search error:", exc)
-            search_context = _build_search_context(text, results)
-            messages = build_default_messages(history, text)
-            messages.insert(-1, {"role": "system", "content": search_context})
-
-            db.log_gpt_message(user["user_id"], "user", f"[search] {text}")
-
-            thinking = bot.send_message(msg.chat.id, t("gpt_wait", lang))
-            _handle_chat_completion(bot, user["user_id"], msg.chat.id, lang, messages, thinking)
-            db.set_state(user["user_id"], GPT_STATE)
+            _process_search_query(bot, user["user_id"], msg.chat.id, lang, text)
             return
 
-        if not _charge_for_message(bot, user["user_id"], msg.chat.id, lang):
+        cost = GPT_MESSAGE_COST
+        if not _charge_for_message(bot, user["user_id"], msg.chat.id, lang, cost):
             return
 
         history = _load_history(user["user_id"])
@@ -321,5 +366,5 @@ def register(bot):
 
         db.log_gpt_message(user["user_id"], "user", text)
 
-        thinking = bot.send_message(msg.chat.id, t("gpt_wait", lang))
-        _handle_chat_completion(bot, user["user_id"], msg.chat.id, lang, messages, thinking)
+        thinking = bot.send_message(msg.chat.id, t("gpt_wait", lang), parse_mode="HTML")
+        _handle_chat_completion(bot, user["user_id"], msg.chat.id, lang, messages, thinking, cost=cost)
