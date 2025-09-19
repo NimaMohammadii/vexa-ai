@@ -56,13 +56,32 @@ GPT_API_KEY = _first_non_empty(
     os.getenv("GPT_API_KEY"),
     os.getenv("OPENAI_API_KEY"),
 ).strip()
-GPT_API_URL = (os.getenv("GPT_API_URL") or "https://api.openai.com/v1/chat/completions").strip()
+
+_GPT_MODE_RAW = (
+    os.getenv("GPT_MODE")
+    or os.getenv("GPT_PROVIDER")
+    or os.getenv("GPT_API_MODE")
+    or "chat"
+)
+_GPT_MODE_NORMALISED = (_GPT_MODE_RAW or "").strip().lower()
+if _GPT_MODE_NORMALISED in {"assistant", "assistants", "assistant-api", "assistant_api", "responses", "response"}:
+    GPT_MODE = "assistant"
+else:
+    GPT_MODE = "chat"
+
+_DEFAULT_CHAT_API_URL = "https://api.openai.com/v1/chat/completions"
+_DEFAULT_ASSISTANT_API_URL = "https://api.openai.com/v1/responses"
+_default_url = _DEFAULT_ASSISTANT_API_URL if GPT_MODE == "assistant" else _DEFAULT_CHAT_API_URL
+
+GPT_API_URL = (os.getenv("GPT_API_URL") or _default_url).strip() or _default_url
 GPT_MODEL = (os.getenv("GPT_MODEL") or "gpt-4o-mini").strip() or "gpt-4o-mini"
 GPT_API_TIMEOUT = _parse_float(os.getenv("GPT_API_TIMEOUT", "45"), 45.0)
 GPT_API_KEY_HEADER = (os.getenv("GPT_API_KEY_HEADER") or "Authorization").strip() or "Authorization"
 GPT_API_KEY_PREFIX = os.getenv("GPT_API_KEY_PREFIX")
 if GPT_API_KEY_PREFIX is None:
     GPT_API_KEY_PREFIX = "Bearer "
+
+GPT_ASSISTANT_ID = (os.getenv("GPT_ASSISTANT_ID") or os.getenv("OPENAI_ASSISTANT_ID") or "").strip()
 
 _DEFAULT_SYSTEM_PROMPT = (
     "You are Vexa GPT. Reply in the user's language with concise, direct answers."
