@@ -96,7 +96,7 @@ def check_force_sub(bot, user_id, settings):
         kb.add(InlineKeyboardButton("Follow Instagram📱", url=ig_url))
     kb.add(InlineKeyboardButton("I Joined ✅", callback_data="fs:recheck"))
 
-    txt = "<b>Please join our channel to continue using the bot</b>\n"
+    txt = "<b>Join our channel to continue</b>\n"
     if tg_channel: txt += f"• Telegram channel\n"
     if ig_url:     txt += f"• Instagram page\n"
     txt += "\nAfter joining, click ✅ <b>I joined</b> to continue"
