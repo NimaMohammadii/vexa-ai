@@ -1,15 +1,14 @@
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
-from .texts import PAY_STARS_BTN, PAY_RIAL_BTN, PAY_RIAL_INSTANT, BACK_BTN, CANCEL_BTN
+
+from modules.i18n import t
+
 from .settings import PAYMENT_PLANS, STAR_PACKAGES
 
-def augment_with_rial(base_kb: InlineKeyboardMarkup | None) -> InlineKeyboardMarkup:
-    """
-    این تابع دکمه «پرداخت ریالی» را به منوی Credit فعلی‌ات اضافه می‌کند.
-    اگر منو از قبل وجود دارد، همان را می‌گیرد و یک دکمه به آن اضافه می‌کند.
-    اگر None بدهی، یک منوی جدید می‌سازد.
-    """
+
+def augment_with_rial(base_kb: InlineKeyboardMarkup | None, lang: str) -> InlineKeyboardMarkup:
     kb = base_kb or InlineKeyboardMarkup(row_width=2)
-    kb.add(InlineKeyboardButton(PAY_RIAL_BTN, callback_data="credit:payrial"))
+    if lang == "fa":
+        kb.add(InlineKeyboardButton(t("credit_pay_rial_btn", lang), callback_data="credit:payrial"))
     return kb
 
 def payrial_plans_kb() -> InlineKeyboardMarkup:
@@ -30,7 +29,7 @@ def payrial_plans_kb() -> InlineKeyboardMarkup:
             kb.row(*row)
             row = []
     
-    kb.add(InlineKeyboardButton(BACK_BTN, callback_data="credit:menu"))
+    kb.add(InlineKeyboardButton(t("back", "fa"), callback_data="credit:menu"))
     return kb
 
 def admin_approve_kb(user_id: int, plan_index: int) -> InlineKeyboardMarkup:
@@ -42,12 +41,12 @@ def admin_approve_kb(user_id: int, plan_index: int) -> InlineKeyboardMarkup:
     )
     return kb
 
-def credit_menu_kb() -> InlineKeyboardMarkup:
-    """منوی اصلی خرید کردیت"""
+def credit_menu_kb(lang: str) -> InlineKeyboardMarkup:
     kb = InlineKeyboardMarkup(row_width=1)
-    kb.add(InlineKeyboardButton(PAY_STARS_BTN, callback_data="credit:stars"))
-    kb.add(InlineKeyboardButton(PAY_RIAL_BTN, callback_data="credit:payrial"))
-    kb.add(InlineKeyboardButton(BACK_BTN, callback_data="home:back"))
+    kb.add(InlineKeyboardButton(t("credit_pay_stars_btn", lang), callback_data="credit:stars"))
+    if lang == "fa":
+        kb.add(InlineKeyboardButton(t("credit_pay_rial_btn", lang), callback_data="credit:payrial"))
+    kb.add(InlineKeyboardButton(t("back", lang), callback_data="home:back"))
     return kb
 
 def stars_packages_kb() -> InlineKeyboardMarkup:
@@ -67,10 +66,10 @@ def stars_packages_kb() -> InlineKeyboardMarkup:
     if row:
         kb.row(*row)
 
-    kb.add(InlineKeyboardButton(BACK_BTN, callback_data="credit:menu"))
+    kb.add(InlineKeyboardButton(t("back", "fa"), callback_data="credit:menu"))
     return kb
 
 def instant_cancel_kb() -> InlineKeyboardMarkup:
     kb = InlineKeyboardMarkup(row_width=1)
-    kb.add(InlineKeyboardButton(CANCEL_BTN, callback_data="credit:cancel"))
+    kb.add(InlineKeyboardButton(t("credit_cancel", "fa"), callback_data="credit:cancel"))
     return kb
