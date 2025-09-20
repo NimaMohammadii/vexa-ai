@@ -165,7 +165,15 @@ def register(bot):
             settings = db.get_settings()
             ok, txt, kb = check_force_sub(bot, user["user_id"], settings)
             if ok:
-                edit_or_send(bot, cq.message.chat.id, cq.message.message_id, MAIN(lang), main_menu(lang))
+                from modules.lang.handlers import send_language_menu
+
+                send_language_menu(
+                    bot,
+                    user,
+                    cq.message.chat.id,
+                    cq.message.message_id,
+                    display_lang="en",
+                )
                 bot.answer_callback_query(cq.id, t("force_sub_confirmed", lang))
             else:
                 bot.answer_callback_query(cq.id, t("force_sub_not_joined", lang))
