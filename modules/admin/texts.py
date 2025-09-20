@@ -28,6 +28,10 @@ STATE_SUB_UID = "ADMIN:SUB:UID"
 ASK_AMT_SUB   = "➖ مقدار کردیتی که باید کم شود را بفرستید (فقط عدد)."
 STATE_SUB_AMT = "ADMIN:SUB:AMT"
 
+# ——— ریست/آن‌سابسکرایب کاربر
+ASK_UID_RESET   = "♻️ آیدی عددی یا یوزرنیم کاربری که باید ریست شود را بفرستید."
+STATE_RESET_UID = "ADMIN:RESET:UID"
+
 # ——— پیام تکی
 ASK_UID_MSG   = "✉️ آیدی عددی یا یوزرنیم کاربری که باید پیام تکی بگیرد را بفرستید."
 STATE_MSG_UID = "ADMIN:DM:UID"

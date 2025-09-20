@@ -256,6 +256,24 @@ def log_message(user_id, direction, text):
         con.commit()
 
 
+def reset_user(user_id: int) -> bool:
+    """Completely remove a user and all related data from the bot database."""
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute("SELECT 1 FROM users WHERE user_id=?", (user_id,))
+        if not cur.fetchone():
+            return False
+
+        cur.execute("DELETE FROM users WHERE user_id=?", (user_id,))
+        cur.execute("DELETE FROM kv_state WHERE user_id=?", (user_id,))
+        cur.execute("DELETE FROM messages WHERE user_id=?", (user_id,))
+        cur.execute("DELETE FROM gpt_messages WHERE user_id=?", (user_id,))
+        cur.execute("DELETE FROM purchases WHERE user_id=?", (user_id,))
+        cur.execute("DELETE FROM user_voices WHERE user_id=?", (user_id,))
+        con.commit()
+    return True
+
+
 def log_gpt_message(user_id: int, role: str, content: str) -> None:
     role_value = str(role or "assistant").strip() or "assistant"
     with closing(sqlite3.connect(DB_PATH)) as con:
