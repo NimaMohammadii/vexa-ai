@@ -18,7 +18,6 @@ def main_menu(lang: str) -> InlineKeyboardMarkup:
         InlineKeyboardButton(t("btn_credit", lang), callback_data="home:credit"),
         InlineKeyboardButton(t("btn_clone", lang), callback_data="home:clone"),
     )
-    )
     if lang == "fa":
         kb.row(
             InlineKeyboardButton(t("btn_credit", lang), callback_data="home:credit"),
