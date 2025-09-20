@@ -1,15 +1,30 @@
 # modules/clone/texts.py
+from modules.i18n import t
 
-def MENU(lang="fa"):
-    return "🎙 <b>ساخت صدای شخصی</b>\n\nیک ویس کوتاه (۱۵-۳۰ ثانیه) ارسال کنید."
 
-def PAYMENT_CONFIRM(lang="fa", cost=6800):
-    return f"💰 <b>پرداخت کردیت</b>\n\nبرای ساخت صدای شخصی باید <b>{cost:,} کردیت</b> پرداخت کنید.\n\nآیا تایید می‌کنید؟"
+def MENU(lang: str = "fa") -> str:
+    return t("clone_menu", lang)
 
-def NO_CREDIT_CLONE(lang="fa", balance=0, cost=6800):
-    return f"❌ <b>کردیت ناکافی</b>\n\nموجودی شما: <b>{balance:,} کردیت</b>\nمورد نیاز: <b>{cost:,} کردیت</b>\n\nلطفاً ابتدا کردیت خریداری کنید."
 
-ASK_NAME = "➕ </b>حالا یک اسم برای صدای جدیدت بفرست<b>"
-SUCCESS = "✅ صدای شخصی با موفقیت ساخته شد و به لیست صداهای شما اضافه شد."
-PAYMENT_SUCCESS = "✅ با موفقیت کردیت پرداخت شد!"
-ERROR = "❌ خطا در ساخت صدا. دوباره تلاش کنید."
+def PAYMENT_CONFIRM(lang: str = "fa", cost: int = 6800) -> str:
+    return t("clone_payment_confirm", lang).format(cost=cost)
+
+
+def NO_CREDIT_CLONE(lang: str = "fa", balance: int = 0, cost: int = 6800) -> str:
+    return t("clone_insufficient_credit", lang).format(balance=balance, cost=cost)
+
+
+def ASK_NAME(lang: str = "fa") -> str:
+    return t("clone_ask_name", lang)
+
+
+def SUCCESS(lang: str = "fa") -> str:
+    return t("clone_success", lang)
+
+
+def PAYMENT_SUCCESS(lang: str = "fa") -> str:
+    return t("clone_payment_success", lang)
+
+
+def ERROR(lang: str = "fa") -> str:
+    return t("clone_error", lang)

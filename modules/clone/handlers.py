@@ -2,31 +2,24 @@
 import db
 from config import DEBUG
 from utils import edit_or_send
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+from modules.i18n import t
 from .service import clone_voice_with_cleanup
 from .settings import STATE_WAIT_VOICE, STATE_WAIT_PAYMENT, STATE_WAIT_NAME, VOICE_CLONE_COST
 from .texts import MENU, PAYMENT_CONFIRM, NO_CREDIT_CLONE, ASK_NAME, SUCCESS, PAYMENT_SUCCESS, ERROR
-from .keyboards import payment_keyboard, no_credit_keyboard
-
-MENU_TXT   = "🧬 <b>ساخت صدای شخصی – Voice Clone</b>\n\n<b>اینجا می‌تونی صدای خودت یا هر صدایی که دوست داری رو شبیه‌سازی کنی و بعدش فقط با نوشتن متن، همون صدا برات صحبت کنه! 🫧</b>\n\n<b>یک ویس کوتاه (۱۵–۳۰ ثانیه) ارسال کن</b>"
-SUCCESS_TXT= SUCCESS
-ERROR_TXT  = ERROR
-
-def _kb_home():
-    kb = InlineKeyboardMarkup()
-    kb.add(InlineKeyboardButton("🔙 بازگشت", callback_data="home:back"))
-    return kb
+from .keyboards import payment_keyboard, no_credit_keyboard, menu_keyboard
 
 def open_clone(bot, cq):
-    # فقط بازکردن صفحه‌ی کلون (بدون نیاز به import دیگر)
+    user = db.get_or_create_user(cq.from_user)
+    lang = db.get_user_lang(user["user_id"], "fa")
+
     db.set_state(cq.from_user.id, STATE_WAIT_VOICE)
-    
+
     # ذخیره message_id برای پاک‌سازی بعدی
     if not hasattr(bot, "clone_start_messages"):
         bot.clone_start_messages = {}
     bot.clone_start_messages[cq.from_user.id] = cq.message.message_id
-    
-    edit_or_send(bot, cq.message.chat.id, cq.message.message_id, MENU_TXT, _kb_home())
+
+    edit_or_send(bot, cq.message.chat.id, cq.message.message_id, MENU(lang), menu_keyboard(lang))
 
 def register(bot):
     # استور موقت برای فایل ویس
@@ -47,49 +40,51 @@ def register(bot):
             user = db.get_or_create_user(cq.from_user)
             user_id = user["user_id"]
             lang = db.get_user_lang(user_id, "fa")
-            
+
             # بررسی وجود state و voice data
             current_state = db.get_state(user_id)
             if current_state != STATE_WAIT_PAYMENT:
-                bot.answer_callback_query(cq.id, "❌ جلسه منقضی شده. دوباره تلاش کنید.", show_alert=True)
+                bot.answer_callback_query(cq.id, t("clone_session_expired", lang), show_alert=True)
                 return
-                
+
             if not hasattr(bot, "temp_voice_bytes") or user_id not in bot.temp_voice_bytes:
-                bot.answer_callback_query(cq.id, "❌ فایل صوتی یافت نشد. دوباره شروع کنید.", show_alert=True)
+                bot.answer_callback_query(cq.id, t("clone_audio_missing", lang), show_alert=True)
                 db.clear_state(user_id)
                 return
-            
+
             # بررسی کردیت کافی
             if user["credits"] < VOICE_CLONE_COST:
-                edit_or_send(bot, cq.message.chat.id, cq.message.message_id, 
-                           NO_CREDIT_CLONE(lang, user["credits"], VOICE_CLONE_COST), 
-                           no_credit_keyboard())
+                edit_or_send(bot, cq.message.chat.id, cq.message.message_id,
+                           NO_CREDIT_CLONE(lang, user["credits"], VOICE_CLONE_COST),
+                           no_credit_keyboard(lang))
                 bot.answer_callback_query(cq.id)
                 return
-            
+
             # موفقیت - درخواست نام صدا (بدون کسر کردیت)
             db.set_state(user_id, STATE_WAIT_NAME)
-            edit_or_send(bot, cq.message.chat.id, cq.message.message_id, 
-                        PAYMENT_SUCCESS + "\n\n" + ASK_NAME, None)
-            
-            bot.answer_callback_query(cq.id, "✅ تایید شد!", show_alert=True)
-            
+            edit_or_send(bot, cq.message.chat.id, cq.message.message_id,
+                        PAYMENT_SUCCESS(lang) + "\n\n" + ASK_NAME(lang), None)
+
+            bot.answer_callback_query(cq.id, t("clone_payment_confirmed", lang), show_alert=True)
+
         except Exception as e:
             if DEBUG: print("clone:confirm_payment error", e)
-            bot.answer_callback_query(cq.id, "❌ خطای سیستمی", show_alert=True)
+            lang = locals().get("lang", "fa")
+            bot.answer_callback_query(cq.id, t("clone_system_error", lang), show_alert=True)
 
     # قبول voice + audio + document(اگر audio/* باشد)
     @bot.message_handler(func=lambda m: db.get_state(m.from_user.id) == STATE_WAIT_VOICE,
                          content_types=["voice","audio","document"])
     def _on_voice(msg):
         try:
+            lang = db.get_user_lang(msg.from_user.id, "fa")
             # بررسی محدودیت تعداد صداهای کاربر (حداکثر 2 صدا)
             user_voices = db.list_user_voices(msg.from_user.id)
             if len(user_voices) >= 2:
-                bot.reply_to(msg, "❌ شما حداکثر ۲ صدای شخصی می‌توانید داشته باشید<b> ابتدا یکی از صداهای قبلی را حذف کنید</b>")
+                bot.reply_to(msg, t("clone_limit_reached", lang))
                 db.clear_state(msg.from_user.id)
                 return
-            
+
             fn, mime, file_id = "audio.wav", "audio/wav", None
 
             if msg.voice:  # ویس تلگرام (ogg/opus)
@@ -104,7 +99,7 @@ def register(bot):
 
             elif msg.document:  # فقط اگر audio/*
                 if not (msg.document.mime_type or "").startswith("audio/"):
-                    bot.reply_to(msg, "فقط فایل‌های صوتی مجازند (mp3/wav/ogg).")
+                    bot.reply_to(msg, t("clone_invalid_file", lang))
                     return
                 file_id = msg.document.file_id
                 fn = msg.document.file_name or fn
@@ -121,14 +116,20 @@ def register(bot):
             # نمایش صفحه تایید پرداخت
             user = db.get_or_create_user(msg.from_user)
             lang = db.get_user_lang(user["user_id"], "fa")
-            
+
             db.set_state(msg.from_user.id, STATE_WAIT_PAYMENT)
-            bot.send_message(msg.chat.id, PAYMENT_CONFIRM(lang, VOICE_CLONE_COST), reply_markup=payment_keyboard())
+            bot.send_message(
+                msg.chat.id,
+                PAYMENT_CONFIRM(lang, VOICE_CLONE_COST),
+                reply_markup=payment_keyboard(lang),
+                parse_mode="HTML",
+            )
 
         except Exception as e:
             if DEBUG: print("clone:on_voice", e)
-            bot.send_message(msg.chat.id, ERROR_TXT)
+            bot.send_message(msg.chat.id, ERROR(lang), parse_mode="HTML")
             db.clear_state(msg.from_user.id)
+
 
     # دریافت نام برای صدای ساخته شده
     @bot.message_handler(func=lambda m: db.get_state(m.from_user.id) == STATE_WAIT_NAME,
@@ -137,21 +138,22 @@ def register(bot):
         try:
             user_id = msg.from_user.id
             voice_name = msg.text.strip()
-            
+            lang = db.get_user_lang(user_id, "fa")
+
             if not voice_name:
-                bot.reply_to(msg, "❌ نام نمی‌تواند خالی باشد. دوباره تلاش کن.")
+                bot.reply_to(msg, t("clone_name_empty", lang))
                 return
-            
+
             # بررسی وجود فایل صوتی موقت
             if not hasattr(bot, "temp_voice_bytes") or user_id not in bot.temp_voice_bytes:
-                bot.reply_to(msg, "❌ فایل صوتی یافت نشد. از ابتدا شروع کن.")
+                bot.reply_to(msg, t("clone_audio_missing", lang))
                 db.clear_state(user_id)
                 return
-            
+
             # بررسی کردیت قبل از ساخت صدا
             user = db.get_user(user_id)
             if not user or user["credits"] < VOICE_CLONE_COST:
-                bot.reply_to(msg, "❌ کردیت کافی نیست.")
+                bot.reply_to(msg, t("clone_not_enough_credit", lang))
                 db.clear_state(user_id)
                 if hasattr(bot, "temp_voice_bytes") and user_id in bot.temp_voice_bytes:
                     del bot.temp_voice_bytes[user_id]
@@ -173,7 +175,7 @@ def register(bot):
                     delete_voice(voice_id)
                 except:
                     pass
-                bot.reply_to(msg, "❌ کردیت کافی نیست.")
+                bot.reply_to(msg, t("clone_not_enough_credit", lang))
                 db.clear_state(user_id)
                 if hasattr(bot, "temp_voice_bytes") and user_id in bot.temp_voice_bytes:
                     del bot.temp_voice_bytes[user_id]
@@ -192,11 +194,11 @@ def register(bot):
             
             user = db.get_or_create_user(msg.from_user)
             lang = db.get_user_lang(user["user_id"], "fa")
-            
+
             try:
                 # ارسال پیام موفقیت
-                success_msg = bot.send_message(msg.chat.id, SUCCESS_TXT)
-                
+                success_msg = bot.send_message(msg.chat.id, SUCCESS(lang), parse_mode="HTML")
+
                 # پاک کردن پیام‌های مربوط به ساخت صدا
                 try:
                     # اگر message_id شروع ذخیره شده، از اونجا تا الان پاک کن
@@ -221,7 +223,7 @@ def register(bot):
                     pass
                 
                 # ارسال منوی اصلی جدید
-                bot.send_message(msg.chat.id, MAIN(lang), reply_markup=main_menu(lang))
+                bot.send_message(msg.chat.id, MAIN(lang), parse_mode="HTML", reply_markup=main_menu(lang))
                 
                 # پاک کردن پیام موفقیت بعد از ۵ دقیقه (۳۰۰ ثانیه)
                 import threading
@@ -237,23 +239,24 @@ def register(bot):
             except Exception as e:
                 if DEBUG: print(f"Menu refresh error: {e}")
                 # در صورت خطا، فقط پیام موفقیت ارسال کن
-                bot.send_message(msg.chat.id, SUCCESS_TXT)
-            
+                bot.send_message(msg.chat.id, SUCCESS(lang), parse_mode="HTML")
+
         except Exception as e:
             if DEBUG: print("clone:on_name", e)
-            
+
             # بررسی نوع خطا برای نمایش پیام مناسب
-            error_msg = ERROR_TXT
+            lang = locals().get("lang", db.get_user_lang(msg.from_user.id, "fa"))
+            error_msg = ERROR(lang)
             error_str = str(e).lower()
-            
+
             if "maximum amount of custom voices" in error_str or "voice limit" in error_str:
-                error_msg = "❌ در حال پاک‌سازی صداهای قدیمی و ساخت صدای جدید... لطفاً چند لحظه صبر کنید."
+                error_msg = t("clone_cleanup_retry", lang)
             elif "api" in error_str and "400" in error_str:
-                error_msg = "❌ مشکل در پردازش فایل صوتی. لطفاً فایل صوتی با کیفیت بهتر ارسال کنید."
+                error_msg = t("clone_audio_quality_error", lang)
             elif "network" in error_str or "timeout" in error_str:
-                error_msg = "❌ مشکل در ارتباط با سرور. لطفاً دوباره تلاش کنید."
-            
-            bot.send_message(msg.chat.id, error_msg)
+                error_msg = t("clone_server_error", lang)
+
+            bot.send_message(msg.chat.id, error_msg, parse_mode="HTML")
             
             # پاک‌سازی در صورت خطا
             if hasattr(bot, "temp_voice_bytes") and msg.from_user.id in bot.temp_voice_bytes:
