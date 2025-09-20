@@ -10,6 +10,7 @@ from .texts import (
     TITLE, MENU, DENY, DONE,
     ASK_UID_ADD, ASK_AMT_ADD, STATE_ADD_UID, STATE_ADD_AMT,
     ASK_UID_SUB, ASK_AMT_SUB, STATE_SUB_UID, STATE_SUB_AMT,
+    ASK_UID_RESET, STATE_RESET_UID,
     ASK_UID_MSG, ASK_TXT_MSG, STATE_MSG_UID, STATE_MSG_TXT,
     ASK_TXT_CAST, STATE_CAST_TXT,
     ASK_UID_LOOKUP, STATE_USER_LOOKUP,
@@ -242,6 +243,12 @@ def register(bot):
             edit_or_send(bot, cq.message.chat.id, cq.message.message_id, ASK_UID_SUB, admin_menu())
             return
 
+        if action == "reset":
+            db.clear_state(cq.from_user.id)
+            db.set_state(cq.from_user.id, STATE_RESET_UID)
+            edit_or_send(bot, cq.message.chat.id, cq.message.message_id, ASK_UID_RESET, admin_menu())
+            return
+
         # از صفحه کاربر—رفتن مستقیم به مقدار
         if action == "uadd":
             uid = int(p[2])
@@ -425,6 +432,17 @@ def register(bot):
         db.add_credits(uid, -amt)
         newc = db.get_user(uid)["credits"]
         bot.reply_to(msg, f"{DONE}\n👤 <code>{uid}</code>\n➖ -{amt}💳\n💼 موجودی: <b>{newc}</b>")
+        db.clear_state(msg.from_user.id)
+
+    @bot.message_handler(func=lambda m: db.get_state(m.from_user.id) == STATE_RESET_UID, content_types=['text'])
+    def s_reset(msg: types.Message):
+        if not _is_owner(msg.from_user): return
+        uid = _resolve_user_id(msg.text)
+        if not uid:
+            bot.reply_to(msg, "❌ آی‌دی/یوزرنیم معتبر نیست."); return
+        if not db.reset_user(uid):
+            bot.reply_to(msg, "❌ کاربری با این مشخصات یافت نشد یا قبلاً حذف شده است."); return
+        bot.reply_to(msg, f"{DONE}\n👤 <code>{uid}</code>\n♻️ اطلاعات کاربر حذف شد و باید دوباره استارت کند.")
         db.clear_state(msg.from_user.id)
 
     # پیام تکی
