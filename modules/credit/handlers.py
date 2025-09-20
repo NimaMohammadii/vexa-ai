@@ -5,8 +5,9 @@ import telebot.types as ttypes
 import time
 
 from .texts import (
-    CREDIT_TITLE, CREDIT_HEADER, PAY_RIAL_TITLE, PAY_RIAL_PLANS_HEADER, INSTANT_PAY_INSTRUCT, WAITING_CONFIRM
+    PAY_RIAL_TITLE, PAY_RIAL_PLANS_HEADER, INSTANT_PAY_INSTRUCT, WAITING_CONFIRM
 )
+from modules.i18n import t
 from .keyboards import credit_menu_kb, stars_packages_kb, payrial_plans_kb, instant_cancel_kb, augment_with_rial, admin_approve_kb
 from config import BOT_OWNER_ID as ADMIN_REVIEW_CHAT_ID, CARD_NUMBER
 from .settings import PAYMENT_PLANS
@@ -69,7 +70,7 @@ def _is_waiting(user_id: int) -> bool:
 def open_credit(bot: TeleBot, cq):
     """باز کردن منوی اصلی خرید کردیت"""
     import db
-    
+
     # پاک کردن منوی TTS قبلی اگر وجود داشته باشه
     user_state = db.get_state(cq.from_user.id) or ""
     if user_state.startswith("tts:wait_text:"):
@@ -85,27 +86,33 @@ def open_credit(bot: TeleBot, cq):
         # پاک کردن state
         db.clear_state(cq.from_user.id)
     
-    text = f"🛒 <b>{CREDIT_TITLE}</b>\n\n{CREDIT_HEADER}"
+    user = db.get_or_create_user(cq.from_user)
+    lang = db.get_user_lang(user["user_id"], "fa")
+    if lang != "fa":
+        bot.answer_callback_query(cq.id, t("credit_unavailable", lang), show_alert=True)
+        return
+
+    text = f"🛒 <b>{t('credit_title', lang)}</b>\n\n{t('credit_header', lang)}"
     
     # ادیت کردن همین پیام
     try:
         bot.edit_message_text(
             text, cq.message.chat.id, cq.message.message_id,
-            parse_mode="HTML", reply_markup=credit_menu_kb()
+            parse_mode="HTML", reply_markup=credit_menu_kb(lang)
         )
     except Exception:
         # اگر ادیت نشد، پیام جدید بفرست
         bot.send_message(
             cq.message.chat.id, text,
-            parse_mode="HTML", reply_markup=credit_menu_kb()
+            parse_mode="HTML", reply_markup=credit_menu_kb(lang)
         )
 
 # === API عمومی برای ادغام با منوی Credit موجود تو ===
-def add_rial_button_to_credit_menu(markup):
+def add_rial_button_to_credit_menu(markup, lang: str = "fa"):
     """در کد فعلی منوی Credit، قبل از ارسال reply_markup این تابع را صدا بزن:
         markup = add_rial_button_to_credit_menu(markup)
     """
-    return augment_with_rial(markup)
+    return augment_with_rial(markup, lang)
 
 def _go_home(bot: TeleBot, chat_id: int, msg_id: int | None = None):
     text = f"🏠 <b>{HOME_TITLE}</b>"
