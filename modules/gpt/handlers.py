@@ -234,7 +234,7 @@ def _handle_force_sub(bot, user_id: int, lang: str, chat_id: int, message_id: in
     mode = (settings.get("FORCE_SUB_MODE") or "none").lower()
     if mode not in ("new", "all"):
         return True
-    ok, txt, kb = check_force_sub(bot, user_id, settings)
+    ok, txt, kb = check_force_sub(bot, user_id, settings, lang)
     if ok:
         return True
     edit_or_send(bot, chat_id, message_id, txt, kb)

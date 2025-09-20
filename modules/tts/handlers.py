@@ -125,17 +125,17 @@ def register(bot):
         db.set_state(user_id, f"tts:processing:{int(time.time())}")
         
         try:
+            lang = db.get_user_lang(user_id, "fa")
+
             # بررسی عضویت اجباری
             from utils import check_force_sub, edit_or_send
             settings = db.get_settings()
             mode = (settings.get("FORCE_SUB_MODE") or "none").lower()
             if mode in ("new","all"):
-                ok, txt, kb = check_force_sub(bot, user_id, settings)
+                ok, txt, kb = check_force_sub(bot, user_id, settings, lang)
                 if not ok:
                     edit_or_send(bot, msg.chat.id, msg.message_id, txt, kb)
                     return
-            
-            lang = db.get_user_lang(user_id, "fa")
 
             last_menu_id, voice_name = _parse_state(current_state)
             
