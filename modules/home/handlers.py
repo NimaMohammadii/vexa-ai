@@ -10,13 +10,11 @@ from .texts import MAIN, HELP
 from .keyboards import main_menu, _back_to_home_kb
 
 
-def _handle_referral(bot, msg: Message, user):
-    """Award referral bonus if /start contains a valid ref code."""
-    parts = (msg.text or "").split(maxsplit=1)
-    if len(parts) < 2:
+def _apply_referral(bot, user, ref_code: str, chat_id: int, user_lang: str) -> None:
+    ref_code = (ref_code or "").strip()
+    if not ref_code:
         return
 
-    ref_code = parts[1].strip()
     if user.get("referred_by"):
         return
 
@@ -35,11 +33,10 @@ def _handle_referral(bot, msg: Message, user):
     except Exception:
         pass
 
-    user_lang = db.get_user_lang(user["user_id"], "fa")
     ref_lang = db.get_user_lang(ref_user["user_id"], "fa")
     free_credits = int(db.get_setting("FREE_CREDIT", "80") or 80)
     try:
-        bot.send_message(msg.chat.id, t("ref_welcome", user_lang).format(credits=free_credits))
+        bot.send_message(chat_id, t("ref_welcome", user_lang).format(credits=free_credits))
     except Exception:
         pass
     try:
@@ -48,11 +45,31 @@ def _handle_referral(bot, msg: Message, user):
         pass
 
 
-def _ensure_force_sub(bot, user_id: int, chat_id: int, message_id: int | None) -> bool:
+def _handle_referral(bot, msg: Message, user, lang: str) -> None:
+    """Award referral bonus if /start contains a valid ref code."""
+    parts = (msg.text or "").split(maxsplit=1)
+    if len(parts) < 2:
+        return
+
+    ref_code = parts[1].strip()
+    _apply_referral(bot, user, ref_code, msg.chat.id, lang)
+
+
+def _consume_pending_referral(bot, user, chat_id: int, lang: str) -> None:
+    state = db.get_state(user["user_id"]) or ""
+    if not state.startswith("ref:"):
+        return
+
+    ref_code = state.split(":", 1)[1] if ":" in state else ""
+    db.clear_state(user["user_id"])
+    _apply_referral(bot, user, ref_code, chat_id, lang)
+
+
+def _ensure_force_sub(bot, user_id: int, chat_id: int, message_id: int | None, lang: str) -> bool:
     settings = db.get_settings()
     mode = (settings.get("FORCE_SUB_MODE") or "none").lower()
     if mode in ("new", "all"):
-        ok, txt, kb = check_force_sub(bot, user_id, settings)
+        ok, txt, kb = check_force_sub(bot, user_id, settings, lang)
         if not ok:
             edit_or_send(bot, chat_id, message_id, txt, kb)
             return False
@@ -64,24 +81,57 @@ def register(bot):
     def start(msg: Message):
         user = db.get_or_create_user(msg.from_user)
         db.touch_last_seen(user["user_id"])
-        lang = db.get_user_lang(user["user_id"], "fa")
+        stored_lang = (user.get("lang") or "").strip()
+        lang = stored_lang or "fa"
 
         if user.get("banned"):
             bot.reply_to(msg, t("error_banned", lang))
             return
 
-        if not _ensure_force_sub(bot, user["user_id"], msg.chat.id, msg.message_id):
+        if not stored_lang:
+            parts = (msg.text or "").split(maxsplit=1)
+            if len(parts) == 2 and parts[1].strip():
+                db.set_state(user["user_id"], f"ref:{parts[1].strip()}")
+
+            from modules.lang.handlers import send_language_menu
+
+            send_language_menu(
+                bot,
+                user,
+                msg.chat.id,
+                msg.message_id,
+                force_new=True,
+                display_lang="en",
+            )
             return
 
-        _handle_referral(bot, msg, user)
+        if not _ensure_force_sub(bot, user["user_id"], msg.chat.id, msg.message_id, lang):
+            return
+
+        _handle_referral(bot, msg, user, lang)
+        _consume_pending_referral(bot, user, msg.chat.id, lang)
         edit_or_send(bot, msg.chat.id, msg.message_id, MAIN(lang), main_menu(lang))
 
     @bot.message_handler(commands=["help"])
     def help_cmd(msg: Message):
         user = db.get_or_create_user(msg.from_user)
-        lang = db.get_user_lang(user["user_id"], "fa")
+        stored_lang = (user.get("lang") or "").strip()
+        lang = stored_lang or "fa"
 
-        if not _ensure_force_sub(bot, user["user_id"], msg.chat.id, msg.message_id):
+        if not stored_lang:
+            from modules.lang.handlers import send_language_menu
+
+            send_language_menu(
+                bot,
+                user,
+                msg.chat.id,
+                msg.message_id,
+                force_new=True,
+                display_lang="en",
+            )
+            return
+
+        if not _ensure_force_sub(bot, user["user_id"], msg.chat.id, msg.message_id, lang):
             return
 
         edit_or_send(bot, msg.chat.id, msg.message_id, HELP(lang), _back_to_home_kb(lang))
@@ -89,9 +139,23 @@ def register(bot):
     @bot.message_handler(commands=["menu"])
     def menu_cmd(msg: Message):
         user = db.get_or_create_user(msg.from_user)
-        lang = db.get_user_lang(user["user_id"], "fa")
+        stored_lang = (user.get("lang") or "").strip()
+        lang = stored_lang or "fa"
 
-        if not _ensure_force_sub(bot, user["user_id"], msg.chat.id, msg.message_id):
+        if not stored_lang:
+            from modules.lang.handlers import send_language_menu
+
+            send_language_menu(
+                bot,
+                user,
+                msg.chat.id,
+                msg.message_id,
+                force_new=True,
+                display_lang="en",
+            )
+            return
+
+        if not _ensure_force_sub(bot, user["user_id"], msg.chat.id, msg.message_id, lang):
             return
 
         edit_or_send(bot, msg.chat.id, msg.message_id, MAIN(lang), main_menu(lang))
@@ -100,9 +164,24 @@ def register(bot):
     def home_router(cq: CallbackQuery):
         user = db.get_or_create_user(cq.from_user)
         db.touch_last_seen(user["user_id"])
-        lang = db.get_user_lang(user["user_id"], "fa")
+        stored_lang = (user.get("lang") or "").strip()
+        lang = stored_lang or "fa"
 
-        if not _ensure_force_sub(bot, user["user_id"], cq.message.chat.id, cq.message.message_id):
+        if not stored_lang:
+            from modules.lang.handlers import send_language_menu
+
+            send_language_menu(
+                bot,
+                user,
+                cq.message.chat.id,
+                cq.message.message_id,
+                force_new=True,
+                display_lang="en",
+            )
+            bot.answer_callback_query(cq.id)
+            return
+
+        if not _ensure_force_sub(bot, user["user_id"], cq.message.chat.id, cq.message.message_id, lang):
             bot.answer_callback_query(cq.id)
             return
 
@@ -163,17 +242,10 @@ def register(bot):
 
         if cq.data == "fs:recheck":
             settings = db.get_settings()
-            ok, txt, kb = check_force_sub(bot, user["user_id"], settings)
+            ok, txt, kb = check_force_sub(bot, user["user_id"], settings, lang)
             if ok:
-                from modules.lang.handlers import send_language_menu
-
-                send_language_menu(
-                    bot,
-                    user,
-                    cq.message.chat.id,
-                    cq.message.message_id,
-                    display_lang="en",
-                )
+                edit_or_send(bot, cq.message.chat.id, cq.message.message_id, MAIN(lang), main_menu(lang))
+                _consume_pending_referral(bot, user, cq.message.chat.id, lang)
                 bot.answer_callback_query(cq.id, t("force_sub_confirmed", lang))
             else:
                 bot.answer_callback_query(cq.id, t("force_sub_not_joined", lang))

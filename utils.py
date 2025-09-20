@@ -1,5 +1,7 @@
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
+from modules.i18n import t
+
 def edit_or_send(bot, chat_id, message_id, text, reply_markup=None, parse_mode="HTML"):
     try:
         bot.edit_message_text(chat_id=chat_id, message_id=message_id,
@@ -65,13 +67,15 @@ def parse_int(text: str) -> int:
     if t.startswith("-"): return -int(t[1:] or "0")
     return int(t or "0")
 
-def check_force_sub(bot, user_id, settings):
+def check_force_sub(bot, user_id, settings, lang: str | None = None):
     """
     returns: (ok, text, markup)
     """
     mode = (settings.get("FORCE_SUB_MODE") or "none").strip()
     tg_channel = (settings.get("TG_CHANNEL") or "").strip()
     ig_url = (settings.get("IG_URL") or "").strip()
+
+    lang = (lang or "fa")
 
     if mode == "none":
         return True, "", None
@@ -91,13 +95,22 @@ def check_force_sub(bot, user_id, settings):
 
     kb = InlineKeyboardMarkup()
     if tg_channel:
-        kb.add(InlineKeyboardButton("Join Channel 🚀", url=f"https://t.me/{tg_channel.lstrip('@')}"))
+        kb.add(
+            InlineKeyboardButton(
+                t("force_sub_btn_join_channel", lang),
+                url=f"https://t.me/{tg_channel.lstrip('@')}",
+            )
+        )
     if ig_url:
-        kb.add(InlineKeyboardButton("Follow Instagram📱", url=ig_url))
-    kb.add(InlineKeyboardButton("I Joined ✅", callback_data="fs:recheck"))
+        kb.add(InlineKeyboardButton(t("force_sub_btn_follow_instagram", lang), url=ig_url))
+    kb.add(InlineKeyboardButton(t("force_sub_btn_joined", lang), callback_data="fs:recheck"))
 
-    txt = "<b>Join our channel to continue</b>\n"
-    if tg_channel: txt += f"• Telegram channel\n"
-    if ig_url:     txt += f"• Instagram page\n"
-    txt += "\nAfter joining, click ✅ <b>I joined</b> to continue"
+    lines = [t("force_sub_title", lang)]
+    if tg_channel:
+        lines.append(t("force_sub_join_channel", lang))
+    if ig_url:
+        lines.append(t("force_sub_join_instagram", lang))
+    lines.append("")
+    lines.append(t("force_sub_hint", lang))
+    txt = "\n".join(lines)
     return False, txt, kb

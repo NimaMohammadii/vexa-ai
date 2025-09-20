@@ -2,7 +2,7 @@
 from typing import Optional
 
 import db
-from utils import edit_or_send
+from utils import edit_or_send, check_force_sub
 from .texts import TITLE
 from .keyboards import lang_menu
 from modules.home.texts import MAIN
@@ -11,9 +11,9 @@ from modules.i18n import t
 
 
 def _language_menu_content(user, display_lang: Optional[str] = None):
-    user_lang = db.get_user_lang(user["user_id"], "fa")
-    render_lang = display_lang or user_lang
-    return TITLE(render_lang), lang_menu(user_lang, render_lang), user_lang
+    stored_lang = (user or {}).get("lang") or ""
+    render_lang = display_lang or stored_lang or "fa"
+    return TITLE(render_lang), lang_menu(stored_lang, render_lang), stored_lang or render_lang
 
 
 def send_language_menu(
@@ -52,7 +52,23 @@ def register(bot):
             code = parts[2]
             db.set_user_lang(user["user_id"], code)
             lang = code
+            user["lang"] = code
             bot.answer_callback_query(cq.id, t("lang_saved", lang))
+
+            settings = db.get_settings()
+            ok, txt, kb = check_force_sub(bot, user["user_id"], settings, lang)
+            if not ok:
+                edit_or_send(bot, cq.message.chat.id, cq.message.message_id, txt, kb)
+                return
+
+            try:
+                from modules.home.handlers import _consume_pending_referral
+            except ImportError:
+                _consume_pending_referral = None
+
+            if _consume_pending_referral:
+                _consume_pending_referral(bot, user, cq.message.chat.id, lang)
+
             edit_or_send(bot, cq.message.chat.id, cq.message.message_id, MAIN(lang), main_menu(lang))
             return
 
