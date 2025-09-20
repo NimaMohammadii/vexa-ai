@@ -11,7 +11,7 @@ def augment_with_rial(base_kb: InlineKeyboardMarkup | None, lang: str) -> Inline
         kb.add(InlineKeyboardButton(t("credit_pay_rial_btn", lang), callback_data="credit:payrial"))
     return kb
 
-def payrial_plans_kb() -> InlineKeyboardMarkup:
+def payrial_plans_kb(lang: str = "fa") -> InlineKeyboardMarkup:
     """منوی دکمه‌های قیمت‌های مختلف"""
     kb = InlineKeyboardMarkup(row_width=2)
     
@@ -29,6 +29,7 @@ def payrial_plans_kb() -> InlineKeyboardMarkup:
             kb.row(*row)
             row = []
     
+    kb.add(InlineKeyboardButton(t("back", lang), callback_data="credit:menu"))
     kb.add(InlineKeyboardButton(t("back", "fa"), callback_data="credit:menu"))
     return kb
 
@@ -49,7 +50,7 @@ def credit_menu_kb(lang: str) -> InlineKeyboardMarkup:
     kb.add(InlineKeyboardButton(t("back", lang), callback_data="home:back"))
     return kb
 
-def stars_packages_kb() -> InlineKeyboardMarkup:
+def stars_packages_kb(lang: str) -> InlineKeyboardMarkup:
     """منوی بسته‌های Telegram Stars — هر ردیف دو دکمه"""
     kb = InlineKeyboardMarkup(row_width=2)
     row: list[InlineKeyboardButton] = []
@@ -66,10 +67,12 @@ def stars_packages_kb() -> InlineKeyboardMarkup:
     if row:
         kb.row(*row)
 
+    kb.add(InlineKeyboardButton(t("back", lang), callback_data="credit:menu"))
     kb.add(InlineKeyboardButton(t("back", "fa"), callback_data="credit:menu"))
     return kb
 
-def instant_cancel_kb() -> InlineKeyboardMarkup:
+def instant_cancel_kb(lang: str = "fa") -> InlineKeyboardMarkup:
     kb = InlineKeyboardMarkup(row_width=1)
+    kb.add(InlineKeyboardButton(t("credit_cancel", lang), callback_data="credit:cancel"))
     kb.add(InlineKeyboardButton(t("credit_cancel", "fa"), callback_data="credit:cancel"))
     return kb

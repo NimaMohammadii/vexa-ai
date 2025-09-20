@@ -140,24 +140,36 @@ def register(bot: TeleBot):
     # نمایش بسته‌های Telegram Stars
     @bot.callback_query_handler(func=lambda c: c.data == "credit:stars")
     def on_stars_menu(c):
+        import db
+
+        user = db.get_or_create_user(c.from_user)
+        lang = db.get_user_lang(user["user_id"], "fa")
+
         bot.answer_callback_query(c.id)
-        text = "🌟 <b>خرید به صورت آنـی با Telegram Stars</b>\n\nیکی از بسته‌های زیر را انتخاب کنید:"
+        text = t("credit_stars_menu", lang)
         try:
             bot.edit_message_text(text, c.message.chat.id, c.message.message_id,
-                                  parse_mode="HTML", reply_markup=stars_packages_kb())
+                                  parse_mode="HTML", reply_markup=stars_packages_kb(lang))
         except Exception:
             bot.send_message(c.message.chat.id, text, parse_mode="HTML",
-                             reply_markup=stars_packages_kb())
-    
+                             reply_markup=stars_packages_kb(lang))
+
     # خرید بسته Stars
     @bot.callback_query_handler(func=lambda c: c.data and c.data.startswith("credit:buy:"))
     def on_buy_stars(c: CallbackQuery):
+        import db
+
+        user = db.get_or_create_user(c.from_user)
+        lang = db.get_user_lang(user["user_id"], "fa")
+
         bot.answer_callback_query(c.id)
         try:
+            stars = 0
+            credits = 0
             parts = c.data.split(":")
             # expected: credit:buy:<stars>:<credits>
             if len(parts) < 4:
-                bot.answer_callback_query(c.id, "داده نامعتبر")
+                bot.answer_callback_query(c.id, t("credit_invalid_data", lang), show_alert=True)
                 return
 
             stars = int(parts[2])
@@ -171,19 +183,19 @@ def register(bot: TeleBot):
             })
 
             # برای Telegram Stars معمولا provider_token خالی و currency = "XTR"
-            prices = [LabeledPrice(label=f"{credits} کردیت", amount=stars)]
+            prices = [LabeledPrice(label=t("credit_invoice_label", lang).format(credits=credits), amount=stars)]
 
             bot.send_invoice(
                 chat_id=c.from_user.id,
-                title=f"خرید {credits} کردیت – Vexa",
-                description=f"شارژ موجودی با Telegram Stars",
+                title=t("credit_invoice_title", lang),
+                description=t("credit_invoice_desc", lang),
                 invoice_payload=invoice_payload,
                 provider_token="",                 # برای Stars خالی می‌ماند
                 currency="XTR",
                 prices=prices
             )
 
-            bot.answer_callback_query(c.id, "فاکتور ارسال شد")
+            bot.answer_callback_query(c.id, t("credit_invoice_sent", lang))
         except Exception as e:
             # اگر ارسال با Stars ناموفق شد، تلاش به ارسال invoice با provider معمولی (fallback)
             try:
@@ -192,26 +204,26 @@ def register(bot: TeleBot):
 
                 # مقدار price باید به کوچک‌ترین واحد پولی ارسال شود (مثلاً سنت)
                 amount_smallest_unit = int(stars * 100)
-                prices = [LabeledPrice(label=f"{credits} کردیت", amount=amount_smallest_unit)]
+                prices = [LabeledPrice(label=t("credit_invoice_label", lang).format(credits=credits), amount=amount_smallest_unit)]
 
                 if not TELEGRAM_PAYMENT_PROVIDER_TOKEN:
-                    bot.answer_callback_query(c.id, "پرداخت غیرفعال است: توکن پرداخت تنظیم نشده")
+                    bot.answer_callback_query(c.id, t("credit_payment_disabled", lang), show_alert=True)
                     return
 
                 bot.send_invoice(
                     chat_id=c.from_user.id,
-                    title=f"خرید {credits} کردیت",
-                    description=f"خرید {credits} کردیت با {stars} ستاره تلگرام",
+                    title=t("credit_invoice_title", lang),
+                    description=t("credit_invoice_desc", lang),
                     invoice_payload=payload,
                     provider_token=TELEGRAM_PAYMENT_PROVIDER_TOKEN,
                     currency=TELEGRAM_PAYMENT_CURRENCY,
                     prices=prices
                 )
-                bot.answer_callback_query(c.id, "لطفاً پرداخت را تکمیل کنید")
+                bot.answer_callback_query(c.id, t("credit_invoice_complete", lang))
             except Exception as e2:
                 print("error sending invoice:", e2)
                 try:
-                    bot.answer_callback_query(c.id, "خطا در ایجاد صورتحساب")
+                    bot.answer_callback_query(c.id, t("credit_invoice_error", lang), show_alert=True)
                 except Exception:
                     pass
     
@@ -226,49 +238,74 @@ def register(bot: TeleBot):
         try:
             import json, db
             user_id = message.from_user.id
+            lang = db.get_user_lang(user_id, "fa")
             credits = json.loads(message.successful_payment.invoice_payload)["credits"]
             stars = message.successful_payment.total_amount
-            
+
             # اضافه کردن کردیت به حساب کاربر
-            user = db.get_or_create_user(message.from_user)
+            db.get_or_create_user(message.from_user)
             db.add_credits(user_id, credits)
-            
+
             # ذخیره تراکنش
             db.log_purchase(user_id, stars, credits, message.successful_payment.telegram_payment_charge_id)
-            
+
+            updated_user = db.get_user(user_id)
+            balance = (updated_user or {}).get("credits", credits)
+
             bot.send_message(
                 message.chat.id,
-                f"✅ پرداخت موفق!\n\n💎 {credits} کردیت به حساب شما اضافه شد.\n⭐️ مبلغ: {stars} ستاره",
+                t("credit_pay_success", lang).format(stars=stars, credits=credits, balance=balance),
                 parse_mode="HTML"
             )
-            
+
         except Exception as e:
-            bot.send_message(message.chat.id, "خطا در پردازش پرداخت")
+            lang = locals().get("lang")
+            if not lang:
+                try:
+                    import db
+                    lang = db.get_user_lang(message.from_user.id, "fa")
+                except Exception:
+                    lang = "fa"
+            bot.send_message(message.chat.id, t("credit_payment_error", lang))
 
     # کاربر روی «پرداخت ریالی» کلیک می‌کند → نمایش قیمت‌ها
     @bot.callback_query_handler(func=lambda c: c.data == "credit:payrial")
     def on_payrial(c: CallbackQuery):
+        import db
+
+        user = db.get_or_create_user(c.from_user)
+        lang = db.get_user_lang(user["user_id"], "fa")
+
+        if lang != "fa":
+            bot.answer_callback_query(c.id, t("credit_unavailable", lang), show_alert=True)
+            return
+
         bot.answer_callback_query(c.id)
-        
+
         text = f"🧾 <b>{PAY_RIAL_TITLE}</b>\n\nیکی از بسته‌های زیر را انتخاب کنید:"
-        
+
         try:
             bot.edit_message_text(text, c.message.chat.id, c.message.message_id,
-                                  parse_mode="HTML", reply_markup=payrial_plans_kb())
+                                  parse_mode="HTML", reply_markup=payrial_plans_kb(lang))
         except Exception:
             bot.send_message(c.message.chat.id, text, parse_mode="HTML",
-                             reply_markup=payrial_plans_kb())
+                             reply_markup=payrial_plans_kb(lang))
 
     # انتخاب یکی از بسته‌های قیمت → ورود به مرحله پرداخت
     @bot.callback_query_handler(func=lambda c: c.data and c.data.startswith("credit:select:"))
     def on_select_plan(c: CallbackQuery):
+        import db
+
+        user = db.get_or_create_user(c.from_user)
+        lang = db.get_user_lang(user["user_id"], "fa")
+
         bot.answer_callback_query(c.id)
         try:
             plan_index = int(c.data.split(":")[2])
             if plan_index < 0 or plan_index >= len(PAYMENT_PLANS):
-                bot.answer_callback_query(c.id, "بسته نامعتبر")
+                bot.answer_callback_query(c.id, t("credit_invalid_plan", lang), show_alert=True)
                 return
-            
+
             plan = PAYMENT_PLANS[plan_index]
             _set_wait(c.from_user.id, c.message.message_id, plan_index)
             
@@ -282,26 +319,31 @@ def register(bot: TeleBot):
             
             try:
                 bot.edit_message_text(text, c.message.chat.id, c.message.message_id,
-                                      parse_mode="HTML", reply_markup=instant_cancel_kb())
+                                      parse_mode="HTML", reply_markup=instant_cancel_kb(lang))
             except Exception:
                 bot.send_message(c.message.chat.id, text, parse_mode="HTML",
-                                 reply_markup=instant_cancel_kb())
-                                 
+                                 reply_markup=instant_cancel_kb(lang))
+
         except Exception as e:
-            bot.answer_callback_query(c.id, "خطا در انتخاب بسته")
+            bot.answer_callback_query(c.id, t("credit_plan_error", lang), show_alert=True)
 
     # ورود به حالت «پرداخت فوری (کارت‌به‌کارت)» → انتظار دریافت تصویر رسید
     @bot.callback_query_handler(func=lambda c: c.data == "credit:payrial:instant")
     def on_instant(c: CallbackQuery):
+        import db
+
+        user = db.get_or_create_user(c.from_user)
+        lang = db.get_user_lang(user["user_id"], "fa")
+
         bot.answer_callback_query(c.id)
         _set_wait(c.from_user.id, c.message.message_id)  # ذخیره message_id
         text = INSTANT_PAY_INSTRUCT.format(card=CARD_NUMBER)
         try:
             bot.edit_message_text(text, c.message.chat.id, c.message.message_id,
-                                  parse_mode="HTML", reply_markup=instant_cancel_kb())
+                                  parse_mode="HTML", reply_markup=instant_cancel_kb(lang))
         except Exception:
             bot.send_message(c.message.chat.id, text, parse_mode="HTML",
-                             reply_markup=instant_cancel_kb())
+                             reply_markup=instant_cancel_kb(lang))
 
     # بازگشت/لغو → خروج از حالت انتظار و برگشت به منوی اصلی
     @bot.callback_query_handler(func=lambda c: c.data in ("credit:menu", "credit:cancel"))
