@@ -30,7 +30,6 @@ def payrial_plans_kb(lang: str = "fa") -> InlineKeyboardMarkup:
             row = []
     
     kb.add(InlineKeyboardButton(t("back", lang), callback_data="credit:menu"))
-    kb.add(InlineKeyboardButton(t("back", "fa"), callback_data="credit:menu"))
     return kb
 
 def admin_approve_kb(user_id: int, plan_index: int) -> InlineKeyboardMarkup:
@@ -68,7 +67,6 @@ def stars_packages_kb(lang: str) -> InlineKeyboardMarkup:
         kb.row(*row)
 
     kb.add(InlineKeyboardButton(t("back", lang), callback_data="credit:menu"))
-    kb.add(InlineKeyboardButton(t("back", "fa"), callback_data="credit:menu"))
     return kb
 
 def instant_cancel_kb(lang: str = "fa") -> InlineKeyboardMarkup:
