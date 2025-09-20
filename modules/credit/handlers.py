@@ -88,6 +88,9 @@ def open_credit(bot: TeleBot, cq):
     
     user = db.get_or_create_user(cq.from_user)
     lang = db.get_user_lang(user["user_id"], "fa")
+    if lang != "fa":
+        bot.answer_callback_query(cq.id, t("credit_unavailable", lang), show_alert=True)
+        return
 
     text = f"🛒 <b>{t('credit_title', lang)}</b>\n\n{t('credit_header', lang)}"
     

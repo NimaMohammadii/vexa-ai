@@ -128,6 +128,10 @@ def register(bot):
             return
 
         if route == "credit":
+            if lang != "fa":
+                bot.answer_callback_query(cq.id, t("credit_unavailable", lang), show_alert=True)
+                return
+
             bot.answer_callback_query(cq.id)
             from modules.credit.handlers import open_credit
 
