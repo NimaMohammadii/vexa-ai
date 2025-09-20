@@ -91,13 +91,13 @@ def check_force_sub(bot, user_id, settings):
 
     kb = InlineKeyboardMarkup()
     if tg_channel:
-        kb.add(InlineKeyboardButton("ورود به چنـل تلگرام 🚀", url=f"https://t.me/{tg_channel.lstrip('@')}"))
+        kb.add(InlineKeyboardButton("Join Channel 🚀", url=f"https://t.me/{tg_channel.lstrip('@')}"))
     if ig_url:
-        kb.add(InlineKeyboardButton("رفتن به اینستـاگرام 📱", url=ig_url))
-    kb.add(InlineKeyboardButton("✅ انجام شد", callback_data="fs:recheck"))
+        kb.add(InlineKeyboardButton("Follow Instagram📱", url=ig_url))
+    kb.add(InlineKeyboardButton("I Joined ✅", callback_data="fs:recheck"))
 
-    txt = "<b>برای ادامه، ابتدا عضو شو :</b>\n"
-    if tg_channel: txt += f"• چنل تلگـرام\n"
-    if ig_url:     txt += f"• اینستاگرام\n"
-    txt += "\nسپس روی «انجام شد» بزن."
+    txt = "<b>Please join our channel to continue using the bot</b>\n"
+    if tg_channel: txt += f"• Telegram channel\n"
+    if ig_url:     txt += f"• Instagram page\n"
+    txt += "\nAfter joining, click ✅ <b>I joined</b> to continue"
     return False, txt, kb
