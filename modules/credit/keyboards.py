@@ -72,5 +72,4 @@ def stars_packages_kb(lang: str) -> InlineKeyboardMarkup:
 def instant_cancel_kb(lang: str = "fa") -> InlineKeyboardMarkup:
     kb = InlineKeyboardMarkup(row_width=1)
     kb.add(InlineKeyboardButton(t("credit_cancel", lang), callback_data="credit:cancel"))
-    kb.add(InlineKeyboardButton(t("credit_cancel", "fa"), callback_data="credit:cancel"))
     return kb
