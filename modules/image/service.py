@@ -199,6 +199,12 @@ class ImageService:
                     continue
 
                 if status_kind == "success":
+                    output = (
+                        data.get("output")
+                        or data.get("outputs")
+                        or data.get("result")
+                        or data.get("results")
+                    )
                 status = data.get("status")
                 succeeded_statuses = {"SUCCEEDED", "COMPLETED", "TASK_STATUS_SUCCEEDED"}
                 if status and (status in succeeded_statuses or "SUCCEEDED" in str(status)):
@@ -217,6 +223,8 @@ class ImageService:
                         )
                     return output
 
+                elif status_kind == "failure":
+                    error_msg = data.get("error") or _extract_first(data, ERROR_KEYS)
                 if status_kind == "failure":
                     error_msg = data.get("error")
                     if not error_msg:
@@ -227,6 +235,8 @@ class ImageService:
                         error_msg = status_raw or "Unknown error from Runway during generation."
                     raise ImageGenerationError(f"Runway task failed ({status_raw}): {error_msg}")
 
+                else:
+                    time.sleep(poll_interval)
                 time.sleep(poll_interval)
             elif resp.status_code == 404:
                 raise ImageGenerationError(f"Status check 404: task {task_id} not found.")
