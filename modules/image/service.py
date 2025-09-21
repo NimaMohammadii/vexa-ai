@@ -32,7 +32,7 @@ class ImageService:
 
     _BASE_URL = "https://api.dev.runwayml.com/v1"
     _MODEL = "gen3a_turbo"
-    _API_VERSION = os.getenv("RUNWAY_API_VERSION", "2024-06-01")
+    _API_VERSION = os.getenv("RUNWAY_API_VERSION", "2024-11-06")
     _DEFAULT_WIDTH = 1024
     _DEFAULT_HEIGHT = 1024
     _DEFAULT_FORMAT = "webp"
