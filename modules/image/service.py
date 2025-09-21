@@ -33,6 +33,9 @@ class ImageService:
     _DEFAULT_BASE_URL = "https://api.dev.runwayml.com/v1"
     _DEFAULT_MODEL = "gen4_image_turbo"
     _DEFAULT_API_VERSION = "2024-11-06"
+    _BASE_URL = os.getenv("RUNWAY_API_URL") or "https://api.dev.runwayml.com/v1"
+    _MODEL = os.getenv("RUNWAY_MODEL", "gen4_image_turbo")
+    _API_VERSION = os.getenv("RUNWAY_API_VERSION", "2024-11-06")
     _DEFAULT_WIDTH = 1024
     _DEFAULT_HEIGHT = 1024
     _DEFAULT_FORMAT = "webp"
@@ -131,6 +134,7 @@ class ImageService:
                 return payload
 
             if self._is_failure_state(normalised_status, payload):
+            if status in {"failed", "error", "cancelled"}:
                 raise ImageGenerationError(self._format_error(payload))
 
             time.sleep(poll_delay)
