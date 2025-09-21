@@ -4,30 +4,23 @@
 from __future__ import annotations
 import base64
 import os
-import time
 import re
+import time
 from typing import Any, Dict, Iterable, Optional
 
 import requests
 
-from config import RUNWAY_API_KEY as CONFIG_RUNWAY_API_KEY
+from config import RUNWAY_API as CONFIG_RUNWAY_API
 
 # ===== Config (ENV) =====
 # NOTE:
-# - Many deployments store the Runway API token under ``RUNWAY_API``.
-# - Some keep using the historical ``RUNWAY_API_KEY`` name.
-# - The admin panel can also inject the key via ``config.RUNWAY_API_KEY``
-#   after python-dotenv loads the local ``.env`` file.
-#
-# To keep all of those code paths working, resolve the API key dynamically
-# instead of freezing the value at import time.  This lets operators add the
-# key (for example by editing ``.env``) and simply restarting the bot without
-# having to worry about which exact variable name was used.
+# - The production deployment stores the Runway API token under ``RUNWAY_API``.
+# - We still resolve the key dynamically so a restart picks up changes without
+#   reloading the module.
 def _current_api_key() -> str:
     return (
         os.getenv("RUNWAY_API")
-        or os.getenv("RUNWAY_API_KEY")
-        or CONFIG_RUNWAY_API_KEY
+        or CONFIG_RUNWAY_API
         or ""
     ).strip()
 
@@ -56,8 +49,9 @@ def _request(method: str, url: str, **kwargs) -> Dict[str, Any]:
     headers = kwargs.pop("headers", {})
     api_key = _current_api_key()
     if not api_key:
-        raise ImageGenerationError("RUNWAY_API / RUNWAY_API_KEY is missing in environment.")
-    headers.setdefault("Authorization", f"Bearer {api_key}")
+        raise ImageGenerationError("RUNWAY_API is missing in environment.")
+    auth_header = api_key if api_key.lower().startswith("bearer ") else f"Bearer {api_key}"
+    headers.setdefault("Authorization", auth_header)
     headers.setdefault("Content-Type", "application/json")
     kwargs.setdefault("timeout", 30)
     try:
@@ -80,7 +74,7 @@ def generate_image(prompt: str, *, width: Optional[int] = None, height: Optional
     if not p:
         raise ImageGenerationError("Prompt is empty.")
     if not is_configured():
-        raise ImageGenerationError("RUNWAY_API / RUNWAY_API_KEY is missing in environment.")
+        raise ImageGenerationError("RUNWAY_API is missing in environment.")
 
     w = int(width or IMAGE_WIDTH)
     h = int(height or IMAGE_HEIGHT)
