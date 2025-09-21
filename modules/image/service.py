@@ -282,15 +282,16 @@ class ImageService:
                         error_msg = status_raw or "Unknown error from Runway during generation."
                     raise ImageGenerationError(f"Runway task failed ({status_raw}): {error_msg}")
 
-                # اگر موفقیت تشخیص داده شد، خروجی/URL یا assets را برگردان
-                if status_kind == "success":
-                    # 1) جستجوی URL در خود payload
-                    url = _extract_first_url(data)
+                # چه وضعیت موفقیت تشخیص داده شود و چه API خروجی را زودتر بدهد، سعی کن نتیجه را استخراج کنی
+                url = _extract_first_url(data)
+                output = _extract_first(data, OUTPUT_KEYS)
+
+                if status_kind == "success" or url or output is not None:
+                    # 1) اگر URL مستقیم داخل payload پیدا شد
                     if url:
                         return url
 
                     # 2) تلاش برای خروجی‌های متعارف
-                    output = _extract_first(data, OUTPUT_KEYS)
                     if output is not None:
                         if isinstance(output, str):
                             # ممکن است خودش URL یا data:image باشد
