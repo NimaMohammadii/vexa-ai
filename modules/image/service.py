@@ -120,18 +120,20 @@ class ImageService:
             response = self._request("GET", f"/tasks/{task_id}")
             payload = self._safe_json(response)
 
-            status = str(payload.get("status", "")).lower()
+            status = self._extract_status(payload)
+            normalised_status = status.lower()
             logger.debug(
                 "Runway task status",
-                extra={"task_id": task_id, "status": status, "payload": payload},
+                extra={"task_id": task_id, "status": normalised_status, "payload": payload},
             )
 
-            if status in {"succeeded", "completed", "finished"}:
+            if self._is_success_state(normalised_status, payload):
                 assets = self._fetch_assets(task_id)
                 if assets:
                     payload.setdefault("assets", assets)
                 return payload
 
+            if self._is_failure_state(normalised_status, payload):
             if status in {"failed", "error", "cancelled"}:
                 raise ImageGenerationError(self._format_error(payload))
 
@@ -278,3 +280,88 @@ class ImageService:
         if not path.startswith("/"):
             path = f"/{path}"
         return f"{self._base_url}{path}"
+
+    @staticmethod
+    def _extract_status(payload: Dict[str, Any]) -> str:
+        """Extract the most relevant status string from a Runway response."""
+
+        visited: set[int] = set()
+        stack: list[Any] = [payload]
+
+        while stack:
+            current = stack.pop()
+            identifier = id(current)
+            if identifier in visited:
+                continue
+            visited.add(identifier)
+
+            if isinstance(current, dict):
+                for key, value in current.items():
+                    lowered = key.lower()
+                    if lowered in {"status", "state", "phase"} and not isinstance(
+                        value, (dict, list, tuple, set)
+                    ):
+                        text = str(value or "").strip()
+                        if text:
+                            return text
+
+                    if isinstance(value, (dict, list, tuple, set)):
+                        stack.append(value)
+            elif isinstance(current, (list, tuple, set)):
+                stack.extend(current)
+
+        return ""
+
+    @staticmethod
+    def _is_success_state(status: str, payload: Dict[str, Any]) -> bool:
+        """Return True if the payload represents a finished successful task."""
+
+        if status in {"succeeded", "completed", "finished", "success", "done"}:
+            return True
+
+        return ImageService._extract_truthy_flag(
+            payload,
+            {"done", "is_done", "completed", "is_completed", "success", "succeeded"},
+        )
+
+    @staticmethod
+    def _is_failure_state(status: str, payload: Dict[str, Any]) -> bool:
+        """Return True if the payload indicates a terminal error state."""
+
+        if status in {"failed", "error", "cancelled", "canceled", "rejected"}:
+            return True
+
+        return ImageService._extract_truthy_flag(
+            payload,
+            {"failed", "is_failed", "error", "has_error", "cancelled", "canceled"},
+        )
+
+    @staticmethod
+    def _extract_truthy_flag(payload: Dict[str, Any], keys: set[str]) -> bool:
+        """Look for boolean-esque keys anywhere inside the payload."""
+
+        visited: set[int] = set()
+        stack: list[Any] = [payload]
+
+        while stack:
+            current = stack.pop()
+            identifier = id(current)
+            if identifier in visited:
+                continue
+            visited.add(identifier)
+
+            if isinstance(current, dict):
+                for key, value in current.items():
+                    lowered = key.lower()
+                    if lowered in keys and not isinstance(value, (dict, list, tuple, set)):
+                        if isinstance(value, bool):
+                            return bool(value)
+                        text = str(value or "").strip().lower()
+                        if text in {"true", "1", "yes"}:
+                            return True
+                    elif isinstance(value, (dict, list, tuple, set)):
+                        stack.append(value)
+            elif isinstance(current, (list, tuple, set)):
+                stack.extend(current)
+
+        return False
