@@ -11,7 +11,7 @@ RUNWAY_API = (os.getenv("RUNWAY_API") or "").strip()
 # چون کلیدت از dev گرفتی، پیش‌فرض dev می‌ذاریم. اگر خواستی دستی override کن.
 RUNWAY_API_URL = (os.getenv("RUNWAY_API_URL") or "https://api.dev.runwayml.com/v1/tasks").strip()
 RUNWAY_MODEL = (os.getenv("RUNWAY_MODEL") or "gen4_image").strip()
-RUNWAY_API_VERSION = (os.getenv("RUNWAY_API_VERSION") or "2024-09-01").strip()  # هدر لازم
+RUNWAY_API_VERSION = (os.getenv("RUNWAY_API_VERSION") or "").strip()  # هدر لازم
 IMAGE_WIDTH = int(os.getenv("RUNWAY_IMAGE_WIDTH", "1024"))
 IMAGE_HEIGHT = int(os.getenv("RUNWAY_IMAGE_HEIGHT", "1024"))
 IMAGE_FORMAT = (os.getenv("RUNWAY_IMAGE_FORMAT") or "png").strip()
@@ -31,7 +31,8 @@ def _request(method: str, url: str, *, _can_retry: bool = True, **kwargs) -> Dic
     headers.setdefault("Authorization", f"Bearer {RUNWAY_API}")
     headers.setdefault("Content-Type", "application/json")
     # ⬇️ مهم: ارور 400 می‌خواست این هدر رو
-    headers.setdefault("X-Runway-Version", RUNWAY_API_VERSION)
+    if RUNWAY_API_VERSION:
+        headers.setdefault("X-Runway-Version", RUNWAY_API_VERSION)
     kwargs.setdefault("timeout", 30)
     try:
         resp = requests.request(method, url, headers=headers, **kwargs)
@@ -56,6 +57,16 @@ def _request(method: str, url: str, *, _can_retry: bool = True, **kwargs) -> Dic
                     )
                 headers["X-Runway-Version"] = hinted_version
                 RUNWAY_API_VERSION = hinted_version
+                kwargs["headers"] = headers
+                return _request(method, url, _can_retry=False, **kwargs)
+            if _looks_like_invalid_version(msg) and current_version:
+                if DEBUG:
+                    print(
+                        "[Runway] retrying without X-Runway-Version header (server rejected current version)",
+                        flush=True,
+                    )
+                headers.pop("X-Runway-Version", None)
+                RUNWAY_API_VERSION = ""
                 kwargs["headers"] = headers
                 return _request(method, url, _can_retry=False, **kwargs)
         raise ImageGenerationError(f"Runway API {resp.status_code}: {msg}")
@@ -112,6 +123,12 @@ def _extract_version_hint(msg: str) -> Optional[str]:
     if not m:
         return None
     return m.group(1)
+
+def _looks_like_invalid_version(msg: Any) -> bool:
+    if not isinstance(msg, str):
+        return False
+    m = msg.lower()
+    return "api version" in m and "not valid" in m
 
 def _extract_image_bytes(payload: Dict[str, Any]) -> Optional[bytes]:
     for url in _iter_urls(payload):
