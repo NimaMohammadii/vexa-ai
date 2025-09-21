@@ -40,7 +40,6 @@ ASSET_URL_KEYS: tuple[str, ...] = ("uri", "url", "src", "href", "signed_url")
 
 def _iter_key_values(payload: Any, keys: Iterable[str]) -> Iterable[Any]:
     """Yield values for any of the provided keys within nested payloads."""
-
     if not isinstance(keys, set):
         keys = set(keys)
 
@@ -158,6 +157,23 @@ class ImageService:
             "X-Runway-Version": self.api_version,
         }
 
+    def _fetch_assets(self, task_id: str) -> Any | None:
+        """GET /tasks/{id}/assets and return JSON or None."""
+        assets_url = f"{self.api_url.rstrip('/')}/{task_id}/assets"
+        try:
+            r = requests.get(assets_url, headers=self._make_headers(), timeout=20)
+        except requests.RequestException as e:
+            # شبکه ایراد داشت؛ نگذاریم کل جریان از کار بیفته
+            return None
+
+        if r.status_code != 200:
+            return None
+
+        try:
+            return r.json()
+        except ValueError:
+            return None
+
     def generate_image(self, prompt: str) -> str:
         """ایجاد تسک تولید تصویر و برگرداندن task_id"""
         if not prompt or not isinstance(prompt, str):
@@ -179,8 +195,8 @@ class ImageService:
         except requests.RequestException as e:
             raise ImageGenerationError(f"Network error during request: {str(e)}")
 
-        # بررسی پاسخ
-        if resp.status_code in (200, 202):
+        # بررسی پاسخ (۲۰۱ را هم قبول کن)
+        if resp.status_code in (200, 201, 202):
             try:
                 data = resp.json()
             except ValueError:
@@ -212,7 +228,8 @@ class ImageService:
     def get_image_status(self, task_id: str, poll_interval: float = 5.0, timeout: float = 120.0):
         """
         وضعیت تولید تصویر رو چک می‌کنه تا کامل بشه یا خطا بده.
-        خروجی: URL تصویر در صورت موجود بودن؛ در غیر این صورت اولین مقدار از output/outputs/result/results.
+        خروجی: URL تصویر در صورت موجود بودن؛ در غیر این صورت اولین مقدار از output/outputs/result/results،
+        و اگر هیچ‌کدام نبود، کل payload یا assets برگردانده می‌شود تا لایه بالاتر URL را استخراج کند.
         """
         if not task_id:
             raise ImageGenerationError("task_id is required to check status.")
@@ -255,24 +272,35 @@ class ImageService:
                         error_msg = status_raw or "Unknown error from Runway during generation."
                     raise ImageGenerationError(f"Runway task failed ({status_raw}): {error_msg}")
 
-                # اگر موفقیت تشخیص داده شد، تلاش برای استخراج URL
+                # اگر موفقیت تشخیص داده شد، خروجی/URL یا assets را برگردان
                 if status_kind == "success":
-                    # 1) سعی می‌کنیم از هر جای payload یک URL معتبر پیدا کنیم
+                    # 1) جستجوی URL در خود payload
                     url = _extract_first_url(data)
                     if url:
                         return url
 
-                    # 2) در غیر این صورت، خروجی‌های متعارف را برگردانیم
+                    # 2) تلاش برای خروجی‌های متعارف
                     output = _extract_first(data, OUTPUT_KEYS)
                     if output is not None:
                         if isinstance(output, str):
+                            # ممکن است خودش URL یا data:image باشد
                             return output
                         nested_url = _extract_first_url(output)
                         if nested_url:
                             return nested_url
-                        return output  # در نهایت، خود خروجی را برگردان
+                        # اگر ساختار تو در تو ولی بدون URL بود، کل خروجی را به لایه بالاتر بده
+                        return output
 
-                    # اگر هنوز خروجی‌ای نیست، کمی صبر کنیم
+                    # 3) در صورت نبود خروجی در payload، از endpoint assets بگیر
+                    assets = self._fetch_assets(task_id)
+                    if assets is not None:
+                        asset_url = _extract_first_url(assets)
+                        if asset_url:
+                            return asset_url
+                        # اگر URL پیدا نشد، خود assets را بده تا لایه بالاتر سعی کند استخراج کند
+                        return assets
+
+                    # اگر هنوز چیزی در دسترس نبود، یک بار صبر و دوباره تلاش
                     time.sleep(poll_interval)
                     continue
 
@@ -292,8 +320,16 @@ class ImageService:
                             if nested_url:
                                 return nested_url
                             return output
+                        # تلاش به گرفتن assets
+                        assets = self._fetch_assets(task_id)
+                        if assets is not None:
+                            asset_url = _extract_first_url(assets)
+                            if asset_url:
+                                return asset_url
+                            return assets
                         time.sleep(poll_interval)
                         continue
+
                     if status_tokens & FAILURE_TOKENS:
                         error_msg = _extract_first(data, ERROR_KEYS) or str(status_value)
                         raise ImageGenerationError(f"Runway task failed: {error_msg}")
