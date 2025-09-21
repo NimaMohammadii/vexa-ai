@@ -2,10 +2,22 @@
 """Telegram handlers for Runway image generation (menu button + /img)."""
 
 from __future__ import annotations
-from telebot import TeleBot
-from telebot.types import Message, CallbackQuery, ForceReply
 
-from .service import generate_image, is_configured, ImageGenerationError
+import db
+from telebot import TeleBot
+from telebot.types import CallbackQuery, ForceReply, Message
+
+from utils import edit_or_send
+from .keyboards import menu_keyboard, no_credit_keyboard
+from .service import ImageGenerationError, generate_image, is_configured
+from .settings import CREDIT_COST
+from .texts import (
+    error as error_text,
+    intro,
+    no_credit as no_credit_text,
+    not_configured,
+    result_caption,
+)
 
 USAGE = (
     "ساخت تصویر از متن:\n"
@@ -36,28 +48,110 @@ def _ask_for_prompt(bot: TeleBot, chat_id: int, reply_to_message_id: int | None 
         parse_mode="HTML",
     )
 
-def _handle_prompt_and_generate(bot: TeleBot, message: Message):
+def open_image(bot: TeleBot, cq: CallbackQuery) -> None:
+    """Display the image generation menu and ask the user for a prompt."""
+
+    user = db.get_or_create_user(cq.from_user)
+    lang = db.get_user_lang(user["user_id"], "fa")
+    chat_id = cq.message.chat.id
+    message_id = cq.message.message_id
+
+    if not is_configured():
+        edit_or_send(bot, chat_id, message_id, not_configured(lang), menu_keyboard(lang))
+        return
+
+    credits = int(user.get("credits") or 0)
+    if credits < CREDIT_COST:
+        edit_or_send(
+            bot,
+            chat_id,
+            message_id,
+            no_credit_text(lang, credits),
+            no_credit_keyboard(lang),
+        )
+        return
+
+    edit_or_send(bot, chat_id, message_id, intro(lang), menu_keyboard(lang))
+    _ask_for_prompt(bot, chat_id, reply_to_message_id=message_id)
+
+
+def _handle_prompt_and_generate(bot: TeleBot, message: Message, prompt_text: str | None = None):
     chat_id = message.chat.id
-    prompt = (message.text or "").strip()
+    _WAITING.pop(chat_id, None)
+
+    user = db.get_or_create_user(message.from_user)
+    user_id = user["user_id"]
+    lang = db.get_user_lang(user_id, "fa")
+
+    prompt = (prompt_text or "").strip()
     if not prompt:
         bot.reply_to(message, "❌ متن خالیه. یک توضیح کوتاه بفرست.", parse_mode="HTML")
         return
+
+    if not is_configured():
+        bot.reply_to(message, not_configured(lang), parse_mode="HTML")
+        return
+
+    if not db.deduct_credits(user_id, CREDIT_COST):
+        refreshed = db.get_user(user_id) or {}
+        credits = int(refreshed.get("credits") or 0)
+        bot.reply_to(
+            message,
+            no_credit_text(lang, credits),
+            reply_markup=no_credit_keyboard(lang),
+            parse_mode="HTML",
+        )
+        return
+
+    refund_needed = True
+
     try:
         bot.send_chat_action(chat_id, action="upload_photo")
         img = generate_image(prompt)
-        bot.send_photo(chat_id, img, caption=prompt)
-    except ImageGenerationError as e:
-        bot.reply_to(message, f"❌ خطا در تولید تصویر:\n{e}", parse_mode="HTML")
-    except Exception as e:
-        bot.reply_to(message, f"❌ خطای غیرمنتظره:\n{e}", parse_mode="HTML")
-    finally:
-        _WAITING.pop(chat_id, None)
+    except ImageGenerationError as exc:
+        if refund_needed:
+            db.add_credits(user_id, CREDIT_COST)
+        bot.reply_to(
+            message,
+            f"{error_text(lang)}\n\n{exc}",
+            parse_mode="HTML",
+        )
+        return
+    except Exception as exc:  # pragma: no cover - safety net
+        if refund_needed:
+            db.add_credits(user_id, CREDIT_COST)
+        bot.reply_to(
+            message,
+            f"{error_text(lang)}\n\n{exc}",
+            parse_mode="HTML",
+        )
+        return
+
+    refund_needed = False
+    caption_parts = [prompt, "", result_caption(lang)]
+    caption = "\n".join(part for part in caption_parts if part).strip()
+    bot.send_photo(chat_id, img, caption=caption or None)
 
 def register(bot: TeleBot) -> None:
     # هر callback_data که شامل image یا img باشد را قبول کن
-    @bot.callback_query_handler(func=lambda c: (c.data or "").lower().find("image") != -1 or (c.data or "").lower().find("img") != -1)
+    @bot.callback_query_handler(
+        func=lambda c: (c.data or "").lower().startswith("image:")
+        or (c.data or "").lower().startswith("img:")
+    )
     def on_image_menu(cb: CallbackQuery):
+        data = (cb.data or "").lower()
         chat_id = cb.message.chat.id
+
+        if data == "image:back":
+            user = db.get_or_create_user(cb.from_user)
+            lang = db.get_user_lang(user["user_id"], "fa")
+            from modules.home.keyboards import main_menu  # local import to avoid circular
+            from modules.home.texts import MAIN
+
+            edit_or_send(bot, chat_id, cb.message.message_id, MAIN(lang), main_menu(lang))
+            bot.answer_callback_query(cb.id)
+            return
+
         if not is_configured():
             bot.answer_callback_query(cb.id, show_alert=True, text="❌ RUNWAY_API ست نشده.")
             return
@@ -72,14 +166,14 @@ def register(bot: TeleBot) -> None:
             return
         prompt = _extract_prompt(message)
         if prompt:
-            _handle_prompt_and_generate(bot, message)
+            _handle_prompt_and_generate(bot, message, prompt)
         else:
             _ask_for_prompt(bot, message.chat.id, reply_to_message_id=message.message_id)
 
     # پیام بعدی کاربر وقتی منتظر پرامپت هستیم
     @bot.message_handler(func=lambda m: _WAITING.get(m.chat.id) is True, content_types=["text"])
     def on_prompt_text(message: Message):
-        _handle_prompt_and_generate(bot, message)
+        _handle_prompt_and_generate(bot, message, message.text)
 
     # کمک
     @bot.message_handler(commands=["img_help"])
