@@ -1,5 +1,5 @@
+# modules/image/service.py
 """Runway image generation service client."""
-
 from __future__ import annotations
 
 import base64
@@ -44,6 +44,7 @@ def generate_image(prompt: str) -> bytes:
     if DEBUG:
         print(f"[Runway] task created: {response.get('id')} status={response.get('status')}", flush=True)
 
+    # بعضی مدل‌ها همان پاسخ اول، خروجی دارند
     image_bytes = _extract_image_bytes(response)
     if image_bytes:
         return image_bytes
@@ -101,11 +102,8 @@ def _request(method: str, url: str, **kwargs) -> dict[str, Any]:
         payload = {}
 
     if response.status_code >= 400:
-        message = _extract_message(payload) if isinstance(payload, dict) else response.text
-        raise ImageGenerationError(f"Runway API error ({response.status_code}): {message}")
-
-    if not isinstance(payload, dict):
-        raise ImageGenerationError("Unexpected Runway API response")
+        message = _extract_message(payload) or response.text
+        raise ImageGenerationError(f"Runway API error {response.status_code}: {message}")
 
     return payload
 
@@ -114,12 +112,13 @@ _BASE64_RE = re.compile(r"^data:image/[^;]+;base64,(?P<data>[A-Za-z0-9+/=]+)$")
 
 
 def _extract_image_bytes(payload: dict[str, Any]) -> bytes | None:
+    # 1) لینک مستقیم فایل را پیدا کن
     for url in _iter_urls(payload):
         try:
             return _download(url)
         except ImageGenerationError:
             continue
-
+    # 2) اگر نبود، بیس۶۴ را پیدا کن
     b64 = _find_base64(payload)
     if b64:
         try:
@@ -162,12 +161,8 @@ def _find_base64(node: Any) -> str | None:
 
 
 def _download(url: str) -> bytes:
-    headers: dict[str, str] | None = None
-    if RUNWAY_API_KEY:
-        headers = {"Authorization": f"Bearer {RUNWAY_API_KEY}"}
-
     try:
-        response = requests.get(url, timeout=60, headers=headers)
+        response = requests.get(url, timeout=60)
         response.raise_for_status()
         return response.content
     except requests.RequestException as exc:
