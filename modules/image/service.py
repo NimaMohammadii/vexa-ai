@@ -35,6 +35,7 @@ FAILURE_TOKENS: set[str] = {
 STATUS_KEYS: tuple[str, ...] = ("status", "state")
 OUTPUT_KEYS: tuple[str, ...] = ("output", "outputs", "result", "results")
 ERROR_KEYS: tuple[str, ...] = ("error", "message", "detail", "reason")
+ASSET_URL_KEYS: tuple[str, ...] = ("uri", "url", "src", "href", "signed_url")
 
 
 def _iter_key_values(payload: Any, keys: Iterable[str]) -> Iterable[Any]:
@@ -113,6 +114,20 @@ def _extract_first(payload: Any, keys: Iterable[str]) -> Any:
     for value in _iter_key_values(payload, keys):
         if value is not None:
             return value
+    return None
+
+
+def _extract_first_url(payload: Any) -> str | None:
+    """Find the first URL-like string (uri/url/src/href) anywhere in nested payload."""
+    for v in _iter_key_values(payload, ASSET_URL_KEYS):
+        if isinstance(v, str):
+            s = v.strip()
+            if s.startswith(("http://", "https://", "data:")):
+                return s
+    # As a last resort, look for any http(s) substring in stringified payloads
+    if isinstance(payload, str):
+        m = re.search(r"https?://[^\s\"'>)]+", payload)
+        return m.group(0) if m else None
     return None
 
 
@@ -197,7 +212,7 @@ class ImageService:
     def get_image_status(self, task_id: str, poll_interval: float = 5.0, timeout: float = 120.0):
         """
         وضعیت تولید تصویر رو چک می‌کنه تا کامل بشه یا خطا بده.
-        خروجی همان فیلد output/outputs/result/results (اولین موردی که پیدا شود) است.
+        خروجی: URL تصویر در صورت موجود بودن؛ در غیر این صورت اولین مقدار از output/outputs/result/results.
         """
         if not task_id:
             raise ImageGenerationError("task_id is required to check status.")
@@ -240,12 +255,24 @@ class ImageService:
                         error_msg = status_raw or "Unknown error from Runway during generation."
                     raise ImageGenerationError(f"Runway task failed ({status_raw}): {error_msg}")
 
-                # اگر موفقیت تشخیص داده شد، خروجی رو برگردون
+                # اگر موفقیت تشخیص داده شد، تلاش برای استخراج URL
                 if status_kind == "success":
+                    # 1) سعی می‌کنیم از هر جای payload یک URL معتبر پیدا کنیم
+                    url = _extract_first_url(data)
+                    if url:
+                        return url
+
+                    # 2) در غیر این صورت، خروجی‌های متعارف را برگردانیم
                     output = _extract_first(data, OUTPUT_KEYS)
                     if output is not None:
-                        return output
-                    # اگر وضعیت موفق ولی هنوز خروجی موجود نیست، کمی صبر می‌کنیم
+                        if isinstance(output, str):
+                            return output
+                        nested_url = _extract_first_url(output)
+                        if nested_url:
+                            return nested_url
+                        return output  # در نهایت، خود خروجی را برگردان
+
+                    # اگر هنوز خروجی‌ای نیست، کمی صبر کنیم
                     time.sleep(poll_interval)
                     continue
 
@@ -254,8 +281,16 @@ class ImageService:
                 if status_value:
                     status_tokens = _normalize_tokens(str(status_value))
                     if status_tokens & SUCCESS_TOKENS:
+                        url = _extract_first_url(data)
+                        if url:
+                            return url
                         output = _extract_first(data, OUTPUT_KEYS)
                         if output is not None:
+                            if isinstance(output, str):
+                                return output
+                            nested_url = _extract_first_url(output)
+                            if nested_url:
+                                return nested_url
                             return output
                         time.sleep(poll_interval)
                         continue
