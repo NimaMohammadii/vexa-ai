@@ -449,10 +449,11 @@ class ImageService:
                         logger.error(f"❌ Task شکست خورد (از status): {error_msg}")
                         raise ImageGenerationError(f"Runway task failed: {error_msg}")
 
-                # در غیر این صورت هنوز در حال پردازش است
-                logger.debug("⏳ هنوز در حال پردازش - ادامه polling")
-                time.sleep(poll_interval)
-                continue
+                # اگر 200 رسید ولی وضعیت مشخص نیست، احتمالاً کامل شده
+                # ولی خروجی در فرمت متفاوتی است
+                logger.warning("⚠️ وضعیت نامشخص در پاسخ 200 - احتمالاً کامل شده")
+                logger.debug(f"📦 برگرداندن کل داده برای پردازش در لایه بالاتر: {data}")
+                return data
 
             if resp.status_code == 404:
                 logger.error(f"❌ Task {task_id} پیدا نشد (404)")

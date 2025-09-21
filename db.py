@@ -2,8 +2,19 @@ import sqlite3, time, datetime, csv
 from contextlib import closing
 import os, sqlite3
 
-DB_DIR = os. getenv ("DB_DIR", "/data")
-os.makedirs(DB_DIR, exist_ok=True)
+DB_DIR = os.getenv("DB_DIR", "/data")
+# Fallback to a local data directory if /data is not accessible
+try:
+    os.makedirs(DB_DIR, exist_ok=True)
+    # Test write access
+    test_file = os.path.join(DB_DIR, ".write_test")
+    with open(test_file, 'w') as f:
+        f.write("test")
+    os.remove(test_file)
+except (OSError, PermissionError):
+    # If /data is not accessible, use a local data directory
+    DB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+    os.makedirs(DB_DIR, exist_ok=True)
 DB_PATH = os.path.join(DB_DIR, "bot.db")
 
 print("DB_PATH =>", DB_PATH, flush=True)
