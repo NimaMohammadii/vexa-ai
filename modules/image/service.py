@@ -30,7 +30,7 @@ class ImageGenerationError(RuntimeError):
 class ImageService:
     """Client for interacting with the Runway image generation API."""
 
-    _BASE_URL = "https://api.runwayml.com/v1"
+    _BASE_URL = "https://api.dev.runwayml.com/v1"
     _MODEL = "gen3a_turbo"
     _DEFAULT_WIDTH = 1024
     _DEFAULT_HEIGHT = 1024
