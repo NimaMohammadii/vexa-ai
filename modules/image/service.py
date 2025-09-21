@@ -14,7 +14,7 @@ import requests
 RUNWAY_API = (os.getenv("RUNWAY_API") or "").strip()
 
 RUNWAY_MODEL = (os.getenv("RUNWAY_MODEL") or "gen4_image").strip()
-RUNWAY_API_URL = (os.getenv("RUNWAY_API_URL") or "https://api.runwayml.com/v1/tasks").strip()
+RUNWAY_API_URL = (os.getenv("RUNWAY_API_URL") or "https://api.dev.runwayml.com/v1/tasks").strip()
 
 IMAGE_WIDTH = int(os.getenv("RUNWAY_IMAGE_WIDTH", "1024"))
 IMAGE_HEIGHT = int(os.getenv("RUNWAY_IMAGE_HEIGHT", "1024"))
