@@ -24,8 +24,10 @@ class ImageGenerationError(RuntimeError): pass
 def is_configured() -> bool:
     return bool(RUNWAY_API)
 
-def _request(method: str, url: str, **kwargs) -> Dict[str, Any]:
-    headers = kwargs.pop("headers", {})
+def _request(method: str, url: str, *, _can_retry: bool = True, **kwargs) -> Dict[str, Any]:
+    global RUNWAY_API_VERSION
+    kwargs = dict(kwargs)
+    headers = dict(kwargs.pop("headers", {}))
     headers.setdefault("Authorization", f"Bearer {RUNWAY_API}")
     headers.setdefault("Content-Type", "application/json")
     # ⬇️ مهم: ارور 400 می‌خواست این هدر رو
@@ -43,6 +45,19 @@ def _request(method: str, url: str, **kwargs) -> Dict[str, Any]:
 
     if resp.status_code >= 400:
         msg = _extract_message(data) or resp.text
+        if resp.status_code == 400 and _can_retry:
+            hinted_version = _extract_version_hint(msg)
+            current_version = headers.get("X-Runway-Version", "")
+            if hinted_version and hinted_version != current_version:
+                if DEBUG:
+                    print(
+                        f"[Runway] retry with hinted API version {hinted_version} (was {current_version or 'unset'})",
+                        flush=True,
+                    )
+                headers["X-Runway-Version"] = hinted_version
+                RUNWAY_API_VERSION = hinted_version
+                kwargs["headers"] = headers
+                return _request(method, url, _can_retry=False, **kwargs)
         raise ImageGenerationError(f"Runway API {resp.status_code}: {msg}")
     return data
 
@@ -88,6 +103,15 @@ def _extract_message(d: Dict[str, Any]) -> str:
         v = d.get(k)
         if isinstance(v,str) and v.strip(): return v
     return str(d)
+
+_VERSION_RE = re.compile(r"\b(20\d{2}-\d{2}-\d{2})\b")
+def _extract_version_hint(msg: str) -> Optional[str]:
+    if not isinstance(msg, str):
+        return None
+    m = _VERSION_RE.search(msg)
+    if not m:
+        return None
+    return m.group(1)
 
 def _extract_image_bytes(payload: Dict[str, Any]) -> Optional[bytes]:
     for url in _iter_urls(payload):
