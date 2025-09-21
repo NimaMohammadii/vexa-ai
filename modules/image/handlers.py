@@ -52,9 +52,12 @@ def open_image(bot: TeleBot, cq: CallbackQuery) -> None:
     """Display the image generation menu and ask the user for a prompt."""
 
     user = db.get_or_create_user(cq.from_user)
-    lang = db.get_user_lang(user["user_id"], "fa")
+    user_id = user["user_id"]
+    lang = db.get_user_lang(user_id, "fa")
     chat_id = cq.message.chat.id
     message_id = cq.message.message_id
+
+    db.clear_state(user_id)
 
     if not is_configured():
         edit_or_send(bot, chat_id, message_id, not_configured(lang), menu_keyboard(lang))
@@ -82,6 +85,8 @@ def _handle_prompt_and_generate(bot: TeleBot, message: Message, prompt_text: str
     user = db.get_or_create_user(message.from_user)
     user_id = user["user_id"]
     lang = db.get_user_lang(user_id, "fa")
+
+    db.clear_state(user_id)
 
     prompt = (prompt_text or "").strip()
     if not prompt:
