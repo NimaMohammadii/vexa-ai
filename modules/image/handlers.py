@@ -1,5 +1,5 @@
 # modules/image/handlers.py
-"""Telegram handlers for Runway image generation."""
+"""Telegram handlers for Runway image generation (menu button + /img)."""
 
 from __future__ import annotations
 from telebot import TeleBot
@@ -11,9 +11,10 @@ USAGE = (
     "ساخت تصویر از متن:\n"
     "<b>/img</b> متن تصویر\n"
     "یا روی یک پیام ریپلای کن و بزن: <b>/img</b>\n"
-    "یا از منوی ربات دکمهٔ «تولید تصویر» را بزنید."
+    "یا از منوی ربات دکمهٔ «تولید تصویر» را بزن."
 )
 
+# حالت انتظار برای یک چت
 _WAITING: dict[int, bool] = {}
 
 def _extract_prompt(message: Message) -> str:
@@ -53,7 +54,8 @@ def _handle_prompt_and_generate(bot: TeleBot, message: Message):
         _WAITING.pop(chat_id, None)
 
 def register(bot: TeleBot) -> None:
-    @bot.callback_query_handler(func=lambda c: c.data and c.data.startswith("image:"))
+    # هر callback_data که شامل image یا img باشد را قبول کن
+    @bot.callback_query_handler(func=lambda c: (c.data or "").lower().find("image") != -1 or (c.data or "").lower().find("img") != -1)
     def on_image_menu(cb: CallbackQuery):
         chat_id = cb.message.chat.id
         if not is_configured():
@@ -62,6 +64,7 @@ def register(bot: TeleBot) -> None:
         bot.answer_callback_query(cb.id)
         _ask_for_prompt(bot, chat_id, reply_to_message_id=cb.message.message_id)
 
+    # دستور /img
     @bot.message_handler(commands=["img", "image", "تصویر"])
     def image_cmd(message: Message):
         if not is_configured():
@@ -73,6 +76,12 @@ def register(bot: TeleBot) -> None:
         else:
             _ask_for_prompt(bot, message.chat.id, reply_to_message_id=message.message_id)
 
+    # پیام بعدی کاربر وقتی منتظر پرامپت هستیم
     @bot.message_handler(func=lambda m: _WAITING.get(m.chat.id) is True, content_types=["text"])
     def on_prompt_text(message: Message):
         _handle_prompt_and_generate(bot, message)
+
+    # کمک
+    @bot.message_handler(commands=["img_help"])
+    def img_help(message: Message):
+        bot.reply_to(message, USAGE, parse_mode="HTML")
