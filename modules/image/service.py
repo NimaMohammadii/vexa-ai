@@ -30,6 +30,9 @@ class ImageGenerationError(RuntimeError):
 class ImageService:
     """Client for interacting with the Runway image generation API."""
 
+    _DEFAULT_BASE_URL = "https://api.dev.runwayml.com/v1"
+    _DEFAULT_MODEL = "gen4_image_turbo"
+    _DEFAULT_API_VERSION = "2024-11-06"
     _BASE_URL = os.getenv("RUNWAY_API_URL") or "https://api.dev.runwayml.com/v1"
     _MODEL = os.getenv("RUNWAY_MODEL", "gen4_image_turbo")
     _API_VERSION = os.getenv("RUNWAY_API_VERSION", "2024-11-06")
@@ -39,6 +42,7 @@ class ImageService:
     _REQUEST_TIMEOUT = 30
     _GENERATION_TIMEOUT = 300
     _DEFAULT_POLL_INTERVAL = 3.0
+    _GENERIC_ERROR_MESSAGE = "در پردازش درخواست خطایی رخ داد."
 
     def __init__(self) -> None:
         token = os.getenv("RUNWAY_API")
@@ -46,6 +50,15 @@ class ImageService:
             raise ImageGenerationError("کلید دسترسی Runway تنظیم نشده است.")
 
         self._token = token
+        self._base_url = self._normalise_base_url(
+            os.getenv("RUNWAY_API_URL"),
+            self._DEFAULT_BASE_URL,
+        )
+        self._model = self._normalise_str(os.getenv("RUNWAY_MODEL"), self._DEFAULT_MODEL)
+        self._api_version = self._normalise_str(
+            os.getenv("RUNWAY_API_VERSION"),
+            self._DEFAULT_API_VERSION,
+        )
         self._session = requests.Session()
         self._session.headers.update(
             {
@@ -53,7 +66,7 @@ class ImageService:
                 "Content-Type": "application/json",
                 "Accept": "application/json",
                 "User-Agent": "vexa-ai-image-service/1.0",
-                "X-Runway-Version": self._API_VERSION,
+                "X-Runway-Version": self._api_version,
             }
         )
 
@@ -68,7 +81,7 @@ class ImageService:
             raise ImageGenerationError("متن تصویر نباید خالی باشد.")
 
         payload: Dict[str, Any] = {
-            "model": self._MODEL,
+            "model": self._model,
             "input": {
                 "prompt": cleaned,
                 "width": self._DEFAULT_WIDTH,
@@ -120,7 +133,7 @@ class ImageService:
                 return payload
 
             if status in {"failed", "error", "cancelled"}:
-                raise ImageGenerationError(self._extract_error(payload))
+                raise ImageGenerationError(self._format_error(payload))
 
             time.sleep(poll_delay)
 
@@ -140,7 +153,7 @@ class ImageService:
     ) -> requests.Response:
         """Perform an HTTP request and handle connection level errors."""
 
-        url = f"{self._BASE_URL}{path}"
+        url = self._build_url(path)
         try:
             response = self._session.request(
                 method,
@@ -152,7 +165,8 @@ class ImageService:
             raise ImageGenerationError(f"اتصال به Runway ناموفق بود: {exc}") from exc
 
         if response.status_code >= 400:
-            message = self._extract_error(self._safe_json(response, default={}))
+            payload = self._safe_json(response, default={})
+            message = self._format_error(payload, response)
             raise ImageGenerationError(message)
 
         return response
@@ -190,22 +204,77 @@ class ImageService:
     def _extract_error(payload: Dict[str, Any]) -> str:
         """Extract a user friendly error message from an API response."""
 
-        candidates = [
-            payload.get("error"),
-            payload.get("message"),
-            payload.get("detail"),
-        ]
+        candidates = []
 
-        # برخی پاسخ‌ها شامل ساختار تو در تو هستند
+        error_obj = payload.get("error")
+        if isinstance(error_obj, dict):
+            for key in ("message", "detail", "error", "code"):
+                value = error_obj.get(key)
+                if value:
+                    candidates.append(value)
+        elif error_obj:
+            candidates.append(error_obj)
+
+        candidates.extend(
+            payload.get(key)
+            for key in ("message", "detail", "title", "description")
+            if payload.get(key)
+        )
+
         details = payload.get("errors")
         if isinstance(details, dict):
-            candidates.extend(str(value) for value in details.values())
+            candidates.extend(details.values())
         elif isinstance(details, list):
-            candidates.extend(str(item) for item in details)
+            candidates.extend(details)
 
         for candidate in candidates:
             text = str(candidate or "").strip()
             if text:
                 return text
 
-        return "در پردازش درخواست خطایی رخ داد."
+        return ""
+
+    def _format_error(
+        self,
+        payload: Dict[str, Any] | None,
+        response: requests.Response | None = None,
+    ) -> str:
+        """Return the best available error message for the user."""
+
+        message = self._extract_error(payload or {})
+        if message:
+            return message
+
+        if response is not None:
+            snippet = (response.text or "").strip()
+            if snippet:
+                snippet = " ".join(snippet.split())
+                snippet = snippet[:200]
+                return f"HTTP {response.status_code}: {snippet}"
+            if response.reason:
+                return f"HTTP {response.status_code}: {response.reason}"
+
+        return self._GENERIC_ERROR_MESSAGE
+
+    @staticmethod
+    def _normalise_base_url(candidate: Optional[str], default: str) -> str:
+        """Normalise the configured base URL and ensure it has no trailing slash."""
+
+        if candidate:
+            trimmed = candidate.strip()
+            if trimmed:
+                return trimmed.rstrip("/")
+        return default
+
+    @staticmethod
+    def _normalise_str(candidate: Optional[str], default: str) -> str:
+        if candidate is None:
+            return default
+
+        trimmed = candidate.strip()
+        return trimmed or default
+
+    def _build_url(self, path: str) -> str:
+        if not path.startswith("/"):
+            path = f"/{path}"
+        return f"{self._base_url}{path}"
