@@ -57,3 +57,23 @@ def test_generate_image_uses_input_key():
 def test_generate_image_rejects_empty_prompt(bad_prompt):
     with pytest.raises(service.ImageGenerationError):
         service.generate_image(bad_prompt)
+
+
+def test_download_uses_authorization_header():
+    url = "https://api.runwayml.com/v1/assets/image.png"
+    mock_response = MagicMock()
+    mock_response.raise_for_status = MagicMock()
+    mock_response.content = b"image-bytes"
+
+    with (
+        patch.object(service, "RUNWAY_API_KEY", "secret"),
+        patch.object(service.requests, "get", return_value=mock_response) as mock_get,
+    ):
+        result = service._download(url)
+
+    assert result == b"image-bytes"
+
+    mock_get.assert_called_once()
+    _, kwargs = mock_get.call_args
+    assert kwargs["headers"] == {"Authorization": "Bearer secret"}
+    assert kwargs["timeout"] == 60

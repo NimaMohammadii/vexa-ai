@@ -162,8 +162,12 @@ def _find_base64(node: Any) -> str | None:
 
 
 def _download(url: str) -> bytes:
+    headers: dict[str, str] | None = None
+    if RUNWAY_API_KEY:
+        headers = {"Authorization": f"Bearer {RUNWAY_API_KEY}"}
+
     try:
-        response = requests.get(url, timeout=60)
+        response = requests.get(url, timeout=60, headers=headers)
         response.raise_for_status()
         return response.content
     except requests.RequestException as exc:
