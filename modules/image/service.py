@@ -199,6 +199,9 @@ class ImageService:
                     continue
 
                 if status_kind == "success":
+                status = data.get("status")
+                succeeded_statuses = {"SUCCEEDED", "COMPLETED", "TASK_STATUS_SUCCEEDED"}
+                if status and (status in succeeded_statuses or "SUCCEEDED" in str(status)):
                     output = data.get("output")
                     if output is None:
                         output = data.get("outputs")
