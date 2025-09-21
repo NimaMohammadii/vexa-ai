@@ -97,7 +97,8 @@ class ImageService:
                     raise ImageGenerationError(f"Invalid JSON in status response: {resp.text}")
 
                 status = data.get("status")
-                if status == "SUCCEEDED":
+                succeeded_statuses = {"SUCCEEDED", "COMPLETED", "TASK_STATUS_SUCCEEDED"}
+                if status and (status in succeeded_statuses or "SUCCEEDED" in str(status)):
                     output = data.get("output")
                     return output  # خروجی شامل لینک یا داده تصویر
                 if status == "FAILED":
