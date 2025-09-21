@@ -157,22 +157,31 @@ class ImageService:
             "X-Runway-Version": self.api_version,
         }
 
-    def _fetch_assets(self, task_id: str) -> Any | None:
-        """GET /tasks/{id}/assets and return JSON or None."""
-        assets_url = f"{self.api_url.rstrip('/')}/{task_id}/assets"
+    def _fetch_endpoint_json(self, url: str) -> Any | None:
         try:
-            r = requests.get(assets_url, headers=self._make_headers(), timeout=20)
-        except requests.RequestException as e:
-            # شبکه ایراد داشت؛ نگذاریم کل جریان از کار بیفته
+            r = requests.get(url, headers=self._make_headers(), timeout=20)
+        except requests.RequestException:
             return None
-
         if r.status_code != 200:
             return None
-
         try:
             return r.json()
         except ValueError:
             return None
+
+    def _fetch_assets_like(self, task_id: str) -> Any | None:
+        """Try multiple known endpoints where Runway may expose artifacts."""
+        base = self.api_url.rstrip("/")
+        candidates = (
+            f"{base}/{task_id}/assets",
+            f"{base}/{task_id}/artifacts",
+            f"{base}/{task_id}/output",
+        )
+        for u in candidates:
+            data = self._fetch_endpoint_json(u)
+            if data is not None:
+                return data
+        return None
 
     def generate_image(self, prompt: str) -> str:
         """ایجاد تسک تولید تصویر و برگرداندن task_id"""
@@ -229,7 +238,8 @@ class ImageService:
         """
         وضعیت تولید تصویر رو چک می‌کنه تا کامل بشه یا خطا بده.
         خروجی: URL تصویر در صورت موجود بودن؛ در غیر این صورت اولین مقدار از output/outputs/result/results،
-        و اگر هیچ‌کدام نبود، کل payload یا assets برگردانده می‌شود تا لایه بالاتر URL را استخراج کند.
+        و اگر هیچ‌کدام نبود، ابتدا از endpoints جانبی (assets/artifacts/output) می‌گیرد؛
+        اگر باز هم چیزی نبود، همان payload نهایی را برمی‌گرداند تا لایه بالاتر سریعاً تشخیص دهد.
         """
         if not task_id:
             raise ImageGenerationError("task_id is required to check status.")
@@ -291,18 +301,16 @@ class ImageService:
                         # اگر ساختار تو در تو ولی بدون URL بود، کل خروجی را به لایه بالاتر بده
                         return output
 
-                    # 3) در صورت نبود خروجی در payload، از endpoint assets بگیر
-                    assets = self._fetch_assets(task_id)
-                    if assets is not None:
-                        asset_url = _extract_first_url(assets)
-                        if asset_url:
-                            return asset_url
-                        # اگر URL پیدا نشد، خود assets را بده تا لایه بالاتر سعی کند استخراج کند
-                        return assets
+                    # 3) در صورت نبود خروجی در payload، از endpoints جانبی بگیر
+                    side = self._fetch_assets_like(task_id)
+                    if side is not None:
+                        side_url = _extract_first_url(side)
+                        if side_url:
+                            return side_url
+                        return side  # اجازه بده لایه بالاتر خودش استخراج کند
 
-                    # اگر هنوز چیزی در دسترس نبود، یک بار صبر و دوباره تلاش
-                    time.sleep(poll_interval)
-                    continue
+                    # اگر هیچ کدام نبود، همین data را بده تا گیر نکند
+                    return data
 
                 # سازگاری با APIهایی که صراحتا status == SUCCEEDED دارند
                 status_value = data.get("status")
@@ -320,15 +328,13 @@ class ImageService:
                             if nested_url:
                                 return nested_url
                             return output
-                        # تلاش به گرفتن assets
-                        assets = self._fetch_assets(task_id)
-                        if assets is not None:
-                            asset_url = _extract_first_url(assets)
-                            if asset_url:
-                                return asset_url
-                            return assets
-                        time.sleep(poll_interval)
-                        continue
+                        side = self._fetch_assets_like(task_id)
+                        if side is not None:
+                            side_url = _extract_first_url(side)
+                            if side_url:
+                                return side_url
+                            return side
+                        return data  # موفق شده اما خروجی پیدا نشد، payload را برگردان
 
                     if status_tokens & FAILURE_TOKENS:
                         error_msg = _extract_first(data, ERROR_KEYS) or str(status_value)
