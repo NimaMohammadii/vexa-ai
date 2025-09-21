@@ -9,7 +9,9 @@ import requests
 # === ENV ===
 RUNWAY_API = (os.getenv("RUNWAY_API") or "").strip()
 # چون کلیدت از dev گرفتی، پیش‌فرض dev می‌ذاریم. اگر خواستی دستی override کن.
-RUNWAY_API_URL = (os.getenv("RUNWAY_API_URL") or "https://api.dev.runwayml.com/v1/tasks").strip()
+_DEFAULT_DEV_API_URL = "https://api.dev.runwayml.com/v1/tasks"
+_DEFAULT_PROD_API_URL = "https://api.runwayml.com/v1/tasks"
+RUNWAY_API_URL = (os.getenv("RUNWAY_API_URL") or _DEFAULT_DEV_API_URL).strip() or _DEFAULT_DEV_API_URL
 RUNWAY_MODEL = (os.getenv("RUNWAY_MODEL") or "gen4_image").strip()
 RUNWAY_API_VERSION = (os.getenv("RUNWAY_API_VERSION") or "").strip()  # هدر لازم
 IMAGE_WIDTH = int(os.getenv("RUNWAY_IMAGE_WIDTH", "1024"))
@@ -83,7 +85,7 @@ def generate_image(prompt: str, *, width: Optional[int] = None, height: Optional
         "input": { "prompt": p, "width": w, "height": h, "output_format": IMAGE_FORMAT },
     }
 
-    data = _request("POST", RUNWAY_API_URL, json=payload)
+    data = _create_task(payload)
     if DEBUG: print(f"[Runway] created: id={data.get('id')} status={data.get('status')}", flush=True)
 
     img = _extract_image_bytes(data)
@@ -171,3 +173,42 @@ def _download(url: str) -> bytes:
         return r.content
     except requests.RequestException as exc:
         raise ImageGenerationError(f"Download failed: {exc}") from exc
+
+
+def _candidate_api_urls() -> Iterable[str]:
+    seen = set()
+    for candidate in (
+        RUNWAY_API_URL,
+        _DEFAULT_DEV_API_URL,
+        _DEFAULT_PROD_API_URL,
+    ):
+        candidate = (candidate or "").strip()
+        if not candidate or candidate in seen:
+            continue
+        seen.add(candidate)
+        yield candidate
+
+
+def _create_task(payload: Dict[str, Any]) -> Dict[str, Any]:
+    global RUNWAY_API_URL
+    last_error: Optional[Exception] = None
+    urls = list(_candidate_api_urls())
+    for idx, url in enumerate(urls):
+        try:
+            data = _request("POST", url, json=payload)
+        except ImageGenerationError as exc:
+            last_error = exc
+            is_404 = "Runway API 404" in str(exc)
+            if is_404 and idx + 1 < len(urls):
+                if DEBUG:
+                    print(f"[Runway] {url} returned 404, trying fallback endpoint", flush=True)
+                continue
+            raise
+        else:
+            if url != RUNWAY_API_URL:
+                RUNWAY_API_URL = url
+                if DEBUG:
+                    print(f"[Runway] switched active API endpoint to {url}", flush=True)
+            return data
+    assert last_error is not None
+    raise last_error
