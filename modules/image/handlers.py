@@ -9,7 +9,7 @@ from telebot.types import CallbackQuery, ForceReply, Message
 
 from utils import edit_or_send
 from .keyboards import menu_keyboard, no_credit_keyboard
-from .service import ImageService, ImageGenerationError
+from .service import ImageService, ImageGenerationError٫ is_configured
 from .settings import CREDIT_COST
 from .texts import (
     error as error_text,
