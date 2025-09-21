@@ -1,6 +1,6 @@
 # modules/image/handlers.py
 
-“”“Telegram handlers for the Runway image generation flow.”””
+"""Telegram handlers for the Runway image generation flow"""
 
 from **future** import annotations
 
