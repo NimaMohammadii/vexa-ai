@@ -31,7 +31,7 @@ def generate_image(prompt: str) -> bytes:
 
     payload = {
         "model": "gen4_image",
-        "inputs": {
+        "input": {
             "prompt": prompt,
             "negative_prompt": "",
             "width": 1280,
