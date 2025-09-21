@@ -1,16 +1,37 @@
 import os
+import re
 import time
 from collections import deque
 from typing import Any, Iterable
 
 import requests
 
+
 class ImageGenerationError(Exception):
     pass
 
 
-SUCCESS_MATCHERS: tuple[str, ...] = ("SUCCEED", "COMPLETE", "FINISH")
-FAILURE_MATCHERS: tuple[str, ...] = ("FAIL", "ERROR", "CANCEL", "EXPIRE", "DENY", "ABORT")
+# Tokens are matched as whole tokens (split on non-alnum), not substrings,
+# to avoid false positives like UNFINISHED matching FINISH.
+SUCCESS_TOKENS: set[str] = {
+    "SUCCEEDED",
+    "COMPLETED",
+    "FINISHED",
+    "SUCCESS",
+    "OK",
+    "DONE",
+}
+FAILURE_TOKENS: set[str] = {
+    "FAILED",
+    "ERROR",
+    "CANCELLED",
+    "CANCELED",
+    "EXPIRED",
+    "DENIED",
+    "ABORTED",
+    "REJECTED",
+}
+
 STATUS_KEYS: tuple[str, ...] = ("status", "state")
 OUTPUT_KEYS: tuple[str, ...] = ("output", "outputs", "result", "results")
 ERROR_KEYS: tuple[str, ...] = ("error", "message", "detail", "reason")
@@ -41,9 +62,13 @@ def _iter_key_values(payload: Any, keys: Iterable[str]) -> Iterable[Any]:
             queue.extend(current)
 
 
+def _normalize_tokens(raw: str) -> set[str]:
+    # Split by any non-alphanumeric char to extract tokens like TASK, STATUS, SUCCEEDED
+    return set(filter(None, re.split(r"[^A-Z0-9]+", raw.upper())))
+
+
 def _interpret_status(value: Any) -> tuple[str | None, str | None]:
     """Return a tuple of (raw_status, status_kind) if we can recognise it."""
-
     if value is None:
         return None, None
 
@@ -51,21 +76,21 @@ def _interpret_status(value: Any) -> tuple[str | None, str | None]:
         raw = value.strip()
         if not raw:
             return None, None
-        upper = raw.upper()
-        for keyword in SUCCESS_MATCHERS:
-            if keyword in upper:
-                return raw, "success"
-        for keyword in FAILURE_MATCHERS:
-            if keyword in upper:
-                return raw, "failure"
+        tokens = _normalize_tokens(raw)
+        if tokens & SUCCESS_TOKENS:
+            return raw, "success"
+        if tokens & FAILURE_TOKENS:
+            return raw, "failure"
         return raw, None
 
     if isinstance(value, dict):
+        # Prefer common keys first
         for key in ("value", "status", "state"):
             if key in value:
                 raw, kind = _interpret_status(value[key])
                 if kind:
                     return raw, kind
+        # Fallback: search nested
         for nested in value.values():
             raw, kind = _interpret_status(nested)
             if kind:
@@ -79,12 +104,12 @@ def _interpret_status(value: Any) -> tuple[str | None, str | None]:
                 return raw, kind
         return None, None
 
+    # Coerce other types to string
     return _interpret_status(str(value))
 
 
 def _extract_first(payload: Any, keys: Iterable[str]) -> Any:
     """Return the first value found for any of the keys within nested payloads."""
-
     for value in _iter_key_values(payload, keys):
         if value is not None:
             return value
@@ -96,7 +121,8 @@ class ImageService:
         # از محیط خوانده می‌شود
         self.api_key = os.getenv("RUNWAY_API")
         self.api_version = os.getenv("RUNWAY_API_VERSION")
-        self.api_url = os.getenv("RUNWAY_API_URL", "https://api.dev.runwayml.com/v1/tasks")
+        # پیش‌فرض به endpoint اصلی تغییر داده شد (قابل override)
+        self.api_url = os.getenv("RUNWAY_API_URL", "https://api.runwayml.com/v1/tasks")
         self.model = os.getenv("RUNWAY_MODEL", "gen4_image")
         self.image_width = int(os.getenv("RUNWAY_IMAGE_WIDTH", "512"))
         self.image_height = int(os.getenv("RUNWAY_IMAGE_HEIGHT", "512"))
@@ -111,14 +137,14 @@ class ImageService:
             raise ImageGenerationError("RUNWAY_MODEL is missing.")
 
     def _make_headers(self):
-        headers = {
+        return {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
-            "X-Runway-Version": self.api_version
+            "X-Runway-Version": self.api_version,
         }
-        return headers
 
-    def generate_image(self, prompt: str):
+    def generate_image(self, prompt: str) -> str:
+        """ایجاد تسک تولید تصویر و برگرداندن task_id"""
         if not prompt or not isinstance(prompt, str):
             raise ImageGenerationError("Prompt must be a non-empty string.")
 
@@ -128,8 +154,8 @@ class ImageService:
                 "prompt": prompt,
                 "width": self.image_width,
                 "height": self.image_height,
-                "output_format": self.image_format
-            }
+                "output_format": self.image_format,
+            },
         }
 
         # ارسال درخواست
@@ -139,7 +165,7 @@ class ImageService:
             raise ImageGenerationError(f"Network error during request: {str(e)}")
 
         # بررسی پاسخ
-        if resp.status_code == 202 or resp.status_code == 200:
+        if resp.status_code in (200, 202):
             try:
                 data = resp.json()
             except ValueError:
@@ -151,10 +177,18 @@ class ImageService:
             return task_id
 
         elif resp.status_code == 400:
-            raise ImageGenerationError(f"Runway API 400: {resp.json()}")
+            try:
+                detail = resp.json()
+            except ValueError:
+                detail = resp.text
+            raise ImageGenerationError(f"Runway API 400: {detail}")
 
         elif resp.status_code == 404:
-            raise ImageGenerationError(f"Runway API 404: {resp.json()} — احتمالاً مدل یا endpoint اشتباه است.")
+            try:
+                detail = resp.json()
+            except ValueError:
+                detail = resp.text
+            raise ImageGenerationError(f"Runway API 404: {detail} — احتمالاً مدل یا endpoint اشتباه است.")
 
         else:
             # بقیه کدهای خطا
@@ -163,12 +197,13 @@ class ImageService:
     def get_image_status(self, task_id: str, poll_interval: float = 5.0, timeout: float = 120.0):
         """
         وضعیت تولید تصویر رو چک می‌کنه تا کامل بشه یا خطا بده.
+        خروجی همان فیلد output/outputs/result/results (اولین موردی که پیدا شود) است.
         """
         if not task_id:
             raise ImageGenerationError("task_id is required to check status.")
 
         end_time = time.time() + timeout
-        status_url = f"{self.api_url}/{task_id}"
+        status_url = f"{self.api_url.rstrip('/')}/{task_id}"
 
         while time.time() < end_time:
             try:
@@ -177,6 +212,7 @@ class ImageService:
                 raise ImageGenerationError(f"Network error checking status: {str(e)}")
 
             if resp.status_code == 202:
+                # هنوز در حال پردازش
                 time.sleep(poll_interval)
                 continue
 
@@ -186,6 +222,7 @@ class ImageService:
                 except ValueError:
                     raise ImageGenerationError(f"Invalid JSON in status response: {resp.text}")
 
+                # تشخیص وضعیت از هرجای payload به صورت امن (token-based)
                 status_raw = None
                 status_kind = None
                 for candidate in _iter_key_values(data, STATUS_KEYS):
@@ -194,54 +231,47 @@ class ImageService:
                         status_raw, status_kind = raw, kind
                         break
 
-                if not status_kind:
-                    time.sleep(poll_interval)
-                    continue
-
-                if status_kind == "success":
-                    output = (
-                        data.get("output")
-                        or data.get("outputs")
-                        or data.get("result")
-                        or data.get("results")
-                    )
-                status = data.get("status")
-                succeeded_statuses = {"SUCCEEDED", "COMPLETED", "TASK_STATUS_SUCCEEDED"}
-                if status and (status in succeeded_statuses or "SUCCEEDED" in str(status)):
-                    output = data.get("output")
-                    if output is None:
-                        output = data.get("outputs")
-                    if output is None:
-                        output = data.get("result")
-                    if output is None:
-                        output = data.get("results")
-                    if output is None:
-                        output = _extract_first(data, OUTPUT_KEYS)
-                    if output is None:
-                        raise ImageGenerationError(
-                            f"Runway task completed but no output returned. Response: {data}"
-                        )
-                    return output
-
-                elif status_kind == "failure":
-                    error_msg = data.get("error") or _extract_first(data, ERROR_KEYS)
+                # اگر شکست بوده، پیام خطا رو استخراج و raise کنیم
                 if status_kind == "failure":
-                    error_msg = data.get("error")
-                    if not error_msg:
-                        error_msg = _extract_first(data, ERROR_KEYS)
+                    error_msg = _extract_first(data, ERROR_KEYS)
                     if isinstance(error_msg, (dict, list, tuple, set)):
                         error_msg = str(error_msg)
                     if not error_msg:
                         error_msg = status_raw or "Unknown error from Runway during generation."
                     raise ImageGenerationError(f"Runway task failed ({status_raw}): {error_msg}")
 
-                else:
+                # اگر موفقیت تشخیص داده شد، خروجی رو برگردون
+                if status_kind == "success":
+                    output = _extract_first(data, OUTPUT_KEYS)
+                    if output is not None:
+                        return output
+                    # اگر وضعیت موفق ولی هنوز خروجی موجود نیست، کمی صبر می‌کنیم
                     time.sleep(poll_interval)
+                    continue
+
+                # سازگاری با APIهایی که صراحتا status == SUCCEEDED دارند
+                status_value = data.get("status")
+                if status_value:
+                    status_tokens = _normalize_tokens(str(status_value))
+                    if status_tokens & SUCCESS_TOKENS:
+                        output = _extract_first(data, OUTPUT_KEYS)
+                        if output is not None:
+                            return output
+                        time.sleep(poll_interval)
+                        continue
+                    if status_tokens & FAILURE_TOKENS:
+                        error_msg = _extract_first(data, ERROR_KEYS) or str(status_value)
+                        raise ImageGenerationError(f"Runway task failed: {error_msg}")
+
+                # در غیر این صورت هنوز در حال پردازش است
                 time.sleep(poll_interval)
-            elif resp.status_code == 404:
+                continue
+
+            if resp.status_code == 404:
                 raise ImageGenerationError(f"Status check 404: task {task_id} not found.")
-            else:
-                raise ImageGenerationError(f"Error checking status: {resp.status_code} – {resp.text}")
+
+            # سایر خطاهای HTTP
+            raise ImageGenerationError(f"Error checking status: {resp.status_code} – {resp.text}")
 
         # اگر زمان تمام شد
         raise ImageGenerationError("Image generation timed out.")
