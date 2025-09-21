@@ -1,114 +1,101 @@
-"""Telegram handlers for the image generation flow."""
+# modules/image/handlers.py
+"""Telegram handlers for Runway image generation (supports menu button + /img)."""
 
 from __future__ import annotations
+from telebot import TeleBot
+from telebot.types import Message, CallbackQuery, ForceReply
 
-import time
-from io import BytesIO
+from .service import generate_image, is_configured, ImageGenerationError
 
-from telebot.types import CallbackQuery, Message
+USAGE = (
+    "ساخت تصویر از متن:\n"
+    "<b>/img</b> متن تصویر\n"
+    "یا روی یک پیام ریپلای کن و بزن: <b>/img</b>\n"
+    "یا از منوی ربات دکمهٔ «تولید تصویر» را بزنید."
+)
 
-import db
-from config import DEBUG
-from modules.home.keyboards import main_menu
-from modules.home.texts import MAIN
-from utils import check_force_sub, edit_or_send
+# state بسیار ساده: کاربری که منتظر پرامپت تصویر است
+_WAITING: dict[int, bool] = {}
 
-from .keyboards import menu_keyboard, no_credit_keyboard
-from .service import IMAGE_FORMAT, ImageGenerationError, generate_image, is_configured
-from .settings import CREDIT_COST, STATE_PROCESSING, STATE_WAIT_PROMPT
-from .texts import error, intro, no_credit, not_configured, processing, result_caption
+def _extract_prompt(message: Message) -> str:
+    text = (message.text or "").strip()
+    if text.startswith("/img"):
+        parts = text.split(maxsplit=1)
+        text = parts[1] if len(parts) > 1 else ""
+    if not text and message.reply_to_message:
+        text = (message.reply_to_message.text or "").strip()
+    return text
 
+def _ask_for_prompt(bot: TeleBot, chat_id: int, reply_to_message_id: int | None = None):
+    _WAITING[chat_id] = True
+    bot.send_message(
+        chat_id,
+        "متن تصویری که می‌خوای تولید بشه رو بفرست ✍️",
+        reply_to_message_id=reply_to_message_id,
+        reply_markup=ForceReply(selective=False),
+        parse_mode="HTML",
+    )
 
-def open_image(bot, cq: CallbackQuery) -> None:
-    user = db.get_or_create_user(cq.from_user)
-    lang = db.get_user_lang(user["user_id"], "fa")
-
-    if not is_configured():
-        edit_or_send(bot, cq.message.chat.id, cq.message.message_id, not_configured(lang), menu_keyboard(lang))
-        db.clear_state(user["user_id"])
+def _handle_prompt_and_generate(bot: TeleBot, message: Message):
+    chat_id = message.chat.id
+    prompt = (message.text or "").strip()
+    if not prompt:
+        bot.reply_to(message, "❌ متن خالیه. یه توضیح کوتاه از تصویر بفرست.", parse_mode="HTML")
         return
 
-    edit_or_send(bot, cq.message.chat.id, cq.message.message_id, intro(lang), menu_keyboard(lang))
-    db.set_state(user["user_id"], STATE_WAIT_PROMPT)
-
-
-def register(bot):
-    @bot.callback_query_handler(func=lambda c: c.data == "image:back")
-    def on_back(cq: CallbackQuery):
-        user = db.get_or_create_user(cq.from_user)
-        lang = db.get_user_lang(user["user_id"], "fa")
-        db.clear_state(user["user_id"])
-        edit_or_send(bot, cq.message.chat.id, cq.message.message_id, MAIN(lang), main_menu(lang))
-        bot.answer_callback_query(cq.id)
-
-    @bot.message_handler(
-        func=lambda m: (db.get_state(m.from_user.id) or "").startswith(STATE_WAIT_PROMPT),
-        content_types=["text"],
-    )
-    def on_prompt(msg: Message):
-        user = db.get_or_create_user(msg.from_user)
-        user_id = user["user_id"]
-        lang = db.get_user_lang(user_id, "fa")
-
-        prompt = (msg.text or "").strip()
-        if not prompt:
-            return
-
-        settings = db.get_settings()
-        mode = (settings.get("FORCE_SUB_MODE") or "none").lower()
-        if mode in ("new", "all"):
-            ok, txt, kb = check_force_sub(bot, user_id, settings, lang)
-            if not ok:
-                edit_or_send(bot, msg.chat.id, msg.message_id, txt, kb)
-                return
-
-        if not is_configured():
-            bot.send_message(msg.chat.id, not_configured(lang), reply_markup=menu_keyboard(lang))
-            db.clear_state(user_id)
-            return
-
-        if not db.deduct_credits(user_id, CREDIT_COST):
-            refreshed = db.get_user(user_id) or {}
-            credits = int(refreshed.get("credits") or 0)
-            bot.send_message(msg.chat.id, no_credit(lang, credits), reply_markup=no_credit_keyboard(lang))
-            db.set_state(user_id, STATE_WAIT_PROMPT)
-            return
-
-        db.set_state(user_id, f"{STATE_PROCESSING}:{int(time.time())}")
-        status = bot.send_message(msg.chat.id, processing(lang))
-
-        try:
-            image_bytes = generate_image(prompt)
-        except ImageGenerationError as exc:
-            db.add_credits(user_id, CREDIT_COST)
-            if DEBUG:
-                print(f"[Runway] generation failed: {exc}", flush=True)
-            _notify_error(bot, status, lang)
-            db.set_state(user_id, STATE_WAIT_PROMPT)
-            return
-        except Exception as exc:  # pragma: no cover - safety net
-            db.add_credits(user_id, CREDIT_COST)
-            if DEBUG:
-                print(f"[Runway] unexpected error: {exc}", flush=True)
-            _notify_error(bot, status, lang)
-            db.set_state(user_id, STATE_WAIT_PROMPT)
-            return
-
-        try:
-            bot.delete_message(status.chat.id, status.message_id)
-        except Exception:
-            pass
-
-        image_file = BytesIO(image_bytes)
-        image_file.name = f"image.{IMAGE_FORMAT or 'png'}"
-        bot.send_photo(msg.chat.id, image_file, caption=result_caption(lang))
-        image_file.close()
-        db.set_state(user_id, STATE_WAIT_PROMPT)
-        bot.send_message(msg.chat.id, intro(lang), reply_markup=menu_keyboard(lang))
-
-
-def _notify_error(bot, status_message: Message, lang: str) -> None:
     try:
-        bot.edit_message_text(error(lang), status_message.chat.id, status_message.message_id)
-    except Exception:
-        bot.send_message(status_message.chat.id, error(lang))
+        bot.send_chat_action(chat_id, action="upload_photo")
+        img = generate_image(prompt)
+        bot.send_photo(chat_id, img, caption=prompt)
+    except ImageGenerationError as e:
+        bot.reply_to(message, f"❌ خطا در تولید تصویر:\n{e}", parse_mode="HTML")
+    except Exception as e:
+        bot.reply_to(message, f"❌ خطای غیرمنتظره:\n{e}", parse_mode="HTML")
+    finally:
+        _WAITING.pop(chat_id, None)
+
+def register(bot: TeleBot) -> None:
+    # 1) دکمهٔ منو (Inline keyboard): callback_data های پذیرفته‌شده
+    IMAGE_PREFIXES = ("image:", "img:", "menu:image", "menu:img")
+
+    @bot.callback_query_handler(func=lambda c: bool(c.data) and c.data.startswith(IMAGE_PREFIXES))
+    def on_image_menu(cb: CallbackQuery):
+        chat_id = cb.message.chat.id
+        if not is_configured():
+            bot.answer_callback_query(cb.id, show_alert=True, text="❌ کلید Runway پیدا نشد.\nENV: RUNWAY_API یا RUNWAY_API_KEY")
+            return
+        # اجازه بدیم هر چیزی بود، کاربر از همون‌جا پرامپت بده
+        bot.answer_callback_query(cb.id)
+        _ask_for_prompt(bot, chat_id, reply_to_message_id=cb.message.message_id)
+
+    # 2) دستور /img
+    @bot.message_handler(commands=["img", "image", "تصویر"])
+    def image_cmd(message: Message):
+        if not is_configured():
+            bot.reply_to(message, "❌ کلید Runway پیدا نشد. در ENV یکی از این‌ها را بگذار: RUNWAY_API یا RUNWAY_API_KEY", parse_mode="HTML")
+            return
+
+        prompt = _extract_prompt(message)
+        if prompt:
+            _handle_prompt_and_generate(bot, message.__class__( # ساخت یک Message موقتی با همان چت
+                message_id=message.message_id,
+                from_user=message.from_user,
+                date=message.date,
+                chat=message.chat,
+                content_type="text",
+                options=None,
+                json_string=message.json,
+            ))
+            # نکته: چون prompt را از همین پیام گرفتیم، مستقیم همان پیام را پاس دادیم
+        else:
+            _ask_for_prompt(bot, message.chat.id, reply_to_message_id=message.message_id)
+
+    # 3) پیام بعدیِ کاربر وقتی منتظر پرامپت هستیم
+    @bot.message_handler(func=lambda m: _WAITING.get(m.chat.id) is True, content_types=["text"])
+    def on_prompt_text(message: Message):
+        _handle_prompt_and_generate(bot, message)
+
+    # 4) کمک/راهنما
+    @bot.message_handler(commands=["img_help", "image_help"])
+    def img_help(message: Message):
+        bot.reply_to(message, USAGE, parse_mode="HTML")
