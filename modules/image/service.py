@@ -4,25 +4,18 @@
 from __future__ import annotations
 import base64
 import os
-import re
 import time
+import re
 from typing import Any, Dict, Iterable, Optional
 
 import requests
 
-from config import RUNWAY_API as CONFIG_RUNWAY_API
-
 # ===== Config (ENV) =====
-# NOTE:
-# - The production deployment stores the Runway API token under ``RUNWAY_API``.
-# - We still resolve the key dynamically so a restart picks up changes without
-#   reloading the module.
-def _current_api_key() -> str:
-    return (
-        os.getenv("RUNWAY_API")
-        or CONFIG_RUNWAY_API
-        or ""
-    ).strip()
+RUNWAY_API_KEY = (
+    os.getenv("RUNWAY_API")               # <- شما اینو ست کرده‌ای
+    or os.getenv("RUNWAY_API_KEY")        # اسم متداول
+    or ""
+).strip()
 
 # مدل پیش‌فرض: اسامی رایج در Runway (متناسب با اکانتت تنظیم کن)
 RUNWAY_MODEL = (os.getenv("RUNWAY_MODEL") or "gen4_image").strip()
@@ -43,15 +36,11 @@ class ImageGenerationError(RuntimeError):
     pass
 
 def is_configured() -> bool:
-    return bool(_current_api_key())
+    return bool(RUNWAY_API_KEY)
 
 def _request(method: str, url: str, **kwargs) -> Dict[str, Any]:
     headers = kwargs.pop("headers", {})
-    api_key = _current_api_key()
-    if not api_key:
-        raise ImageGenerationError("RUNWAY_API is missing in environment.")
-    auth_header = api_key if api_key.lower().startswith("bearer ") else f"Bearer {api_key}"
-    headers.setdefault("Authorization", auth_header)
+    headers.setdefault("Authorization", f"Bearer {RUNWAY_API_KEY}")
     headers.setdefault("Content-Type", "application/json")
     kwargs.setdefault("timeout", 30)
     try:
@@ -74,7 +63,7 @@ def generate_image(prompt: str, *, width: Optional[int] = None, height: Optional
     if not p:
         raise ImageGenerationError("Prompt is empty.")
     if not is_configured():
-        raise ImageGenerationError("RUNWAY_API is missing in environment.")
+        raise ImageGenerationError("RUNWAY_API / RUNWAY_API_KEY is missing in environment.")
 
     w = int(width or IMAGE_WIDTH)
     h = int(height or IMAGE_HEIGHT)
