@@ -192,6 +192,13 @@ def register(bot):
             bot.answer_callback_query(cq.id)
             return
 
+        if route == "image":
+            bot.answer_callback_query(cq.id)
+            from modules.image.handlers import open_image
+
+            open_image(bot, cq)
+            return
+
         if route == "tts":
             bot.answer_callback_query(cq.id)
             from modules.tts.handlers import open_tts

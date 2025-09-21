@@ -8,7 +8,11 @@ def main_menu(lang: str) -> InlineKeyboardMarkup:
     kb = InlineKeyboardMarkup()
     kb.row(
         InlineKeyboardButton(t("btn_gpt", lang), callback_data="home:gpt_chat"),
+        InlineKeyboardButton(t("btn_image", lang), callback_data="home:image"),
+    )
+    kb.row(
         InlineKeyboardButton(t("btn_tts", lang), callback_data="home:tts"),
+        InlineKeyboardButton(t("btn_clone", lang), callback_data="home:clone"),
     )
     kb.row(
         InlineKeyboardButton(t("btn_profile", lang), callback_data="home:profile"),
@@ -16,9 +20,8 @@ def main_menu(lang: str) -> InlineKeyboardMarkup:
     )
     kb.row(
         InlineKeyboardButton(t("btn_credit", lang), callback_data="home:credit"),
-        InlineKeyboardButton(t("btn_clone", lang), callback_data="home:clone"),
+        InlineKeyboardButton(t("btn_lang", lang), callback_data="home:lang"),
     )
-    kb.add(InlineKeyboardButton(t("btn_lang", lang), callback_data="home:lang"))
     return kb
 
 

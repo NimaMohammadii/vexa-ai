@@ -16,6 +16,7 @@ from modules.credit import handlers as credit_handlers
 from modules.clone import handlers as clone_handlers
 from modules.tts import handlers as tts_handlers
 from modules.gpt import handlers as gpt_handlers
+from modules.image import handlers as image_handlers
 
 # ========================= Telegram Bot Wiring =========================
 def create_bot() -> telebot.TeleBot:
@@ -33,6 +34,7 @@ def register_modules(bot: telebot.TeleBot) -> None:
     clone_handlers.register(bot)
     tts_handlers.register(bot)
     gpt_handlers.register(bot)
+    image_handlers.register(bot)
 
 def main() -> None:
     db.init_db()
