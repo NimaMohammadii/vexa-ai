@@ -78,24 +78,41 @@ def _send_no_credit(bot: TeleBot, chat_id: int, lang: str, credits: int) -> None
     )
 
 
-def _extract_image_url(data: Any) -> str | None:
+def _extract_image_url(data: Any, _visited: set[int] | None = None) -> str | None:
+    """Extract a usable image URL from the Runway response structure."""
+
+    if _visited is None:
+        _visited = set()
+
+    # جلوگیری از حلقه‌های بازگشتی احتمالی
+    data_id = id(data)
+    if data_id in _visited:
+        return None
+    _visited.add(data_id)
+
     if isinstance(data, str):
-        return data
+        candidate = data.strip()
+        if candidate.startswith(("http://", "https://", "data:image")):
+            return candidate
+        return None
+
     if isinstance(data, dict):
-        for key in ("image", "url"):
-            value = data.get(key)
-            if isinstance(value, str) and value:
-                return value
-        for key in ("images", "data", "output"):
-            value = data.get(key)
-            url = _extract_image_url(value)
+        for value in data.values():
+            if isinstance(value, str):
+                url = _extract_image_url(value, _visited)
+            else:
+                url = _extract_image_url(value, _visited)
             if url:
                 return url
-    if isinstance(data, (list, tuple)):
+        return None
+
+    if isinstance(data, (list, tuple, set)):
         for item in data:
-            url = _extract_image_url(item)
+            url = _extract_image_url(item, _visited)
             if url:
                 return url
+        return None
+
     return None
 
 
