@@ -15,6 +15,7 @@ load_dotenv(Path(__file__).resolve().parent / ".env")
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ELEVEN_API_KEY = os.getenv("ELEVEN_API_KEY")
+RUNWAY_API_KEY = os.getenv("RUNWAY_API") or os.getenv("RUNWAY_API_KEY")
 CARD_NUMBER = os.getenv("CARD_NUMBER", "****-****-****-****")
 
 try:
