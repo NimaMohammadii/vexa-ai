@@ -1,351 +1,209 @@
-import os
-import re
-import time
+"""Runway image generation service.
+
+This module provides a thin wrapper around the Runway asynchronous task API
+and exposes two high level methods that are used by the Telegram handlers:
+``generate_image`` for submitting a new prompt and ``get_image_status`` for
+polling the task until it is finished.
+
+The implementation keeps the configuration inside the code as requested; the
+only external dependency is the ``RUNWAY_API`` environment variable which must
+hold the Runway API token.
+"""
+
+from __future__ import annotations
+
 import logging
-from typing import Any, Optional, Dict
+import os
+import time
+from typing import Any, Dict, Optional
+
 import requests
 
 
-# تنظیم logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
 logger = logging.getLogger(__name__)
 
-# حالت دیباگ
-DEBUG_MODE = os.getenv("RUNWAY_DEBUG", "false").lower() == "true"
-if DEBUG_MODE:
-    logger.setLevel(logging.DEBUG)
 
-
-class ImageGenerationError(Exception):
-    pass
+class ImageGenerationError(RuntimeError):
+    """Raised when an image cannot be generated."""
 
 
 class ImageService:
-    def __init__(self):
-        logger.info("🚀 راه‌اندازی ImageService")
-        
-        # تنظیمات API - endpoint های درست Runway
-        self.api_key = os.getenv("RUNWAY_API")
-        self.api_version = os.getenv("RUNWAY_API_VERSION", "2024-11-13")
-        
-        # endpoint های مختلف Runway برای تست
-        self.base_url = "https://api.runwayml.com/v1"
-        self.endpoints = {
-            "tasks": f"{self.base_url}/tasks",
-            "images": f"{self.base_url}/images/generate", 
-            "generate": f"{self.base_url}/generate",
-            "inference": f"{self.base_url}/inference",
-        }
-        
-        # مدل‌های مختلف Runway
-        self.available_models = [
-            "gen3a_turbo",
-            "gen3_turbo", 
-            "runway-ml/stable-diffusion-v1-5",
-            "runway/stable-diffusion-v1-5",
-            "gen2",
-            "gen1"
-        ]
-        
-        self.model = os.getenv("RUNWAY_MODEL", "gen3a_turbo")
-        
-        # تنظیمات تصویر
-        self.image_width = int(os.getenv("RUNWAY_IMAGE_WIDTH", "1024"))
-        self.image_height = int(os.getenv("RUNWAY_IMAGE_HEIGHT", "1024"))
-        self.image_format = os.getenv("RUNWAY_IMAGE_FORMAT", "WEBP")
-        
-        # تنظیمات timeout
-        self.request_timeout = int(os.getenv("RUNWAY_REQUEST_TIMEOUT", "30"))
-        self.generation_timeout = int(os.getenv("RUNWAY_GENERATION_TIMEOUT", "300"))
-        self.poll_interval = float(os.getenv("RUNWAY_POLL_INTERVAL", "3.0"))
+    """Client for interacting with the Runway image generation API."""
 
-        # لاگ تنظیمات
-        logger.info(f"📋 تنظیمات:")
-        logger.info(f"   Base URL: {self.base_url}")
-        logger.info(f"   API Version: {self.api_version}")
-        logger.info(f"   Model: {self.model}")
-        logger.info(f"   Image Size: {self.image_width}x{self.image_height}")
-        logger.info(f"   Format: {self.image_format}")
-        logger.info(f"   API Key: {'✅ موجود' if self.api_key else '❌ ناموجود'}")
+    _BASE_URL = "https://api.runwayml.com/v1"
+    _MODEL = "gen3a_turbo"
+    _DEFAULT_WIDTH = 1024
+    _DEFAULT_HEIGHT = 1024
+    _DEFAULT_FORMAT = "webp"
+    _REQUEST_TIMEOUT = 30
+    _GENERATION_TIMEOUT = 300
+    _DEFAULT_POLL_INTERVAL = 3.0
 
-        # بررسی‌های لازم
-        if not self.api_key:
-            raise ImageGenerationError("❌ RUNWAY_API key موجود نیست!")
+    def __init__(self) -> None:
+        token = os.getenv("RUNWAY_API")
+        if not token:
+            raise ImageGenerationError("کلید دسترسی Runway تنظیم نشده است.")
 
-    def _get_headers(self) -> Dict[str, str]:
-        """ساخت headers برای درخواست"""
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-            "X-Runway-Version": self.api_version,
-        }
-            
-        return headers
-
-    def _test_endpoint(self, url: str) -> bool:
-        """تست کردن اینکه endpoint کار می‌کنه یا نه"""
-        try:
-            response = requests.get(url, headers=self._get_headers(), timeout=10)
-            logger.debug(f"🔍 تست {url}: {response.status_code}")
-            return response.status_code != 404
-        except:
-            return False
-
-    def _find_working_endpoint(self) -> str:
-        """پیدا کردن endpoint کاری"""
-        logger.info("🔍 جستجوی endpoint کاری...")
-        
-        for name, url in self.endpoints.items():
-            logger.debug(f"   تست {name}: {url}")
-            if self._test_endpoint(url):
-                logger.info(f"✅ endpoint کاری پیدا شد: {name} - {url}")
-                return url
-        
-        # اگر هیچ‌کدام کار نکرد، از tasks استفاده کن (معمولی‌ترین)
-        logger.warning("⚠️ هیچ endpoint کاری پیدا نشد - استفاده از tasks")
-        return self.endpoints["tasks"]
-
-    def generate_image_async(self, prompt: str) -> str:
-        """
-        تولید تصویر با روش async (task-based)
-        """
-        logger.info(f"🎨 شروع تولید تصویر async: '{prompt[:50]}...'")
-        
-        if not prompt or not isinstance(prompt, str):
-            raise ImageGenerationError("❌ Prompt باید یک رشته غیرخالی باشد")
-
-        # پیدا کردن endpoint کاری
-        api_url = self._find_working_endpoint()
-
-        # تست چندین ساختار payload
-        payloads = [
-            # ساختار جدید Gen3
+        self._token = token
+        self._session = requests.Session()
+        self._session.headers.update(
             {
-                "model": self.model,
-                "input": {
-                    "prompt": prompt,
-                    "width": self.image_width,
-                    "height": self.image_height,
-                    "output_format": self.image_format,
-                }
-            },
-            # ساختار قدیمی‌تر
-            {
-                "model": self.model,
-                "prompt": prompt,
-                "width": self.image_width,
-                "height": self.image_height,
-                "output_format": self.image_format,
-                "num_images": 1,
-            },
-            # ساختار ساده
-            {
-                "prompt": prompt,
-                "model": self.model,
-                "width": self.image_width,
-                "height": self.image_height,
+                "Authorization": f"Bearer {self._token}",
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "User-Agent": "vexa-ai-image-service/1.0",
             }
-        ]
+        )
 
-        for i, payload in enumerate(payloads):
-            logger.info(f"🔄 تلاش {i+1} با ساختار {i+1}")
-            logger.debug(f"📋 Payload: {payload}")
-            
-            try:
-                response = requests.post(
-                    api_url,
-                    json=payload,
-                    headers=self._get_headers(),
-                    timeout=self.request_timeout
-                )
-                
-                logger.info(f"📥 پاسخ: {response.status_code}")
-                logger.debug(f"📄 محتوا: {response.text[:300]}...")
-
-                if response.status_code == 200 or response.status_code == 201:
-                    try:
-                        data = response.json()
-                        task_id = data.get("id") or data.get("task_id") or data.get("requestId")
-                        
-                        if task_id:
-                            logger.info(f"✅ Task ایجاد شد: {task_id}")
-                            return self._wait_for_completion(task_id, api_url)
-                        else:
-                            # شاید مستقیماً URL برگرداند
-                            image_url = self._extract_image_url(data)
-                            if image_url:
-                                logger.info(f"🖼️ تصویر مستقیماً دریافت شد: {image_url}")
-                                return image_url
-                            
-                    except ValueError as e:
-                        logger.error(f"❌ خطا در پارس JSON: {e}")
-                        continue
-                        
-                elif response.status_code == 404:
-                    logger.warning(f"⚠️ Endpoint {api_url} کار نمی‌کنه")
-                    continue
-                    
-                elif response.status_code == 400:
-                    try:
-                        error_data = response.json()
-                        logger.warning(f"⚠️ ساختار payload {i+1} نامعتبر: {error_data}")
-                        continue
-                    except:
-                        logger.warning(f"⚠️ ساختار payload {i+1} نامعتبر")
-                        continue
-                        
-                elif response.status_code == 401:
-                    raise ImageGenerationError("❌ API key نامعتبر است")
-                    
-                else:
-                    logger.warning(f"⚠️ پاسخ غیرمنتظره {response.status_code}: {response.text[:200]}")
-                    continue
-                    
-            except requests.exceptions.Timeout:
-                logger.warning(f"⏰ Timeout در تلاش {i+1}")
-                continue
-                
-            except requests.exceptions.RequestException as e:
-                logger.warning(f"❌ خطا در تلاش {i+1}: {e}")
-                continue
-
-        # اگر همه تلاش‌ها شکست خوردند
-        raise ImageGenerationError("❌ تمام روش‌های تولید تصویر شکست خوردند")
-
-    def _wait_for_completion(self, task_id: str, base_url: str) -> str:
-        """انتظار برای تکمیل task"""
-        logger.info(f"⏳ انتظار برای تکمیل task {task_id}")
-        
-        status_url = f"{base_url.rstrip('/')}/{task_id}"
-        start_time = time.time()
-        
-        while time.time() - start_time < self.generation_timeout:
-            try:
-                response = requests.get(status_url, headers=self._get_headers(), timeout=20)
-                logger.debug(f"📊 بررسی وضعیت: {response.status_code}")
-                
-                if response.status_code == 200:
-                    data = response.json()
-                    
-                    # بررسی وضعیت
-                    status = data.get("status", "").upper()
-                    logger.debug(f"📊 وضعیت: {status}")
-                    
-                    if status in ["SUCCEEDED", "COMPLETED", "FINISHED"]:
-                        logger.info("✅ تولید تصویر موفق بود")
-                        
-                        # جستجوی URL
-                        image_url = self._extract_image_url(data)
-                        if image_url:
-                            return image_url
-                        else:
-                            # تلاش برای دریافت از endpoint جانبی
-                            assets_url = f"{status_url}/assets"
-                            assets_response = requests.get(assets_url, headers=self._get_headers())
-                            if assets_response.status_code == 200:
-                                assets_data = assets_response.json()
-                                image_url = self._extract_image_url(assets_data)
-                                if image_url:
-                                    return image_url
-                            
-                            raise ImageGenerationError("❌ URL تصویر در پاسخ پیدا نشد")
-                    
-                    elif status in ["FAILED", "ERROR", "CANCELLED"]:
-                        error_msg = data.get("error", data.get("message", "خطای نامشخص"))
-                        logger.error(f"❌ تولید تصویر شکست خورد: {error_msg}")
-                        raise ImageGenerationError(f"تولید تصویر شکست خورد: {error_msg}")
-                    
-                    # در حال پردازش
-                    logger.debug(f"⏳ در حال پردازش... ({status})")
-                    
-                elif response.status_code == 404:
-                    raise ImageGenerationError(f"❌ Task {task_id} پیدا نشد")
-                    
-                else:
-                    logger.warning(f"⚠️ پاسخ غیرمنتظره {response.status_code}")
-                    
-            except requests.RequestException as e:
-                logger.warning(f"⚠️ خطا در بررسی وضعیت: {e}")
-            
-            time.sleep(self.poll_interval)
-        
-        raise ImageGenerationError("⏰ تولید تصویر timeout شد")
-
-    def _extract_image_url(self, data: Any) -> Optional[str]:
-        """استخراج URL تصویر از پاسخ"""
-        logger.debug("🔍 جستجوی URL تصویر...")
-        
-        # مسیرهای مختلف ممکن
-        paths = [
-            ["output", 0, "uri"],
-            ["output", "uri"],
-            ["outputs", 0, "url"],
-            ["artifacts", 0, "uri"],
-            ["result", "url"],
-            ["url"],
-            ["image_url"],
-            ["uri"],
-            ["signed_url"],
-            ["data", "url"],
-            ["assets", 0, "url"],
-        ]
-        
-        for path in paths:
-            try:
-                current = data
-                for key in path:
-                    if isinstance(current, dict) and key in current:
-                        current = current[key]
-                    elif isinstance(current, list) and isinstance(key, int) and len(current) > key:
-                        current = current[key]
-                    else:
-                        break
-                else:
-                    if isinstance(current, str) and current.startswith(("http://", "https://", "data:")):
-                        logger.debug(f"✅ URL پیدا شد: {current[:50]}...")
-                        return current
-            except (KeyError, IndexError, TypeError):
-                continue
-        
-        # جستجوی عمقی
-        return self._deep_search_url(data)
-
-    def _deep_search_url(self, obj: Any, visited: set = None) -> Optional[str]:
-        """جستجوی عمیق برای URL"""
-        if visited is None:
-            visited = set()
-            
-        obj_id = id(obj)
-        if obj_id in visited:
-            return None
-        visited.add(obj_id)
-        
-        if isinstance(obj, str):
-            if obj.startswith(("http://", "https://", "data:image/")):
-                return obj
-        elif isinstance(obj, dict):
-            for value in obj.values():
-                result = self._deep_search_url(value, visited)
-                if result:
-                    return result
-        elif isinstance(obj, list):
-            for item in obj:
-                result = self._deep_search_url(item, visited)
-                if result:
-                    return result
-        
-        return None
-
-    # متدهای اصلی برای استفاده
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
     def generate_image(self, prompt: str) -> str:
-        """متد اصلی تولید تصویر"""
-        return self.generate_image_async(prompt)
+        """Submit a new generation task and return the task identifier."""
 
-    def get_image_status(self, task_id: str, poll_interval: float = 5.0, timeout: float = 120.0):
-        """سازگاری با کد قدیمی"""
-        logger.warning("⚠️ این متد deprecated است")
-        return self._wait_for_completion(task_id, self.endpoints["tasks"])
+        cleaned = (prompt or "").strip()
+        if not cleaned:
+            raise ImageGenerationError("متن تصویر نباید خالی باشد.")
+
+        payload: Dict[str, Any] = {
+            "model": self._MODEL,
+            "input": {
+                "prompt": cleaned,
+                "width": self._DEFAULT_WIDTH,
+                "height": self._DEFAULT_HEIGHT,
+                "output_format": self._DEFAULT_FORMAT,
+            },
+        }
+
+        logger.debug("Submitting generation task to Runway", extra={"payload": payload})
+        response = self._request("POST", "/tasks", json=payload)
+        data = self._safe_json(response)
+
+        task_id = data.get("id") or data.get("task_id")
+        if not task_id:
+            raise ImageGenerationError("شناسهٔ تسک از پاسخ Runway دریافت نشد.")
+
+        logger.info("Runway task created", extra={"task_id": task_id})
+        return str(task_id)
+
+    def get_image_status(
+        self,
+        task_id: str,
+        *,
+        poll_interval: float | None = None,
+        timeout: float | None = None,
+    ) -> Dict[str, Any]:
+        """Poll the given task until it is finished and return the response."""
+
+        if not task_id:
+            raise ImageGenerationError("شناسهٔ تسک معتبر نیست.")
+
+        poll_delay = poll_interval or self._DEFAULT_POLL_INTERVAL
+        deadline = time.time() + float(timeout or self._GENERATION_TIMEOUT)
+
+        while time.time() < deadline:
+            response = self._request("GET", f"/tasks/{task_id}")
+            payload = self._safe_json(response)
+
+            status = str(payload.get("status", "")).lower()
+            logger.debug(
+                "Runway task status",
+                extra={"task_id": task_id, "status": status, "payload": payload},
+            )
+
+            if status in {"succeeded", "completed", "finished"}:
+                assets = self._fetch_assets(task_id)
+                if assets:
+                    payload.setdefault("assets", assets)
+                return payload
+
+            if status in {"failed", "error", "cancelled"}:
+                raise ImageGenerationError(self._extract_error(payload))
+
+            time.sleep(poll_delay)
+
+        # مهلت به پایان رسیده است
+        raise ImageGenerationError("مهلت دریافت تصویر به پایان رسید.")
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+    def _request(
+        self,
+        method: str,
+        path: str,
+        *,
+        json: Optional[Dict[str, Any]] = None,
+        timeout: int | float | None = None,
+    ) -> requests.Response:
+        """Perform an HTTP request and handle connection level errors."""
+
+        url = f"{self._BASE_URL}{path}"
+        try:
+            response = self._session.request(
+                method,
+                url,
+                json=json,
+                timeout=timeout or self._REQUEST_TIMEOUT,
+            )
+        except requests.RequestException as exc:  # pragma: no cover - network failure
+            raise ImageGenerationError(f"اتصال به Runway ناموفق بود: {exc}") from exc
+
+        if response.status_code >= 400:
+            message = self._extract_error(self._safe_json(response, default={}))
+            raise ImageGenerationError(message)
+
+        return response
+
+    def _fetch_assets(self, task_id: str) -> Optional[Dict[str, Any]]:
+        """Try to fetch the assets for a finished task."""
+
+        try:
+            response = self._request("GET", f"/tasks/{task_id}/assets")
+        except ImageGenerationError:
+            # Some endpoints might not expose assets; swallow the error to return
+            # the original payload obtained from ``/tasks/{task_id}``.
+            logger.debug("No assets available for task", extra={"task_id": task_id})
+            return None
+
+        return self._safe_json(response)
+
+    @staticmethod
+    def _safe_json(response: requests.Response, default: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Return the JSON payload or the provided default."""
+
+        try:
+            parsed = response.json()
+        except ValueError:
+            if default is not None:
+                return default
+            raise ImageGenerationError("پاسخ غیرقابل‌پارس از Runway دریافت شد.") from None
+
+        if isinstance(parsed, dict):
+            return parsed
+
+        return {"data": parsed}
+
+    @staticmethod
+    def _extract_error(payload: Dict[str, Any]) -> str:
+        """Extract a user friendly error message from an API response."""
+
+        candidates = [
+            payload.get("error"),
+            payload.get("message"),
+            payload.get("detail"),
+        ]
+
+        # برخی پاسخ‌ها شامل ساختار تو در تو هستند
+        details = payload.get("errors")
+        if isinstance(details, dict):
+            candidates.extend(str(value) for value in details.values())
+        elif isinstance(details, list):
+            candidates.extend(str(item) for item in details)
+
+        for candidate in candidates:
+            text = str(candidate or "").strip()
+            if text:
+                return text
+
+        return "در پردازش درخواست خطایی رخ داد."
