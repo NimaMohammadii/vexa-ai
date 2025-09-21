@@ -32,6 +32,7 @@ class ImageService:
 
     _BASE_URL = "https://api.dev.runwayml.com/v1"
     _MODEL = "gen3a_turbo"
+    _API_VERSION = os.getenv("RUNWAY_API_VERSION", "2024-06-26")
     _DEFAULT_WIDTH = 1024
     _DEFAULT_HEIGHT = 1024
     _DEFAULT_FORMAT = "webp"
@@ -52,6 +53,7 @@ class ImageService:
                 "Content-Type": "application/json",
                 "Accept": "application/json",
                 "User-Agent": "vexa-ai-image-service/1.0",
+                "X-Runway-Version": self._API_VERSION,
             }
         )
 
