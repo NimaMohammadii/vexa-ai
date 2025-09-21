@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from io import BytesIO
 
 from telebot.types import CallbackQuery, Message
 
@@ -13,7 +14,7 @@ from modules.home.texts import MAIN
 from utils import check_force_sub, edit_or_send
 
 from .keyboards import menu_keyboard, no_credit_keyboard
-from .service import ImageGenerationError, generate_image, is_configured
+from .service import IMAGE_FORMAT, ImageGenerationError, generate_image, is_configured
 from .settings import CREDIT_COST, STATE_PROCESSING, STATE_WAIT_PROMPT
 from .texts import error, intro, no_credit, not_configured, processing, result_caption
 
@@ -98,7 +99,10 @@ def register(bot):
         except Exception:
             pass
 
-        bot.send_photo(msg.chat.id, image_bytes, caption=result_caption(lang))
+        image_file = BytesIO(image_bytes)
+        image_file.name = f"image.{IMAGE_FORMAT or 'png'}"
+        bot.send_photo(msg.chat.id, image_file, caption=result_caption(lang))
+        image_file.close()
         db.set_state(user_id, STATE_WAIT_PROMPT)
         bot.send_message(msg.chat.id, intro(lang), reply_markup=menu_keyboard(lang))
 
