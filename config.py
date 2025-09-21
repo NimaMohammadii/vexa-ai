@@ -15,7 +15,8 @@ load_dotenv(Path(__file__).resolve().parent / ".env")
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ELEVEN_API_KEY = os.getenv("ELEVEN_API_KEY")
-RUNWAY_API = (os.getenv("RUNWAY_API") or "").strip()
+_RUNWAY_API_RAW = os.getenv("RUNWAY_API") or os.getenv("RUNWAY_API_KEY")
+RUNWAY_API = (_RUNWAY_API_RAW or "").strip()
 # Backwards compatibility: some modules still import RUNWAY_API_KEY.
 RUNWAY_API_KEY = RUNWAY_API
 CARD_NUMBER = os.getenv("CARD_NUMBER", "****-****-****-****")

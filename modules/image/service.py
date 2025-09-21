@@ -11,7 +11,7 @@ from typing import Any, Dict, Iterable, Optional
 import requests
 
 # ===== Config (ENV) =====
-RUNWAY_API = (os.getenv("RUNWAY_API") or "").strip()
+RUNWAY_API = (os.getenv("RUNWAY_API") or os.getenv("RUNWAY_API_KEY") or "").strip()
 
 RUNWAY_MODEL = (os.getenv("RUNWAY_MODEL") or "gen4_image").strip()
 RUNWAY_API_URL = (os.getenv("RUNWAY_API_URL") or "https://api.runwayml.com/v1/tasks").strip()
