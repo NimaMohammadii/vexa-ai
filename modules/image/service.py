@@ -10,12 +10,26 @@ from typing import Any, Dict, Iterable, Optional
 
 import requests
 
+from config import RUNWAY_API_KEY as CONFIG_RUNWAY_API_KEY
+
 # ===== Config (ENV) =====
-RUNWAY_API_KEY = (
-    os.getenv("RUNWAY_API")               # <- شما اینو ست کرده‌ای
-    or os.getenv("RUNWAY_API_KEY")        # اسم متداول
-    or ""
-).strip()
+# NOTE:
+# - Many deployments store the Runway API token under ``RUNWAY_API``.
+# - Some keep using the historical ``RUNWAY_API_KEY`` name.
+# - The admin panel can also inject the key via ``config.RUNWAY_API_KEY``
+#   after python-dotenv loads the local ``.env`` file.
+#
+# To keep all of those code paths working, resolve the API key dynamically
+# instead of freezing the value at import time.  This lets operators add the
+# key (for example by editing ``.env``) and simply restarting the bot without
+# having to worry about which exact variable name was used.
+def _current_api_key() -> str:
+    return (
+        os.getenv("RUNWAY_API")
+        or os.getenv("RUNWAY_API_KEY")
+        or CONFIG_RUNWAY_API_KEY
+        or ""
+    ).strip()
 
 # مدل پیش‌فرض: اسامی رایج در Runway (متناسب با اکانتت تنظیم کن)
 RUNWAY_MODEL = (os.getenv("RUNWAY_MODEL") or "gen4_image").strip()
@@ -36,11 +50,14 @@ class ImageGenerationError(RuntimeError):
     pass
 
 def is_configured() -> bool:
-    return bool(RUNWAY_API_KEY)
+    return bool(_current_api_key())
 
 def _request(method: str, url: str, **kwargs) -> Dict[str, Any]:
     headers = kwargs.pop("headers", {})
-    headers.setdefault("Authorization", f"Bearer {RUNWAY_API_KEY}")
+    api_key = _current_api_key()
+    if not api_key:
+        raise ImageGenerationError("RUNWAY_API / RUNWAY_API_KEY is missing in environment.")
+    headers.setdefault("Authorization", f"Bearer {api_key}")
     headers.setdefault("Content-Type", "application/json")
     kwargs.setdefault("timeout", 30)
     try:
