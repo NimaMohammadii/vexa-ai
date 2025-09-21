@@ -205,6 +205,16 @@ class ImageService:
                         or data.get("result")
                         or data.get("results")
                     )
+                status = data.get("status")
+                succeeded_statuses = {"SUCCEEDED", "COMPLETED", "TASK_STATUS_SUCCEEDED"}
+                if status and (status in succeeded_statuses or "SUCCEEDED" in str(status)):
+                    output = data.get("output")
+                    if output is None:
+                        output = data.get("outputs")
+                    if output is None:
+                        output = data.get("result")
+                    if output is None:
+                        output = data.get("results")
                     if output is None:
                         output = _extract_first(data, OUTPUT_KEYS)
                     if output is None:
@@ -215,6 +225,10 @@ class ImageService:
 
                 elif status_kind == "failure":
                     error_msg = data.get("error") or _extract_first(data, ERROR_KEYS)
+                if status_kind == "failure":
+                    error_msg = data.get("error")
+                    if not error_msg:
+                        error_msg = _extract_first(data, ERROR_KEYS)
                     if isinstance(error_msg, (dict, list, tuple, set)):
                         error_msg = str(error_msg)
                     if not error_msg:
@@ -223,6 +237,7 @@ class ImageService:
 
                 else:
                     time.sleep(poll_interval)
+                time.sleep(poll_interval)
             elif resp.status_code == 404:
                 raise ImageGenerationError(f"Status check 404: task {task_id} not found.")
             else:
