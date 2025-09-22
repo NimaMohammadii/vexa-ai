@@ -4,7 +4,7 @@
 import logging
 import os
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import requests
 
@@ -82,8 +82,8 @@ class ImageService:
             raise ImageGenerationError("شناسهٔ تسک از پاسخ Runway دریافت نشد.")
         return str(task_id)
 
-    def get_image_status(self, task_id: str) -> list[dict[str, Any]]:
-        """Poll the task until it's complete and return the result assets."""
+    def get_image_status(self, task_id: str) -> str:
+        """Poll the task until it's complete and return the final image URL."""
         start_time = time.time()
 
         while time.time() - start_time < self._GENERATION_TIMEOUT:
@@ -109,9 +109,13 @@ class ImageService:
             if status in ("succeeded", "completed", "finished"):
                 output = data.get("output") or {}
                 assets = output.get("assets") or []
-                if not assets:
+                if not assets or not isinstance(assets, list):
                     raise ImageGenerationError("تصویری در خروجی دریافت نشد.")
-                return assets
+                image_url = assets[0].get("url")
+                if not image_url:
+                    raise ImageGenerationError("آدرس تصویر یافت نشد.")
+                return image_url
+
             elif status in ("failed", "error", "canceled"):
                 error_msg = data.get("error", "تولید تصویر ناموفق بود.")
                 raise ImageGenerationError(error_msg)
