@@ -134,7 +134,6 @@ class ImageService:
                 return payload
 
             if self._is_failure_state(normalised_status, payload):
-            if status in {"failed", "error", "cancelled"}:
                 raise ImageGenerationError(self._format_error(payload))
 
             time.sleep(poll_delay)
