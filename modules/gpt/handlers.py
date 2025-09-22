@@ -182,20 +182,7 @@ def _start_chat(
     if reset_history:
         db.clear_gpt_history(user_id)
     text = t("gpt_open", lang).format(cost=_format_credits(GPT_MESSAGE_COST))
-
-    if message_id is not None:
-        try:
-            bot.delete_message(chat_id, message_id)
-        except Exception:
-            pass
-
-    bot.send_message(
-        chat_id,
-        text,
-        reply_markup=_chat_keyboard(lang),
-        parse_mode="HTML",
-        input_field_placeholder="Vexa AI",
-    )
+    edit_or_send(bot, chat_id, message_id, text, _chat_keyboard(lang))
     return True
 
 
