@@ -119,9 +119,7 @@ class ImageService:
                     payload.setdefault("assets", assets)
                 return payload
 
-            if self._is_failure_state(normalised_status, payload):
-                raise ImageGenerationError(self._format_error(payload))
-            if status in {"failed", "error", "cancelled"}:
+            if self._is_failure_state(status, payload):
                 raise ImageGenerationError(self._extract_error(payload))
 
             time.sleep(poll_delay)
@@ -211,3 +209,27 @@ class ImageService:
                 return text
 
         return "در پردازش درخواست خطایی رخ داد."
+
+    @staticmethod
+    def _is_failure_state(status: str, payload: Dict[str, Any]) -> bool:
+        """Return ``True`` when the task response represents a failure."""
+
+        normalised = (status or "").lower()
+        failure_states = {
+            "failed",
+            "error",
+            "cancelled",
+            "canceled",
+            "rejected",
+            "aborted",
+        }
+        if normalised in failure_states:
+            return True
+
+        output = payload.get("output")
+        if isinstance(output, dict):
+            nested_status = str(output.get("status", "")).lower()
+            if nested_status in failure_states:
+                return True
+
+        return False
