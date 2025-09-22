@@ -1,9 +1,11 @@
 # modules/image/handlers.py
-"""Telegram handlers for the Runway image generation flow."""
+
+"""Telegram handlers for the Runway image generation flow"""
 
 from __future__ import annotations
 
 from typing import Any
+import logging
 
 import db
 from telebot import TeleBot
@@ -15,7 +17,13 @@ from modules.i18n import t
 from utils import edit_or_send
 from .keyboards import menu_keyboard, no_credit_keyboard
 from .service import ImageGenerationError, ImageService
-from .settings import CREDIT_COST, POLL_INTERVAL, POLL_TIMEOUT, STATE_PROCESSING, STATE_WAIT_PROMPT
+from .settings import (
+    CREDIT_COST,
+    POLL_INTERVAL,
+    POLL_TIMEOUT,
+    STATE_PROCESSING,
+    STATE_WAIT_PROMPT,
+)
 from .texts import (
     error as error_text,
     intro,
@@ -25,6 +33,7 @@ from .texts import (
     result_caption,
 )
 
+logger = logging.getLogger(__name__)
 
 USAGE = (
     "ساخت تصویر از متن:\n"
@@ -66,7 +75,12 @@ def _start_prompt_flow(
     if message_id is not None:
         edit_or_send(bot, chat_id, message_id, intro(lang), menu_keyboard(lang))
     else:
-        bot.send_message(chat_id, intro(lang), reply_markup=menu_keyboard(lang), parse_mode="HTML")
+        bot.send_message(
+            chat_id,
+            intro(lang),
+            reply_markup=menu_keyboard(lang),
+            parse_mode="HTML",
+        )
 
 
 def _send_no_credit(bot: TeleBot, chat_id: int, lang: str, credits: int) -> None:
@@ -80,11 +94,10 @@ def _send_no_credit(bot: TeleBot, chat_id: int, lang: str, credits: int) -> None
 
 def _extract_image_url(data: Any, _visited: set[int] | None = None) -> str | None:
     """Extract a usable image URL from the Runway response structure."""
-
     if _visited is None:
         _visited = set()
 
-    # جلوگیری از حلقه‌های بازگشتی احتمالی
+    # Guard against recursive cycles
     data_id = id(data)
     if data_id in _visited:
         return None
@@ -92,18 +105,52 @@ def _extract_image_url(data: Any, _visited: set[int] | None = None) -> str | Non
 
     if isinstance(data, str):
         candidate = data.strip()
-        if candidate.startswith(("http://", "https://", "data:image")):
+        if any(
+            candidate.startswith(prefix)
+            for prefix in [
+                "http://",
+                "https://",
+                "data:image",
+                "//",
+                "ftp://",
+                "file://",
+            ]
+        ):
             return candidate
         return None
 
     if isinstance(data, dict):
-        for value in data.values():
-            if isinstance(value, str):
+        # Common keys that may contain image URLs
+        priority_keys = [
+            "url",
+            "image_url",
+            "output_url",
+            "result_url",
+            "download_url",
+            "file_url",
+            "asset_url",
+            "src",
+            "href",
+            "link",
+            "path",
+            "uri",
+            "output",
+        ]
+
+        # Check priority keys first
+        for key in priority_keys:
+            if key in data:
+                url = _extract_image_url(data[key], _visited)
+                if url:
+                    return url
+
+        # Then check other keys
+        lower_priority = {k.lower() for k in priority_keys}
+        for key, value in data.items():
+            if key.lower() not in lower_priority:
                 url = _extract_image_url(value, _visited)
-            else:
-                url = _extract_image_url(value, _visited)
-            if url:
-                return url
+                if url:
+                    return url
         return None
 
     if isinstance(data, (list, tuple, set)):
@@ -126,14 +173,18 @@ def _process_prompt(bot: TeleBot, message: Message, user, prompt: str, lang: str
         service = ImageService()
     except ImageGenerationError:
         bot.send_message(message.chat.id, not_configured(lang), parse_mode="HTML")
-        _start_prompt_flow(bot, message.chat.id, user["user_id"], lang, show_intro=False)
+        _start_prompt_flow(
+            bot, message.chat.id, user["user_id"], lang, show_intro=False
+        )
         return
 
     fresh = db.get_user(user["user_id"]) or user
     credits = int(fresh.get("credits", 0) or 0)
     if credits < CREDIT_COST:
         _send_no_credit(bot, message.chat.id, lang, credits)
-        _start_prompt_flow(bot, message.chat.id, user["user_id"], lang, show_intro=False)
+        _start_prompt_flow(
+            bot, message.chat.id, user["user_id"], lang, show_intro=False
+        )
         return
 
     db.set_state(user["user_id"], STATE_PROCESSING)
@@ -141,9 +192,27 @@ def _process_prompt(bot: TeleBot, message: Message, user, prompt: str, lang: str
 
     try:
         task_id = service.generate_image(prompt)
-        result = service.get_image_status(task_id, poll_interval=POLL_INTERVAL, timeout=POLL_TIMEOUT)
+        logger.info(f"Task ID generated: {task_id}")
+
+        result = service.get_image_status(
+            task_id, poll_interval=POLL_INTERVAL, timeout=POLL_TIMEOUT
+        )
+        logger.debug(f"Full result from Runway API: {result}")
+
+        if isinstance(result, dict):
+            logger.debug(f"Result keys: {list(result.keys())}")
+            if "assets" in result:
+                logger.debug(f"Assets content: {result['assets']}")
+            if "output" in result:
+                logger.debug(f"Output content: {result['output']}")
+
         image_url = _extract_image_url(result)
+        logger.debug(f"Extracted image URL: {image_url}")
+
         if not image_url:
+            logger.error(
+                f"No image URL found. Response structure: {str(result)[:500]}..."
+            )
             raise ImageGenerationError("خروجی تصویر دریافت نشد.")
 
         bot.send_photo(
@@ -161,6 +230,7 @@ def _process_prompt(bot: TeleBot, message: Message, user, prompt: str, lang: str
             pass
 
     except ImageGenerationError as exc:
+        logger.error(f"Image generation error: {exc}")
         try:
             bot.edit_message_text(
                 f"{error_text(lang)}\n<code>{exc}</code>",
@@ -169,10 +239,15 @@ def _process_prompt(bot: TeleBot, message: Message, user, prompt: str, lang: str
                 parse_mode="HTML",
             )
         except Exception:
-            bot.send_message(message.chat.id, f"{error_text(lang)}\n<code>{exc}</code>", parse_mode="HTML")
-
+            bot.send_message(
+                message.chat.id,
+                f"{error_text(lang)}\n<code>{exc}</code>",
+                parse_mode="HTML",
+            )
     finally:
-        _start_prompt_flow(bot, message.chat.id, user["user_id"], lang, show_intro=False)
+        _start_prompt_flow(
+            bot, message.chat.id, user["user_id"], lang, show_intro=False
+        )
 
 
 def open_image(bot: TeleBot, call: CallbackQuery) -> None:
@@ -180,7 +255,9 @@ def open_image(bot: TeleBot, call: CallbackQuery) -> None:
     if user.get("banned"):
         bot.answer_callback_query(call.id, t("error_banned", lang), show_alert=True)
         return
-    _start_prompt_flow(bot, call.message.chat.id, user["user_id"], lang, message_id=call.message.message_id)
+    _start_prompt_flow(
+        bot, call.message.chat.id, user["user_id"], lang, message_id=call.message.message_id
+    )
     bot.answer_callback_query(call.id)
 
 
@@ -203,7 +280,9 @@ def register(bot: TeleBot) -> None:
     def on_back(cq: CallbackQuery):
         user, lang = _get_user_and_lang(cq.from_user)
         db.clear_state(user["user_id"])
-        edit_or_send(bot, cq.message.chat.id, cq.message.message_id, MAIN(lang), main_menu(lang))
+        edit_or_send(
+            bot, cq.message.chat.id, cq.message.message_id, MAIN(lang), main_menu(lang)
+        )
         bot.answer_callback_query(cq.id)
 
     @bot.message_handler(commands=["img"])
@@ -219,4 +298,3 @@ def register(bot: TeleBot) -> None:
         if message.text and message.text.startswith("/"):
             return
         _process_prompt(bot, message, user, message.text or "", lang)
-
