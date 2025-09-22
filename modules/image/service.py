@@ -85,7 +85,7 @@ class ImageService:
         response = self._request("POST", "/tasks", json=payload)
         data = self._safe_json(response)
 
-        task_id = data.get("id") or data.get("task_id")
+        task_id = self._extract_task_id(data)
         if not task_id:
             raise ImageGenerationError("شناسهٔ تسک از پاسخ Runway دریافت نشد.")
 
@@ -111,7 +111,7 @@ class ImageService:
             response = self._request("GET", f"/tasks/{task_id}")
             payload = self._safe_json(response)
 
-            status = str(payload.get("status", "")).lower()
+            status = str(self._extract_status(payload)).lower()
             logger.debug(
                 "Runway task status",
                 extra={"task_id": task_id, "status": status, "payload": payload},
@@ -242,11 +242,25 @@ class ImageService:
     def _extract_error(payload: Dict[str, Any]) -> str:
         """Extract a user friendly error message from an API response."""
 
-        candidates = [
-            payload.get("error"),
-            payload.get("message"),
-            payload.get("detail"),
-        ]
+        primary = ImageService._find_first_value(
+            payload,
+            (
+                "message",
+                "detail",
+                "error",
+                "description",
+                "error_description",
+                "error_message",
+                "reason",
+                "title",
+                "msg",
+            ),
+        )
+        text = ImageService._normalise_text(primary)
+        if text:
+            return text
+
+        candidates: list[Any] = []
 
         # برخی پاسخ‌ها شامل ساختار تو در تو هستند
         details = payload.get("errors")
@@ -256,8 +270,121 @@ class ImageService:
             candidates.extend(str(item) for item in details)
 
         for candidate in candidates:
-            text = str(candidate or "").strip()
+            text = ImageService._normalise_text(candidate)
             if text:
                 return text
 
         return "در پردازش درخواست خطایی رخ داد."
+
+    @staticmethod
+    def _normalise_text(value: Any) -> str:
+        if isinstance(value, str):
+            return value.strip()
+        if value is None:
+            return ""
+        return str(value).strip()
+
+    @classmethod
+    def _extract_task_id(cls, payload: Dict[str, Any]) -> str | None:
+        """Try to locate the task identifier in various response layouts."""
+
+        def _from_container(container: Optional[Dict[str, Any]]) -> str | None:
+            if not isinstance(container, dict):
+                return None
+            for key in ("task_id", "id"):
+                raw = container.get(key)
+                text = cls._normalise_text(raw)
+                if not text:
+                    continue
+                if key == "id" and not cls._looks_like_task_id(text, container):
+                    continue
+                return text
+            return None
+
+        if isinstance(payload, dict):
+            containers: list[Any] = [
+                payload,
+                payload.get("data"),
+                payload.get("task"),
+                payload.get("result"),
+            ]
+            for container in containers:
+                if isinstance(container, dict):
+                    found = _from_container(container)
+                    if found:
+                        return found
+                elif isinstance(container, list):
+                    for item in container:
+                        if isinstance(item, dict):
+                            found = _from_container(item)
+                            if found:
+                                return found
+
+        fallback = cls._find_first_value(payload, ("task_id",))
+        text = cls._normalise_text(fallback)
+        if text:
+            return text
+
+        fallback = cls._find_first_value(payload, ("id",))
+        text = cls._normalise_text(fallback)
+        if text and cls._looks_like_task_id(text, payload):
+            return text
+
+        return None
+
+    @classmethod
+    def _extract_status(cls, payload: Dict[str, Any]) -> str:
+        """Return the task status from possibly nested responses."""
+
+        direct = cls._normalise_text(payload.get("status"))
+        if direct:
+            return direct
+
+        nested = cls._find_first_value(payload, ("status",))
+        return cls._normalise_text(nested)
+
+    @staticmethod
+    def _looks_like_task_id(value: str, context: Any) -> bool:
+        lowered = value.lower()
+        if lowered.startswith("task"):
+            return True
+        if isinstance(context, dict) and any(
+            key in context for key in ("status", "state", "task_id")
+        ):
+            return True
+        return False
+
+    @classmethod
+    def _find_first_value(
+        cls, data: Any, keys: tuple[str, ...], _visited: Optional[set[int]] = None
+    ) -> Any | None:
+        if _visited is None:
+            _visited = set()
+
+        obj_id = id(data)
+        if obj_id in _visited:
+            return None
+        _visited.add(obj_id)
+
+        if isinstance(data, dict):
+            for key in keys:
+                if key in data:
+                    value = data[key]
+                    nested = cls._find_first_value(value, keys, _visited)
+                    if nested is not None:
+                        return nested
+                    text = cls._normalise_text(value)
+                    if text:
+                        return value
+            for value in data.values():
+                result = cls._find_first_value(value, keys, _visited)
+                if result is not None:
+                    return result
+
+        elif isinstance(data, (list, tuple, set)):
+            for item in data:
+                result = cls._find_first_value(item, keys, _visited)
+                if result is not None:
+                    return result
+
+        return None
