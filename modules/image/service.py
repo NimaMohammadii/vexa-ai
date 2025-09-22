@@ -119,9 +119,7 @@ class ImageService:
                     payload.setdefault("assets", assets)
                 return payload
 
-            if self._is_failure_state(normalised_status, payload):
-                raise ImageGenerationError(self._format_error(payload))
-            if status in {"failed", "error", "cancelled"}:
+            if self._is_failure_state(status, payload):
                 raise ImageGenerationError(self._extract_error(payload))
 
             time.sleep(poll_delay)
@@ -192,22 +190,80 @@ class ImageService:
     def _extract_error(payload: Dict[str, Any]) -> str:
         """Extract a user friendly error message from an API response."""
 
-        candidates = [
-            payload.get("error"),
-            payload.get("message"),
-            payload.get("detail"),
-        ]
-
-        # برخی پاسخ‌ها شامل ساختار تو در تو هستند
-        details = payload.get("errors")
-        if isinstance(details, dict):
-            candidates.extend(str(value) for value in details.values())
-        elif isinstance(details, list):
-            candidates.extend(str(item) for item in details)
-
-        for candidate in candidates:
+        for candidate in ImageService._flatten_candidates(payload):
             text = str(candidate or "").strip()
             if text:
                 return text
 
         return "در پردازش درخواست خطایی رخ داد."
+
+    @staticmethod
+    def _is_failure_state(status: str, payload: Dict[str, Any]) -> bool:
+        """Return ``True`` when the task response represents a failure."""
+
+        normalised = (status or "").lower()
+        failure_states = {
+            "failed",
+            "error",
+            "cancelled",
+            "canceled",
+            "rejected",
+            "aborted",
+        }
+        if normalised in failure_states:
+            return True
+
+        output = payload.get("output")
+        if isinstance(output, dict):
+            nested_status = str(output.get("status", "")).lower()
+            if nested_status in failure_states:
+                return True
+
+        if payload.get("error") or (
+            isinstance(output, dict) and output.get("error")
+        ):
+            return True
+
+        return False
+
+    @staticmethod
+    def _flatten_candidates(payload: Dict[str, Any]) -> list[str]:
+        """Extract possible error messages from nested payload structures."""
+
+        interesting_keys = {
+            "error",
+            "errors",
+            "message",
+            "detail",
+            "details",
+            "reason",
+            "description",
+            "status_reason",
+            "title",
+            "output",
+        }
+
+        def _walk(value: Any) -> list[str]:
+            if value is None:
+                return []
+            if isinstance(value, bool):
+                return []
+            if isinstance(value, str):
+                return [value]
+            if isinstance(value, (list, tuple, set)):
+                results: list[str] = []
+                for item in value:
+                    results.extend(_walk(item))
+                return results
+            if isinstance(value, dict):
+                results: list[str] = []
+                for key in interesting_keys:
+                    if key in value:
+                        results.extend(_walk(value[key]))
+                if not results:
+                    for item in value.values():
+                        results.extend(_walk(item))
+                return results
+            return [str(value)]
+
+        return _walk(payload)
