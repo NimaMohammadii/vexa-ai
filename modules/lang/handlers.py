@@ -10,10 +10,17 @@ from modules.home.keyboards import main_menu
 from modules.i18n import t
 
 
-def _language_menu_content(user, display_lang: Optional[str] = None):
+def _language_menu_content(
+    user,
+    display_lang: Optional[str] = None,
+):
     stored_lang = (user or {}).get("lang") or ""
     render_lang = display_lang or stored_lang or "fa"
-    return TITLE(render_lang), lang_menu(stored_lang, render_lang), stored_lang or render_lang
+    return (
+        TITLE(render_lang),
+        lang_menu(stored_lang, render_lang, show_back=bool(stored_lang)),
+        stored_lang or render_lang,
+    )
 
 
 def send_language_menu(
