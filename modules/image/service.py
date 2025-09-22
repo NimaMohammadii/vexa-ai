@@ -1,16 +1,5 @@
-"""Runway image generation service.
 
-This module provides a thin wrapper around the Runway asynchronous task API
-and exposes two high level methods that are used by the Telegram handlers:
-``generate_image`` for submitting a new prompt and ``get_image_status`` for
-polling the task until it is finished.
-
-The implementation keeps the configuration inside the code as requested; the
-only external dependency is the ``RUNWAY_API`` environment variable which must
-hold the Runway API token.
-"""
-
-from __future__ import annotations
+"""Runway image generation service."""
 
 import logging
 import os
@@ -19,25 +8,22 @@ from typing import Any, Dict, Optional
 
 import requests
 
-
 logger = logging.getLogger(__name__)
-
 
 class ImageGenerationError(RuntimeError):
     """Raised when an image cannot be generated."""
 
-
 class ImageService:
     """Client for interacting with the Runway image generation API."""
 
-    _BASE_URL = os.getenv("RUNWAY_API_URL") or "https://api.dev.runwayml.com/v1"
-    _MODEL = os.getenv("RUNWAY_MODEL", "gen4_image_turbo")
-    _API_VERSION = os.getenv("RUNWAY_API_VERSION", "2024-11-06")
-    _DEFAULT_WIDTH = 1024
-    _DEFAULT_HEIGHT = 1024
-    _DEFAULT_FORMAT = "webp"
+    _BASE_URL = "https://api.dev.runwayml.com/v1"
+    _MODEL = "gen4_image"
+    _API_VERSION = "2024-06-01"
+    _DEFAULT_WIDTH = 512
+    _DEFAULT_HEIGHT = 512
+    _DEFAULT_FORMAT = "png"
     _REQUEST_TIMEOUT = 30
-    _GENERATION_TIMEOUT = 300
+    _GENERATION_TIMEOUT = 120
     _DEFAULT_POLL_INTERVAL = 3.0
 
     def __init__(self) -> None:
@@ -47,22 +33,16 @@ class ImageService:
 
         self._token = token
         self._session = requests.Session()
-        self._session.headers.update(
-            {
-                "Authorization": f"Bearer {self._token}",
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-                "User-Agent": "vexa-ai-image-service/1.0",
-                "X-Runway-Version": self._API_VERSION,
-            }
-        )
+        self._session.headers.update({
+            "Authorization": f"Bearer {self._token}",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "User-Agent": "vexa-ai-image-service/1.0",
+            "X-Runway-Version": self._API_VERSION,
+        })
 
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
     def generate_image(self, prompt: str) -> str:
         """Submit a new generation task and return the task identifier."""
-
         cleaned = (prompt or "").strip()
         if not cleaned:
             raise ImageGenerationError("متن تصویر نباید خالی باشد.")
@@ -77,194 +57,65 @@ class ImageService:
             },
         }
 
-        logger.debug("Submitting generation task to Runway", extra={"payload": payload})
-        response = self._request("POST", "/tasks", json=payload)
-        data = self._safe_json(response)
+        try:
+            response = self._session.post(
+                f"{self._BASE_URL}/tasks",
+                json=payload,
+                timeout=self._REQUEST_TIMEOUT
+            )
+            logger.debug("Runway POST response: %s", response.text)
+        except Exception as e:
+            raise ImageGenerationError(f"درخواست به Runway با خطا مواجه شد: {e}")
+
+        if response.status_code not in (200, 202):
+            raise ImageGenerationError(
+                f"درخواست با خطا برگشت: {response.status_code} - {response.text}"
+            )
+
+        try:
+            data = response.json()
+        except Exception:
+            raise ImageGenerationError("پاسخ JSON معتبر از Runway دریافت نشد.")
 
         task_id = data.get("id") or data.get("task_id")
         if not task_id:
             raise ImageGenerationError("شناسهٔ تسک از پاسخ Runway دریافت نشد.")
-
-        logger.info("Runway task created", extra={"task_id": task_id})
         return str(task_id)
 
-    def get_image_status(
-        self,
-        task_id: str,
-        *,
-        poll_interval: float | None = None,
-        timeout: float | None = None,
-    ) -> Dict[str, Any]:
-        """Poll the given task until it is finished and return the response."""
+    def get_image_status(self, task_id: str) -> list[dict[str, Any]]:
+        """Poll the task until it's complete and return the result assets."""
+        start_time = time.time()
 
-        if not task_id:
-            raise ImageGenerationError("شناسهٔ تسک معتبر نیست.")
+        while time.time() - start_time < self._GENERATION_TIMEOUT:
+            try:
+                response = self._session.get(
+                    f"{self._BASE_URL}/tasks/{task_id}",
+                    timeout=self._REQUEST_TIMEOUT,
+                )
+            except Exception as e:
+                raise ImageGenerationError(f"خطا در بررسی وضعیت تسک: {e}")
 
-        poll_delay = poll_interval or self._DEFAULT_POLL_INTERVAL
-        deadline = time.time() + float(timeout or self._GENERATION_TIMEOUT)
+            if response.status_code != 200:
+                raise ImageGenerationError(
+                    f"خطا در بررسی وضعیت تصویر: {response.status_code} - {response.text}"
+                )
 
-        while time.time() < deadline:
-            response = self._request("GET", f"/tasks/{task_id}")
-            payload = self._safe_json(response)
+            try:
+                data = response.json()
+            except Exception:
+                raise ImageGenerationError("پاسخ وضعیت JSON نامعتبر بود.")
 
-            status = str(payload.get("status", "")).lower()
-            logger.debug(
-                "Runway task status",
-                extra={"task_id": task_id, "status": status, "payload": payload},
-            )
+            status = (data.get("status") or "").lower()
+            if status in ("succeeded", "completed", "finished"):
+                output = data.get("output") or {}
+                assets = output.get("assets") or []
+                if not assets:
+                    raise ImageGenerationError("تصویری در خروجی دریافت نشد.")
+                return assets
+            elif status in ("failed", "error", "canceled"):
+                error_msg = data.get("error", "تولید تصویر ناموفق بود.")
+                raise ImageGenerationError(error_msg)
 
-            if status in {"succeeded", "completed", "finished"}:
-                assets = self._fetch_assets(task_id)
-                if assets:
-                    payload.setdefault("assets", assets)
-                return payload
+            time.sleep(self._DEFAULT_POLL_INTERVAL)
 
-            if self._is_failure_state(status, payload):
-                raise ImageGenerationError(self._extract_error(payload))
-
-            time.sleep(poll_delay)
-
-        # مهلت به پایان رسیده است
-        raise ImageGenerationError("مهلت دریافت تصویر به پایان رسید.")
-
-    # ------------------------------------------------------------------
-    # Internal helpers
-    # ------------------------------------------------------------------
-    def _request(
-        self,
-        method: str,
-        path: str,
-        *,
-        json: Optional[Dict[str, Any]] = None,
-        timeout: int | float | None = None,
-    ) -> requests.Response:
-        """Perform an HTTP request and handle connection level errors."""
-
-        url = f"{self._BASE_URL}{path}"
-        try:
-            response = self._session.request(
-                method,
-                url,
-                json=json,
-                timeout=timeout or self._REQUEST_TIMEOUT,
-            )
-        except requests.RequestException as exc:  # pragma: no cover - network failure
-            raise ImageGenerationError(f"اتصال به Runway ناموفق بود: {exc}") from exc
-
-        if response.status_code >= 400:
-            message = self._extract_error(self._safe_json(response, default={}))
-            raise ImageGenerationError(message)
-
-        return response
-
-    def _fetch_assets(self, task_id: str) -> Optional[Dict[str, Any]]:
-        """Try to fetch the assets for a finished task."""
-
-        try:
-            response = self._request("GET", f"/tasks/{task_id}/assets")
-        except ImageGenerationError:
-            # Some endpoints might not expose assets; swallow the error to return
-            # the original payload obtained from ``/tasks/{task_id}``.
-            logger.debug("No assets available for task", extra={"task_id": task_id})
-            return None
-
-        return self._safe_json(response)
-
-    @staticmethod
-    def _safe_json(response: requests.Response, default: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """Return the JSON payload or the provided default."""
-
-        try:
-            parsed = response.json()
-        except ValueError:
-            if default is not None:
-                return default
-            raise ImageGenerationError("پاسخ غیرقابل‌پارس از Runway دریافت شد.") from None
-
-        if isinstance(parsed, dict):
-            return parsed
-
-        return {"data": parsed}
-
-    @staticmethod
-    def _extract_error(payload: Dict[str, Any]) -> str:
-        """Extract a user friendly error message from an API response."""
-
-        for candidate in ImageService._flatten_candidates(payload):
-            text = str(candidate or "").strip()
-            if text:
-                return text
-
-        return "در پردازش درخواست خطایی رخ داد."
-
-    @staticmethod
-    def _is_failure_state(status: str, payload: Dict[str, Any]) -> bool:
-        """Return ``True`` when the task response represents a failure."""
-
-        normalised = (status or "").lower()
-        failure_states = {
-            "failed",
-            "error",
-            "cancelled",
-            "canceled",
-            "rejected",
-            "aborted",
-        }
-        if normalised in failure_states:
-            return True
-
-        output = payload.get("output")
-        if isinstance(output, dict):
-            nested_status = str(output.get("status", "")).lower()
-            if nested_status in failure_states:
-                return True
-
-        if payload.get("error") or (
-            isinstance(output, dict) and output.get("error")
-        ):
-            return True
-
-        return False
-
-    @staticmethod
-    def _flatten_candidates(payload: Dict[str, Any]) -> list[str]:
-        """Extract possible error messages from nested payload structures."""
-
-        interesting_keys = {
-            "error",
-            "errors",
-            "message",
-            "detail",
-            "details",
-            "reason",
-            "description",
-            "status_reason",
-            "title",
-            "output",
-        }
-
-        def _walk(value: Any) -> list[str]:
-            if value is None:
-                return []
-            if isinstance(value, bool):
-                return []
-            if isinstance(value, str):
-                return [value]
-            if isinstance(value, (list, tuple, set)):
-                results: list[str] = []
-                for item in value:
-                    results.extend(_walk(item))
-                return results
-            if isinstance(value, dict):
-                results: list[str] = []
-                for key in interesting_keys:
-                    if key in value:
-                        results.extend(_walk(value[key]))
-                if not results:
-                    for item in value.values():
-                        results.extend(_walk(item))
-                return results
-            return [str(value)]
-
-        return _walk(payload)
-        return False
+        raise ImageGenerationError("مهلت تولید تصویر به پایان رسید.")
