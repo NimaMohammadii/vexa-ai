@@ -31,13 +31,16 @@ def keyboard(selected_voice: str, lang: str = "fa", user_id: int = None):
                                  callback_data=f"tts:voice:{n}")
             for n in row
         ])
-    
+
     # اگر صدای انتخابی کاستوم هست، دکمه حذف اضافه کن
     if user_id and selected_voice:
         is_custom = any(voice[0] == selected_voice for voice in custom_voices)
         if is_custom:
             kb.add(InlineKeyboardButton("🗑 حذف این صدا", callback_data=f"tts:delete:{selected_voice}"))
-    
+
+    # دکمه ساخت صدای شخصی همیشه قبل از بازگشت باشد
+    kb.add(InlineKeyboardButton(t("btn_clone", lang), callback_data="home:clone"))
+
     kb.add(InlineKeyboardButton(t("back", lang), callback_data="home:back"))
     return kb
 
