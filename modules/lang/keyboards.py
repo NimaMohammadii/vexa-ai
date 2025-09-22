@@ -16,7 +16,7 @@ LANGS = [
 ]
 
 
-def lang_menu(current: str, lang: str) -> InlineKeyboardMarkup:
+def lang_menu(current: str, lang: str, *, show_back: bool = True) -> InlineKeyboardMarkup:
     kb = InlineKeyboardMarkup(row_width=2)
     row = []
     for label, code in LANGS:
@@ -27,6 +27,7 @@ def lang_menu(current: str, lang: str) -> InlineKeyboardMarkup:
             row = []
     if row:
         kb.row(*row)
-    kb.add(InlineKeyboardButton(t("back", lang), callback_data="lang:back"))
+    if show_back:
+        kb.add(InlineKeyboardButton(t("back", lang), callback_data="lang:back"))
     return kb
 
