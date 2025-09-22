@@ -119,6 +119,8 @@ class ImageService:
                     payload.setdefault("assets", assets)
                 return payload
 
+            if self._is_failure_state(normalised_status, payload):
+                raise ImageGenerationError(self._format_error(payload))
             if status in {"failed", "error", "cancelled"}:
                 raise ImageGenerationError(self._extract_error(payload))
 
