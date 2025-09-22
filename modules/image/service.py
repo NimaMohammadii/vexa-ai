@@ -30,7 +30,10 @@ class ImageGenerationError(RuntimeError):
 class ImageService:
     """Client for interacting with the Runway image generation API."""
 
-    _BASE_URL = os.getenv("RUNWAY_API_URL") or "https://api.dev.runwayml.com/v1"
+    _DEFAULT_BASE_URLS = (
+        "https://api.runwayml.com/v1",
+        "https://api.dev.runwayml.com/v1",
+    )
     _MODEL = os.getenv("RUNWAY_MODEL", "gen4_image_turbo")
     _API_VERSION = os.getenv("RUNWAY_API_VERSION", "2024-11-06")
     _DEFAULT_WIDTH = 1024
@@ -46,6 +49,7 @@ class ImageService:
             raise ImageGenerationError("کلید دسترسی Runway تنظیم نشده است.")
 
         self._token = token
+        self._base_urls = self._initialise_base_urls()
         self._session = requests.Session()
         self._session.headers.update(
             {
@@ -130,6 +134,25 @@ class ImageService:
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+    def _initialise_base_urls(self) -> list[str]:
+        """Return the list of base URLs to try for the Runway API."""
+
+        configured = os.getenv("RUNWAY_API_URL")
+        candidates: tuple[str, ...]
+        if configured:
+            candidates = (configured,)
+        else:
+            candidates = self._DEFAULT_BASE_URLS
+
+        normalised: list[str] = []
+        for base in candidates:
+            base = base.strip()
+            if not base:
+                continue
+            normalised.append(base.rstrip("/"))
+
+        return normalised or list(self._DEFAULT_BASE_URLS)
+
     def _request(
         self,
         method: str,
@@ -140,22 +163,51 @@ class ImageService:
     ) -> requests.Response:
         """Perform an HTTP request and handle connection level errors."""
 
-        url = f"{self._BASE_URL}{path}"
-        try:
-            response = self._session.request(
-                method,
-                url,
-                json=json,
-                timeout=timeout or self._REQUEST_TIMEOUT,
-            )
-        except requests.RequestException as exc:  # pragma: no cover - network failure
-            raise ImageGenerationError(f"اتصال به Runway ناموفق بود: {exc}") from exc
+        last_exception: Exception | None = None
+        for index, base_url in enumerate(list(self._base_urls)):
+            url = f"{base_url}{path}"
+            try:
+                response = self._session.request(
+                    method,
+                    url,
+                    json=json,
+                    timeout=timeout or self._REQUEST_TIMEOUT,
+                )
+            except requests.RequestException as exc:  # pragma: no cover - network failure
+                last_exception = exc
+                logger.warning(
+                    "Runway request failed", extra={"url": url, "error": str(exc)}
+                )
+                continue
 
-        if response.status_code >= 400:
-            message = self._extract_error(self._safe_json(response, default={}))
-            raise ImageGenerationError(message)
+            if response.status_code == 404 and index + 1 < len(self._base_urls):
+                logger.info(
+                    "Runway endpoint not found on base URL, trying fallback",
+                    extra={"url": url, "status": response.status_code},
+                )
+                continue
 
-        return response
+            if response.status_code >= 400:
+                payload = self._safe_json(response, default={})
+                message = self._extract_error(payload)
+                raise ImageGenerationError(message)
+
+            if index != 0:
+                # Cache the working base URL so subsequent calls use it first.
+                self._base_urls.pop(index)
+                self._base_urls.insert(0, base_url)
+
+            return response
+
+        if last_exception is not None:
+            raise ImageGenerationError(
+                f"اتصال به Runway ناموفق بود: {last_exception}"
+            ) from last_exception
+
+        # All candidates responded with 404. Surface a helpful error.
+        raise ImageGenerationError(
+            "آدرس سرویس Runway در دسترس نیست. لطفاً مقدار RUNWAY_API_URL را بررسی کن."
+        )
 
     def _fetch_assets(self, task_id: str) -> Optional[Dict[str, Any]]:
         """Try to fetch the assets for a finished task."""
