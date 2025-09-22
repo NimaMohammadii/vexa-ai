@@ -267,3 +267,4 @@ class ImageService:
             return [str(value)]
 
         return _walk(payload)
+        return False
