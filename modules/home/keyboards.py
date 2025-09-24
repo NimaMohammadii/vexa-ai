@@ -12,9 +12,6 @@ def main_menu(lang: str) -> InlineKeyboardMarkup:
     )
     kb.row(
         InlineKeyboardButton(t("btn_tts", lang), callback_data="home:tts"),
-    )
-    kb.row(
-        InlineKeyboardButton(t("btn_image", lang), callback_data="home:image"),
         InlineKeyboardButton(t("btn_gpt", lang), callback_data="home:gpt_chat"),
     )
     kb.row(
