@@ -34,6 +34,16 @@ LABELS = {
     "tts_processing": {"fa":"👀 <b>در حال تبدیل...</b>","en":"⏳ Converting...","ar":"⏳ جارٍ التحويل...","tr":"⏳ Dönüştürülüyor...","ru":"⏳ Конвертация...","es":"⏳ Convirtiendo...","de":"⏳ Wird konvertiert...","fr":"⏳ Conversion..."},
     "tts_no_credit":  {"fa":"⚠️ <b>کردیت کافی نیست</b>\n<b>موجـودی شما : {credits} Credit </b>\n<b>میتونـی کردیت بخری یا متن رو کوتاه‌تر کنی /help</b>","en":"⚠️ Not enough credits.","ar":"⚠️ الرصيد غير كافٍ.","tr":"⚠️ Yetersiz kredi.","ru":"⚠️ Недостаточно кредитов.","es":"⚠️ Créditos insuficientes.","de":"⚠️ Nicht genug Guthaben.","fr":"⚠️ Crédits insuffisants."},
     "tts_error":      {"fa":"⚠️ <b>خطا در تبدیل٫ دوباره تلاش کن</b>","en":"⚠️ Conversion failed. Try again.","ar":"⚠️ فشل التحويل. جرب مرة أخرى.","tr":"⚠️ Dönüşüm hatası. Tekrar dene.","ru":"⚠️ Ошибка конвертации. Попробуйте снова.","es":"⚠️ Error de conversión. Inténtalo de nuevo.","de":"⚠️ Umwandlung fehlgeschlagen. Versuch's nochmal.","fr":"⚠️ Échec de conversion. Réessayez."},
+    "tts_banned_words": {
+        "fa": "❌ این کلمات قابل تبدیل نیستند. لطفاً متن دیگری استفاده کن.",
+        "en": "❌ This text contains blocked words. Please use different wording.",
+        "ar": "❌ هذا النص يحتوي على كلمات محظورة. الرجاء استخدام نص آخر.",
+        "tr": "❌ Bu metin yasaklı kelimeler içeriyor. Lütfen farklı bir metin kullan.",
+        "ru": "❌ В тексте есть запрещённые слова. Пожалуйста, сформулируйте иначе.",
+        "es": "❌ Este texto contiene palabras bloqueadas. Usa otro texto, por favor.",
+        "de": "❌ Dieser Text enthält gesperrte Wörter. Bitte formuliere ihn anders.",
+        "fr": "❌ Ce texte contient des mots interdits. Merci d'utiliser un autre texte.",
+    },
 
     # Profile
     "profile_title":  {"fa":"پروفایل","en":"Profile","ar":"الملف الشخصي","tr":"Profil","ru":"Профиль","es":"Perfil","de":"Profil","fr":"Profil"},
