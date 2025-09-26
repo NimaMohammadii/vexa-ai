@@ -23,3 +23,6 @@ def NO_CREDIT(lang: str, credits: int | None = None, required_credits: int | Non
 
 def ERROR(lang: str) -> str:
     return t('tts_error', lang)
+
+def BANNED(lang: str) -> str:
+    return t('tts_banned_words', lang)

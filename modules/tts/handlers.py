@@ -4,7 +4,7 @@ import time
 import db
 from utils import edit_or_send
 from config import DEBUG
-from .texts import TITLE, ask_text, PROCESSING, NO_CREDIT, ERROR
+from .texts import TITLE, ask_text, PROCESSING, NO_CREDIT, ERROR, BANNED
 from .keyboards import keyboard as tts_keyboard
 from .settings import (
     STATE_WAIT_TEXT,
@@ -12,8 +12,34 @@ from .settings import (
     DEFAULT_VOICE_NAME,
     CREDIT_PER_CHAR,
     OUTPUTS,  # [{'mime':'audio/mpeg'}, {'mime':'audio/mpeg'}] → دو خروجی MP3
+    BANNED_WORDS,
 )
 from .service import synthesize
+
+# ----------------- filters -----------------
+_NORMALIZE_REPLACEMENTS = {
+    "ك": "ک",
+    "ي": "ی",
+    "ى": "ی",
+    "ؤ": "و",
+    "إ": "ا",
+    "أ": "ا",
+    "آ": "ا",
+    "ة": "ه",
+    "ۀ": "ه",
+}
+
+def _normalize_text(text: str) -> str:
+    normalized = (text or "").lower()
+    for src, dst in _NORMALIZE_REPLACEMENTS.items():
+        normalized = normalized.replace(src, dst)
+    return normalized.replace("ـ", "").replace("\u200c", " ").replace("\u200d", "")
+
+_BANNED_WORDS = tuple(_normalize_text(word) for word in BANNED_WORDS if word)
+
+def _has_banned_word(text: str) -> bool:
+    normalized = _normalize_text(text)
+    return any(word and word in normalized for word in _BANNED_WORDS)
 
 # ----------------- helpers -----------------
 def _parse_state(raw: str):
@@ -150,6 +176,11 @@ def register(bot):
 
             text = (msg.text or "").strip()
             if not text:
+                return
+
+            if _has_banned_word(text):
+                bot.send_message(msg.chat.id, BANNED(lang))
+                db.set_state(user_id, _make_state(last_menu_id or msg.message_id, voice_name))
                 return
 
             # لاگ مخصوص پنل ادمین (برای خروجی متن‌های TTS)
