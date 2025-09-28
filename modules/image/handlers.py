@@ -109,6 +109,45 @@ def _guess_mime_type(file_path: str, fallback: str = "image/jpeg") -> str:
     return mime or fallback
 
 
+def _download_file(bot: TeleBot, file_id: str) -> tuple[bytes, str | None]:
+    """Download a Telegram file and return its content and path."""
+
+    file_path: str | None = None
+
+    try:
+        file_info = bot.get_file(file_id)
+        file_path = getattr(file_info, "file_path", None)
+    except Exception:
+        file_info = None
+
+    content: bytes | None = None
+
+    if file_path:
+        try:
+            content = bot.download_file(file_path)
+        except Exception:
+            content = None
+
+    if content is None:
+        # ``download_file_by_id`` works for photos even when Telegram
+        # generates a temporary path without an extension. Some bot instances
+        # run on library versions that do not expose this helper, so guard the
+        # call and swallow transport errors. This prevents an AttributeError
+        # bubbling up and breaking the handler without giving feedback to the
+        # user.
+        download_by_id = getattr(bot, "download_file_by_id", None)
+        if callable(download_by_id):
+            try:
+                content = download_by_id(file_id)
+            except Exception:
+                content = None
+
+    if not content:
+        raise RuntimeError("empty file content")
+
+    return content, file_path
+
+
 def _get_reference_image(bot: TeleBot, message: Message, lang: str, *, _depth: int = 0) -> ReferenceImage | None:
     if message is None or _depth > 2:
         return None
@@ -116,18 +155,18 @@ def _get_reference_image(bot: TeleBot, message: Message, lang: str, *, _depth: i
     try:
         if message.photo:
             photo = message.photo[-1]
-            file_info = bot.get_file(photo.file_id)
-            content = bot.download_file(file_info.file_path)
-            return ReferenceImage(content, _guess_mime_type(file_info.file_path))
+            content, file_path = _download_file(bot, photo.file_id)
+            guessed = _guess_mime_type(file_path or "")
+            return ReferenceImage(content, guessed)
 
         document = getattr(message, "document", None)
         if document:
             mime_type = (document.mime_type or "").lower()
             if not mime_type.startswith("image/"):
                 raise ImageGenerationError(invalid_reference(lang))
-            file_info = bot.get_file(document.file_id)
-            content = bot.download_file(file_info.file_path)
-            guessed = document.mime_type or _guess_mime_type(file_info.file_path)
+            content, file_path = _download_file(bot, document.file_id)
+            guessed_path = _guess_mime_type(file_path or "")
+            guessed = document.mime_type or guessed_path
             return ReferenceImage(content, guessed)
 
     except ImageGenerationError:

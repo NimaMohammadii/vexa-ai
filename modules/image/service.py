@@ -108,7 +108,7 @@ class ImageService:
         if not image_bytes:
             raise ImageGenerationError("تصویر مرجع ارسال نشده است.")
 
-        safe_mime = (mime_type or self._DEFAULT_IMAGE_MIME).split(";")[0].strip() or self._DEFAULT_IMAGE_MIME
+        safe_mime = self._normalise_mime_type(image_bytes, mime_type)
         encoded = base64.b64encode(image_bytes).decode("ascii")
         data_url = f"data:{safe_mime};base64,{encoded}"
 
@@ -194,6 +194,48 @@ class ImageService:
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+    @classmethod
+    def _normalise_mime_type(cls, image_bytes: bytes, mime_type: str | None) -> str:
+        """Return a safe MIME type for the provided image bytes."""
+
+        candidate = (mime_type or "").split(";")[0].strip().lower()
+        detected = cls._detect_mime_type(image_bytes)
+
+        if detected:
+            if not candidate or candidate not in {detected, "image/jpg"}:
+                candidate = detected
+
+        if not candidate.startswith("image/"):
+            candidate = detected or cls._DEFAULT_IMAGE_MIME
+
+        if candidate == "image/jpg":
+            candidate = "image/jpeg"
+
+        return candidate or cls._DEFAULT_IMAGE_MIME
+
+    @staticmethod
+    def _detect_mime_type(image_bytes: bytes) -> str | None:
+        """Infer the MIME type from raw image bytes."""
+
+        if not image_bytes:
+            return None
+
+        header = image_bytes[:16]
+
+        if header.startswith(b"\x89PNG\r\n\x1a\n"):
+            return "image/png"
+
+        if header[:3] == b"\xff\xd8\xff":
+            return "image/jpeg"
+
+        if header.startswith(b"GIF87a") or header.startswith(b"GIF89a"):
+            return "image/gif"
+
+        if len(header) >= 12 and header[:4] == b"RIFF" and header[8:12] == b"WEBP":
+            return "image/webp"
+
+        return None
+
     def _initialise_base_urls(self) -> list[str]:
         """Return the list of base URLs to try for the Runway API."""
 
