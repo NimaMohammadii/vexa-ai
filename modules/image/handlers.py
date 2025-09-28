@@ -141,6 +141,8 @@ def _download_file(bot: TeleBot, file_id: str) -> tuple[bytes, str | None]:
                 content = download_by_id(file_id)
             except Exception:
                 content = None
+        # generates a temporary path without an extension.
+        content = bot.download_file_by_id(file_id)
 
     if not content:
         raise RuntimeError("empty file content")
