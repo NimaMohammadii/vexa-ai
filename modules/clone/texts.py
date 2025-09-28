@@ -6,11 +6,11 @@ def MENU(lang: str = "fa") -> str:
     return t("clone_menu", lang)
 
 
-def PAYMENT_CONFIRM(lang: str = "fa", cost: int = 6800) -> str:
+def PAYMENT_CONFIRM(lang: str = "fa", cost: int = 200) -> str:
     return t("clone_payment_confirm", lang).format(cost=cost)
 
 
-def NO_CREDIT_CLONE(lang: str = "fa", balance: int = 0, cost: int = 6800) -> str:
+def NO_CREDIT_CLONE(lang: str = "fa", balance: int = 0, cost: int = 200) -> str:
     return t("clone_insufficient_credit", lang).format(balance=balance, cost=cost)
 
 
