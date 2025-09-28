@@ -1,6 +1,16 @@
-import sqlite3, time, datetime, csv
+import csv
+import datetime
+import io
+import mimetypes
+import os
+import sqlite3
+import tempfile
+import time
+import zipfile
 from contextlib import closing
-import os, sqlite3
+from urllib.parse import urlparse
+
+import requests
 
 DB_DIR = os. getenv ("DB_DIR", "/data")
 os.makedirs(DB_DIR, exist_ok=True)
@@ -61,9 +71,19 @@ def init_db():
             voice_id TEXT,
             created_at INTEGER
         )""")
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS image_generations(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                prompt TEXT,
+                image_url TEXT,
+                created_at INTEGER NOT NULL
+            )"""
+        )
         con.commit()
     _migrate_users_table()
     ensure_default_settings()
+    _migrate_messages_kind()
 
 
 def ensure_default_settings():
@@ -256,6 +276,144 @@ def log_message(user_id, direction, text):
         con.commit()
 
 
+def log_image_generation(user_id: int, prompt: str, image_url: str) -> None:
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            """INSERT INTO image_generations(user_id, prompt, image_url, created_at)
+                   VALUES(?,?,?,?)""",
+            (user_id, (prompt or "")[:1000], image_url or "", int(time.time())),
+        )
+        con.commit()
+
+
+def list_user_images(user_id: int):
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            """SELECT id, prompt, image_url, created_at
+                   FROM image_generations
+                   WHERE user_id=?
+                   ORDER BY id ASC""",
+            (user_id,),
+        )
+        rows = cur.fetchall() or []
+    return [
+        {
+            "id": row[0],
+            "prompt": row[1] or "",
+            "image_url": row[2] or "",
+            "created_at": row[3] or 0,
+        }
+        for row in rows
+    ]
+
+
+def count_users_with_images() -> int:
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute("SELECT COUNT(DISTINCT user_id) FROM image_generations")
+        result = cur.fetchone()
+        return result[0] if result else 0
+
+
+def _guess_image_extension(url: str, content_type: str | None) -> str:
+    parsed = urlparse(url or "")
+    candidate = os.path.splitext(parsed.path)[1]
+    if candidate and len(candidate) <= 5:
+        return candidate
+    if content_type:
+        ext = mimetypes.guess_extension(content_type.split(";")[0].strip())
+        if ext:
+            return ext
+    return ".jpg"
+
+
+def export_user_images_zip(user_id: int, path: str | None = None):
+    records = list_user_images(user_id)
+    if not records:
+        return None
+
+    tmp_dir = DB_DIR if os.path.isdir(DB_DIR) else None
+    if path is None:
+        tmp_file = tempfile.NamedTemporaryFile(
+            delete=False,
+            suffix=".zip",
+            prefix=f"user_{user_id}_images_",
+            dir=tmp_dir or None,
+        )
+        path = tmp_file.name
+        tmp_file.close()
+    else:
+        os.makedirs(os.path.dirname(os.path.abspath(path)) or ".", exist_ok=True)
+
+    downloaded = 0
+    skipped = 0
+    session = requests.Session()
+    manifest_buffer = io.StringIO()
+    writer = csv.writer(manifest_buffer)
+    writer.writerow([
+        "id",
+        "prompt",
+        "created_at",
+        "created_at_iso",
+        "image_url",
+        "status",
+        "filename",
+    ])
+
+    with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        for idx, item in enumerate(records, start=1):
+            url = item.get("image_url") or ""
+            status = "ok"
+            filename = ""
+            image_bytes = None
+            content_type = ""
+            if url:
+                try:
+                    response = session.get(url, timeout=30)
+                    response.raise_for_status()
+                    image_bytes = response.content
+                    content_type = response.headers.get("Content-Type", "")
+                except Exception:
+                    status = "download_error"
+            else:
+                status = "missing_url"
+
+            if image_bytes:
+                ext = _guess_image_extension(url, content_type)
+                filename = f"{idx:03d}_{item.get('id')}" + ext
+                zf.writestr(filename, image_bytes)
+                downloaded += 1
+            else:
+                skipped += 1
+
+            created_at = int(item.get("created_at") or 0)
+            try:
+                created_iso = datetime.datetime.utcfromtimestamp(created_at).isoformat()
+            except Exception:
+                created_iso = ""
+
+            writer.writerow([
+                item.get("id"),
+                item.get("prompt"),
+                created_at,
+                created_iso,
+                url,
+                status,
+                filename,
+            ])
+
+        zf.writestr("manifest.csv", manifest_buffer.getvalue())
+
+    return {
+        "path": path,
+        "total": len(records),
+        "downloaded": downloaded,
+        "skipped": skipped,
+    }
+
+
 def reset_user(user_id: int) -> bool:
     """Completely remove a user and all related data from the bot database."""
     with closing(sqlite3.connect(DB_PATH)) as con:
@@ -270,6 +428,7 @@ def reset_user(user_id: int) -> bool:
         cur.execute("DELETE FROM gpt_messages WHERE user_id=?", (user_id,))
         cur.execute("DELETE FROM purchases WHERE user_id=?", (user_id,))
         cur.execute("DELETE FROM user_voices WHERE user_id=?", (user_id,))
+        cur.execute("DELETE FROM image_generations WHERE user_id=?", (user_id,))
         con.commit()
     return True
 
