@@ -130,6 +130,17 @@ def _download_file(bot: TeleBot, file_id: str) -> tuple[bytes, str | None]:
 
     if content is None:
         # ``download_file_by_id`` works for photos even when Telegram
+        # generates a temporary path without an extension. Some bot instances
+        # run on library versions that do not expose this helper, so guard the
+        # call and swallow transport errors. This prevents an AttributeError
+        # bubbling up and breaking the handler without giving feedback to the
+        # user.
+        download_by_id = getattr(bot, "download_file_by_id", None)
+        if callable(download_by_id):
+            try:
+                content = download_by_id(file_id)
+            except Exception:
+                content = None
         # generates a temporary path without an extension.
         content = bot.download_file_by_id(file_id)
 
