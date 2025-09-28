@@ -12,6 +12,7 @@ hold the Runway API token.
 
 from __future__ import annotations
 
+import base64
 import logging
 import os
 import time
@@ -64,7 +65,13 @@ class ImageService:
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
-    def generate_image(self, prompt: str) -> str:
+    def generate_image(
+        self,
+        prompt: str,
+        *,
+        reference_image: bytes | None = None,
+        reference_mime_type: str | None = None,
+    ) -> str:
         """Submit a new generation task and return the task identifier."""
 
         cleaned = (prompt or "").strip()
@@ -74,11 +81,31 @@ class ImageService:
         payload: Dict[str, Any] = {
             "promptText": cleaned,
             "model": self._MODEL,
-            "ratio": f"{self._DEFAULT_WIDTH}:{self._DEFAULT_HEIGHT}"
+            "ratio": f"{self._DEFAULT_WIDTH}:{self._DEFAULT_HEIGHT}",
         }
 
-        logger.debug("Submitting generation task to Runway", extra={"payload": payload})
-        response = self._request("POST", "/text_to_image", json=payload)
+        endpoint = "/text_to_image"
+        if reference_image:
+            endpoint = "/image_to_image"
+            data_uri = self._encode_image(reference_image, reference_mime_type)
+            payload.update(
+                {
+                    "initImage": data_uri,
+                    "image": data_uri,
+                    "imageMimeType": reference_mime_type or "image/png",
+                }
+            )
+
+        logger.debug(
+            "Submitting generation task to Runway",
+            extra={
+                "payload": {
+                    key: ("<omitted>" if key in {"image", "initImage"} else value)
+                    for key, value in payload.items()
+                }
+            },
+        )
+        response = self._request("POST", endpoint, json=payload)
         data = self._safe_json(response)
 
         task_id = data.get("id")
@@ -205,6 +232,16 @@ class ImageService:
         raise ImageGenerationError(
             "آدرس سرویس Runway در دسترس نیست. لطفاً مقدار RUNWAY_API_URL را بررسی کن."
         )
+
+    def _encode_image(self, data: bytes, mime_type: str | None) -> str:
+        """Return a data URI for the provided reference image."""
+
+        safe_mime = (mime_type or "image/png").strip().lower()
+        if "/" not in safe_mime:
+            safe_mime = f"image/{safe_mime}"
+
+        encoded = base64.b64encode(data).decode("ascii")
+        return f"data:{safe_mime};base64,{encoded}"
 
     def _fetch_assets(self, task_id: str) -> Optional[Dict[str, Any]]:
         """Try to fetch the assets for a finished task."""
