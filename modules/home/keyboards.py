@@ -15,7 +15,6 @@ def main_menu(lang: str) -> InlineKeyboardMarkup:
         InlineKeyboardButton(t("btn_image", lang), callback_data="home:image"),
     )
     kb.row(
-        InlineKeyboardButton(t("btn_video", lang), callback_data="home:video"),
         InlineKeyboardButton(t("btn_gpt", lang), callback_data="home:gpt_chat"),
     )
     kb.row(
