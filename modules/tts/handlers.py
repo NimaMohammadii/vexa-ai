@@ -189,10 +189,10 @@ def register(bot):
             except Exception:
                 pass
 
-            # محاسبه هزینه: صداهای کاستوم ۲ کردیت، بقیه ۱ کردیت
+            # محاسبه هزینه: صداهای کاستوم دو برابر هزینه پایه دارند
             is_custom_voice = db.get_user_voice(user_id, voice_name) is not None
-            cost_per_char = 2 if is_custom_voice else CREDIT_PER_CHAR
-            cost = len(text) * cost_per_char
+            multiplier = 2 if is_custom_voice else 1
+            cost = round(len(text) * CREDIT_PER_CHAR * multiplier, 2)
             if user["credits"] < cost:
                 # state رو پاک نکن تا بتونیم منوی TTS رو بعداً پاک کنیم
                 from .keyboards import no_credit_keyboard
