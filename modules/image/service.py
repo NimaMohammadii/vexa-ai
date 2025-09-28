@@ -158,12 +158,29 @@ class ImageService:
             logger.debug(f"Task {task_id} status: {status}")
 
             if status == "SUCCEEDED":
-                # Extract image URL from output
-                output = payload.get("output", [])
-                if output and isinstance(output, list) and len(output) > 0:
-                    image_url = output[0]
-                    if isinstance(image_url, str) and image_url.strip():
-                        return {"url": image_url.strip()}
+                image_url = self._extract_image_url_direct(payload)
+
+                if not image_url:
+                    output = payload.get("output")
+                    image_url = self._extract_image_url_direct(output)
+
+                if not image_url:
+                    result = payload.get("result")
+                    image_url = self._extract_image_url_direct(result)
+
+                if not image_url:
+                    assets = self._fetch_assets(task_id)
+                    if assets:
+                        image_url = self._extract_image_url_direct(assets)
+
+                if image_url:
+                    logger.info(
+                        "Image URL extracted for task",
+                        extra={"task_id": task_id, "image_url": image_url[:100]},
+                    )
+                    return {"url": image_url}
+
+                logger.error("No image URL in Runway response", extra={"payload": payload})
                 raise ImageGenerationError("خروجی تصویر در پاسخ موفق پیدا نشد.")
 
             if status in {"FAILED", "CANCELED"}:
@@ -327,24 +344,79 @@ class ImageService:
             return ""
         return str(value).strip()
 
-    def _extract_image_url_direct(self, data: Any) -> str | None:
-        """Extract image URL from direct API response."""
+    def _extract_image_url_direct(self, data: Any, _visited: set[int] | None = None) -> str | None:
+        """Extract image URL from heterogeneous Runway responses."""
+
+        if data is None:
+            return None
+
+        if _visited is None:
+            _visited = set()
+
+        obj_id = id(data)
+        if obj_id in _visited:
+            return None
+        _visited.add(obj_id)
+
+        if isinstance(data, str):
+            candidate = data.strip()
+            if candidate and any(
+                candidate.startswith(prefix)
+                for prefix in (
+                    "http://",
+                    "https://",
+                    "data:image",
+                    "//",
+                    "ftp://",
+                    "file://",
+                )
+            ):
+                return candidate
+            return None
+
         if isinstance(data, dict):
             # Check common keys for image URL
-            for key in ["url", "image_url", "output_url", "imageUrl", "outputUrl"]:
+            priority_keys = (
+                "url",
+                "image_url",
+                "output_url",
+                "download_url",
+                "imageUrl",
+                "outputUrl",
+                "asset_url",
+                "src",
+                "href",
+                "path",
+                "uri",
+            )
+
+            for key in priority_keys:
                 if key in data:
-                    url = data[key]
-                    if isinstance(url, str) and url.strip():
-                        return url.strip()
-            
-            # Check if there's a nested structure
-            if "image" in data and isinstance(data["image"], dict):
-                return self._extract_image_url_direct(data["image"])
-            
-            # Check if there's an array of outputs
-            if "outputs" in data and isinstance(data["outputs"], list) and data["outputs"]:
-                return self._extract_image_url_direct(data["outputs"][0])
-                
+                    url = self._extract_image_url_direct(data[key], _visited)
+                    if url:
+                        return url
+
+            # Some responses nest the useful data inside generic containers
+            for key in ("image", "result", "data", "output", "outputs", "assets"):
+                if key in data:
+                    url = self._extract_image_url_direct(data[key], _visited)
+                    if url:
+                        return url
+
+            # Fallback to inspect other values
+            for value in data.values():
+                url = self._extract_image_url_direct(value, _visited)
+                if url:
+                    return url
+
+            return None
+
+        if isinstance(data, (list, tuple, set)):
+            for item in data:
+                url = self._extract_image_url_direct(item, _visited)
+                if url:
+                    return url
+
         return None
 
     @classmethod
