@@ -5,6 +5,8 @@ from config import BOT_OWNER_ID
 import db
 import traceback
 import os
+import math
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 from .texts import (
     TITLE, MENU, DENY, DONE,
@@ -18,6 +20,7 @@ from .texts import (
     ASK_FREE,  STATE_SET_FREE,
     ASK_TG,    STATE_SET_TG,
     ASK_IG,    STATE_SET_IG,
+    ASK_FORMULA, STATE_FORMULA,
 )
 from .keyboards import admin_menu, settings_menu, users_menu, user_actions, exports_menu
 
@@ -143,6 +146,52 @@ def _send_content_to_user(bot, uid: int, msg: types.Message):
     err_msg = str(last_err) if last_err else "unknown error"
     return False, err_msg
 
+def _round_half_up(value):
+    try:
+        dec = Decimal(str(value))
+        return int(dec.quantize(Decimal('1'), rounding=ROUND_HALF_UP))
+    except (InvalidOperation, ValueError, TypeError):
+        raise ValueError("نتیجهٔ فرمول باید عددی باشد.")
+
+def _eval_credit_formula(expr: str, old: int) -> int:
+    if not expr:
+        raise ValueError("فرمول خالی است.")
+    allowed = {name: getattr(math, name) for name in dir(math) if not name.startswith("_")}
+    allowed.update({
+        "abs": abs,
+        "min": min,
+        "max": max,
+        "round": round,
+        "int": int,
+        "float": float,
+        "pow": pow,
+    })
+    ctx = dict(allowed)
+    ctx.update({
+        "old": old,
+        "credits": old,
+        "x": old,
+    })
+    try:
+        result = eval(expr, {"__builtins__": {}}, ctx)
+    except Exception as e:
+        raise ValueError(f"خطا در فرمول: {e}")
+    return _round_half_up(result)
+
+def _compute_formula_updates(expr: str):
+    rows = db.get_all_user_credits()
+    updates = []
+    preview = []
+    for idx, (uid, old) in enumerate(rows):
+        try:
+            new_value = _eval_credit_formula(expr, old)
+        except ValueError as e:
+            raise ValueError(f"کاربر {uid}: {e}")
+        updates.append((new_value, uid))
+        if idx < 20:
+            preview.append(f"{uid}: {old} → {new_value}")
+    return updates, preview
+
 # ---------- Register ----------
 def register(bot):
     @bot.message_handler(commands=['admin'])
@@ -241,6 +290,12 @@ def register(bot):
             db.clear_state(cq.from_user.id)
             db.set_state(cq.from_user.id, STATE_SUB_UID)
             edit_or_send(bot, cq.message.chat.id, cq.message.message_id, ASK_UID_SUB, admin_menu())
+            return
+
+        if action == "bulk_credit":
+            db.clear_state(cq.from_user.id)
+            db.set_state(cq.from_user.id, STATE_FORMULA)
+            edit_or_send(bot, cq.message.chat.id, cq.message.message_id, ASK_FORMULA, admin_menu())
             return
 
         if action == "reset":
@@ -382,6 +437,38 @@ def register(bot):
                f"@{u['username'] or '-'} | 💳 {u['credits']} | "
                f"{'🚫 بن' if u['banned'] else '✅ مجاز'}")
         edit_or_send(bot, msg.chat.id, msg.message_id, txt, user_actions(uid))
+        db.clear_state(msg.from_user.id)
+
+    @bot.message_handler(func=lambda m: db.get_state(m.from_user.id) == STATE_FORMULA, content_types=['text'])
+    def s_formula(msg: types.Message):
+        if not _is_owner(msg.from_user): return
+        expr = (msg.text or "").strip()
+        try:
+            updates, preview = _compute_formula_updates(expr)
+        except ValueError as e:
+            bot.reply_to(msg, f"❌ {e}")
+            return
+
+        if not updates:
+            bot.reply_to(msg, "ℹ️ هیچ کاربری برای به‌روزرسانی وجود ندارد.")
+            db.clear_state(msg.from_user.id)
+            return
+
+        try:
+            affected = db.bulk_update_user_credits(updates)
+        except Exception:
+            print("Error during bulk credit update:", traceback.format_exc())
+            bot.reply_to(msg, "❌ خطا در ذخیره‌سازی تغییرات.")
+            return
+
+        summary = [f"✅ کردیت {affected} کاربر به‌روزرسانی شد."]
+        if preview:
+            summary.append("\nنمونه نتایج:")
+            summary.extend(f"• {line}" for line in preview)
+            remaining = affected - len(preview)
+            if remaining > 0:
+                summary.append(f"• … و {remaining} کاربر دیگر.")
+        bot.reply_to(msg, "\n".join(summary))
         db.clear_state(msg.from_user.id)
 
     # افزودن کردیت
