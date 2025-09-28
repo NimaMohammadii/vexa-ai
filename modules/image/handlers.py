@@ -216,6 +216,10 @@ def _process_prompt(bot: TeleBot, message: Message, user, prompt: str, lang: str
             reply_to_message_id=message.message_id,
             parse_mode="HTML",
         )
+        try:
+            db.log_image_generation(user["user_id"], prompt, image_url)
+        except Exception:
+            logger.exception("Failed to log image generation for user %s", user["user_id"])
         db.deduct_credits(user["user_id"], CREDIT_COST)
 
         try:
