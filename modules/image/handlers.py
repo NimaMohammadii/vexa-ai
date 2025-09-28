@@ -191,29 +191,23 @@ def _process_prompt(bot: TeleBot, message: Message, user, prompt: str, lang: str
     status = bot.send_message(message.chat.id, processing(lang), parse_mode="HTML")
 
     try:
+        # Generate image and get task ID
         task_id = service.generate_image(prompt)
-        logger.info(f"Task ID generated: {task_id}")
-
+        logger.info(f"Image task created: {task_id}")
+        
+        # Poll for completion and get image URL
         result = service.get_image_status(
-            task_id, poll_interval=POLL_INTERVAL, timeout=POLL_TIMEOUT
+            task_id,
+            poll_interval=POLL_INTERVAL,
+            timeout=POLL_TIMEOUT,
         )
-        logger.debug(f"Full result from Runway API: {result}")
-
-        if isinstance(result, dict):
-            logger.debug(f"Result keys: {list(result.keys())}")
-            if "assets" in result:
-                logger.debug(f"Assets content: {result['assets']}")
-            if "output" in result:
-                logger.debug(f"Output content: {result['output']}")
-
-        image_url = _extract_image_url(result)
-        logger.debug(f"Extracted image URL: {image_url}")
-
+        
+        image_url = result.get("url")
         if not image_url:
-            logger.error(
-                f"No image URL found. Response structure: {str(result)[:500]}..."
-            )
+            logger.error(f"No image URL in result: {result}")
             raise ImageGenerationError("خروجی تصویر دریافت نشد.")
+        
+        logger.info(f"Image URL received: {image_url[:100]}")
 
         bot.send_photo(
             message.chat.id,

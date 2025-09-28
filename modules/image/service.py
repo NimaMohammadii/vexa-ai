@@ -31,10 +31,10 @@ class ImageService:
     """Client for interacting with the Runway image generation API."""
 
     _DEFAULT_BASE_URLS = (
-        "https://api.runwayml.com/v1",
         "https://api.dev.runwayml.com/v1",
+        "https://api.runwayml.com/v1",
     )
-    _MODEL = os.getenv("RUNWAY_MODEL", "gen4_image_turbo")
+    _MODEL = os.getenv("RUNWAY_MODEL", "gemini_2.5_flash")
     _API_VERSION = os.getenv("RUNWAY_API_VERSION", "2024-11-06")
     _DEFAULT_WIDTH = 1024
     _DEFAULT_HEIGHT = 1024
@@ -72,21 +72,18 @@ class ImageService:
             raise ImageGenerationError("متن تصویر نباید خالی باشد.")
 
         payload: Dict[str, Any] = {
+            "promptText": cleaned,
             "model": self._MODEL,
-            "input": {
-                "prompt": cleaned,
-                "width": self._DEFAULT_WIDTH,
-                "height": self._DEFAULT_HEIGHT,
-                "output_format": self._DEFAULT_FORMAT,
-            },
+            "ratio": f"{self._DEFAULT_WIDTH}:{self._DEFAULT_HEIGHT}"
         }
 
         logger.debug("Submitting generation task to Runway", extra={"payload": payload})
-        response = self._request("POST", "/tasks", json=payload)
+        response = self._request("POST", "/text_to_image", json=payload)
         data = self._safe_json(response)
 
-        task_id = self._extract_task_id(data)
+        task_id = data.get("id")
         if not task_id:
+            logger.error(f"No task ID in response: {data}")
             raise ImageGenerationError("شناسهٔ تسک از پاسخ Runway دریافت نشد.")
 
         logger.info("Runway task created", extra={"task_id": task_id})
@@ -111,24 +108,24 @@ class ImageService:
             response = self._request("GET", f"/tasks/{task_id}")
             payload = self._safe_json(response)
 
-            status = str(self._extract_status(payload)).lower()
-            logger.debug(
-                "Runway task status",
-                extra={"task_id": task_id, "status": status, "payload": payload},
-            )
+            status = str(payload.get("status", "")).upper()
+            logger.debug(f"Task {task_id} status: {status}")
 
-            if status in {"succeeded", "completed", "finished"}:
-                assets = self._fetch_assets(task_id)
-                if assets:
-                    payload.setdefault("assets", assets)
-                return payload
+            if status == "SUCCEEDED":
+                # Extract image URL from output
+                output = payload.get("output", [])
+                if output and isinstance(output, list) and len(output) > 0:
+                    image_url = output[0]
+                    if isinstance(image_url, str) and image_url.strip():
+                        return {"url": image_url.strip()}
+                raise ImageGenerationError("خروجی تصویر در پاسخ موفق پیدا نشد.")
 
-            if status in {"failed", "error", "cancelled"}:
-                raise ImageGenerationError(self._extract_error(payload))
+            if status in {"FAILED", "CANCELED"}:
+                error_msg = payload.get("failure_reason", "تولید تصویر ناموفق بود.")
+                raise ImageGenerationError(f"خطا: {error_msg}")
 
             time.sleep(poll_delay)
 
-        # مهلت به پایان رسیده است
         raise ImageGenerationError("مهلت دریافت تصویر به پایان رسید.")
 
     # ------------------------------------------------------------------
@@ -283,6 +280,26 @@ class ImageService:
         if value is None:
             return ""
         return str(value).strip()
+
+    def _extract_image_url_direct(self, data: Any) -> str | None:
+        """Extract image URL from direct API response."""
+        if isinstance(data, dict):
+            # Check common keys for image URL
+            for key in ["url", "image_url", "output_url", "imageUrl", "outputUrl"]:
+                if key in data:
+                    url = data[key]
+                    if isinstance(url, str) and url.strip():
+                        return url.strip()
+            
+            # Check if there's a nested structure
+            if "image" in data and isinstance(data["image"], dict):
+                return self._extract_image_url_direct(data["image"])
+            
+            # Check if there's an array of outputs
+            if "outputs" in data and isinstance(data["outputs"], list) and data["outputs"]:
+                return self._extract_image_url_direct(data["outputs"][0])
+                
+        return None
 
     @classmethod
     def _extract_task_id(cls, payload: Dict[str, Any]) -> str | None:
