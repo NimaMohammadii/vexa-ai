@@ -1,13 +1,9 @@
 """Runway image generation service.
 
 This module provides a thin wrapper around the Runway asynchronous task API
-and exposes high level helpers that are used by the Telegram handlers:
-
-* ``generate_image`` submits a text to image request.
-* ``edit_image`` performs an image-to-image transformation using an uploaded
-  photo plus text instructions.
-* ``blend_images`` merges two input images with an optional style prompt.
-* ``get_image_status`` polls a task until it is finished.
+and exposes two high level methods that are used by the Telegram handlers:
+``generate_image`` for submitting a new prompt and ``get_image_status`` for
+polling the task until it is finished.
 
 The implementation keeps the configuration inside the code as requested; the
 only external dependency is the ``RUNWAY_API`` environment variable which must
@@ -16,16 +12,13 @@ hold the Runway API token.
 
 from __future__ import annotations
 
-import base64
 import logging
 import os
 import time
 from typing import Any, Dict, Optional
 
 import requests
-import mimetypes
 
-from ._compat import imghdr
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +42,6 @@ class ImageService:
     _REQUEST_TIMEOUT = 30
     _GENERATION_TIMEOUT = 300
     _DEFAULT_POLL_INTERVAL = 3.0
-    _DEFAULT_BLEND_MODE = "blend"
 
     def __init__(self) -> None:
         token = os.getenv("RUNWAY_API")
@@ -95,84 +87,6 @@ class ImageService:
             raise ImageGenerationError("شناسهٔ تسک از پاسخ Runway دریافت نشد.")
 
         logger.info("Runway task created", extra={"task_id": task_id})
-        return str(task_id)
-
-    def edit_image(
-        self,
-        prompt: str,
-        image_bytes: bytes,
-        *,
-        mime_type: str | None = None,
-    ) -> str:
-        """Submit an image-to-image edit request and return the task ID."""
-
-        cleaned = (prompt or "").strip()
-        if not cleaned:
-            raise ImageGenerationError("توضیحات ویرایش نباید خالی باشد.")
-        if not image_bytes:
-            raise ImageGenerationError("فایل تصویر برای ویرایش پیدا نشد.")
-
-        encoded = self._encode_image(image_bytes, mime_type)
-        payload: Dict[str, Any] = {
-            "promptText": cleaned,
-            "model": self._MODEL,
-            "ratio": f"{self._DEFAULT_WIDTH}:{self._DEFAULT_HEIGHT}",
-            "image": encoded,
-        }
-
-        logger.debug("Submitting edit task to Runway", extra={"payload_keys": list(payload.keys())})
-        response = self._request("POST", "/image_to_image", json=payload)
-        data = self._safe_json(response)
-
-        task_id = self._extract_task_id(data) or data.get("id")
-        if not task_id:
-            logger.error(f"No task ID in edit response: {data}")
-            raise ImageGenerationError("شناسهٔ تسک ویرایش دریافت نشد.")
-
-        logger.info("Runway edit task created", extra={"task_id": task_id})
-        return str(task_id)
-
-    def blend_images(
-        self,
-        image_a: bytes,
-        image_b: bytes,
-        *,
-        prompt: str | None = None,
-        mime_a: str | None = None,
-        mime_b: str | None = None,
-    ) -> str:
-        """Submit a blend task that mixes two images."""
-
-        if not image_a or not image_b:
-            raise ImageGenerationError("برای ترکیب باید دو تصویر معتبر ارسال شود.")
-
-        payload: Dict[str, Any] = {
-            "model": self._MODEL,
-            "ratio": f"{self._DEFAULT_WIDTH}:{self._DEFAULT_HEIGHT}",
-            "mode": self._DEFAULT_BLEND_MODE,
-            "images": [
-                self._encode_image(image_a, mime_a),
-                self._encode_image(image_b, mime_b),
-            ],
-        }
-
-        cleaned_prompt = (prompt or "").strip()
-        if cleaned_prompt:
-            payload["promptText"] = cleaned_prompt
-
-        logger.debug(
-            "Submitting blend task to Runway",
-            extra={"has_prompt": bool(cleaned_prompt)},
-        )
-        response = self._request("POST", "/image_to_image", json=payload)
-        data = self._safe_json(response)
-
-        task_id = self._extract_task_id(data) or data.get("id")
-        if not task_id:
-            logger.error(f"No task ID in blend response: {data}")
-            raise ImageGenerationError("شناسهٔ تسک ترکیب دریافت نشد.")
-
-        logger.info("Runway blend task created", extra={"task_id": task_id})
         return str(task_id)
 
     def get_image_status(
@@ -386,33 +300,6 @@ class ImageService:
                 return self._extract_image_url_direct(data["outputs"][0])
                 
         return None
-
-    @classmethod
-    def _encode_image(cls, data: bytes, mime_type: str | None = None) -> str:
-        """Encode raw image bytes as a data URI for the API."""
-
-        if not data:
-            raise ImageGenerationError("فایل تصویر معتبر نیست.")
-
-        mime = cls._normalise_text(mime_type) or cls._guess_mime(data)
-        try:
-            encoded = base64.b64encode(data).decode("ascii")
-        except Exception as exc:  # pragma: no cover - b64 failure is unexpected
-            raise ImageGenerationError("کدگذاری تصویر انجام نشد.") from exc
-
-        return f"data:{mime};base64,{encoded}"
-
-    @staticmethod
-    def _guess_mime(data: bytes) -> str:
-        kind = imghdr.what(None, data)
-        if kind:
-            if kind.lower() == "jpg":
-                kind = "jpeg"
-            return f"image/{kind.lower()}"
-
-        # imghdr may fail for webp, fallback to mimetypes heuristic
-        mime = mimetypes.guess_type("file.webp")[0]
-        return mime or "image/png"
 
     @classmethod
     def _extract_task_id(cls, payload: Dict[str, Any]) -> str | None:
