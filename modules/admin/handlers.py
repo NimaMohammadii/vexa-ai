@@ -231,9 +231,14 @@ def register(bot):
                 active24 = db.count_active_users(24)
             except TypeError:
                 active24 = db.count_active_users()
+            try:
+                image_users = db.count_users_with_images()
+            except AttributeError:
+                image_users = 0
             txt = (f"📊 <b>آمار</b>\n\n"
                    f"👥 کل کاربران: <b>{total}</b>\n"
-                   f"⚡️ فعال ۲۴ساعت: <b>{active24}</b>")
+                   f"⚡️ فعال ۲۴ساعت: <b>{active24}</b>\n"
+                   f"🖼️ کاربران تولید تصویر: <b>{image_users}</b>")
             edit_or_send(bot, cq.message.chat.id, cq.message.message_id, txt, admin_menu())
             return
 
@@ -418,6 +423,57 @@ def register(bot):
             except Exception:
                 print("Error exporting user TTS:", traceback.format_exc())
                 bot.answer_callback_query(cq.id, "❌ خطا در تولید فایل خروجی.")
+            return
+
+        if action == "exp_user_images":
+            try:
+                uid = int(p[2])
+            except Exception:
+                bot.answer_callback_query(cq.id, "❌ آی‌دی نامعتبر."); return
+
+            try:
+                result = db.export_user_images_zip(uid)
+            except AttributeError:
+                bot.answer_callback_query(cq.id, "❌ عملیات خروجی تصاویر پشتیبانی نمی‌شود."); return
+            except Exception:
+                print("Error exporting user images:", traceback.format_exc())
+                bot.answer_callback_query(cq.id, "❌ خطا در تولید فایل خروجی.")
+                return
+
+            if not result:
+                bot.answer_callback_query(cq.id, "⚠️ برای این کاربر تصویری ثبت نشده است.")
+                return
+
+            path = result.get("path") if isinstance(result, dict) else result
+            if not path or not os.path.isfile(path):
+                bot.answer_callback_query(cq.id, "❌ فایل خروجی پیدا نشد.")
+                return
+
+            caption = None
+            if isinstance(result, dict):
+                total = result.get("total", 0)
+                downloaded = result.get("downloaded", 0)
+                skipped = result.get("skipped", 0)
+                caption = (
+                    f"🖼️ {downloaded} از {total} تصویر دانلود شد."
+                    if total
+                    else "🖼️ آرشیو تصاویر"
+                )
+                if skipped:
+                    caption += f"\n⚠️ {skipped} مورد دانلود نشد."
+
+            try:
+                with open(path, "rb") as f:
+                    bot.send_document(cq.message.chat.id, f, caption=caption)
+                bot.answer_callback_query(cq.id, "📥 فایل تصاویر ارسال شد.")
+            except Exception:
+                print("Error sending exported images file:", traceback.format_exc())
+                bot.answer_callback_query(cq.id, "❌ خطا در ارسال فایل خروجی.")
+            finally:
+                try:
+                    os.remove(path)
+                except Exception:
+                    pass
             return
 
         if action == "noop":
