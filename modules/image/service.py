@@ -12,6 +12,7 @@ hold the Runway API token.
 
 from __future__ import annotations
 
+import base64
 import logging
 import os
 import time
@@ -39,6 +40,7 @@ class ImageService:
     _DEFAULT_WIDTH = 1024
     _DEFAULT_HEIGHT = 1024
     _DEFAULT_FORMAT = "webp"
+    _DEFAULT_IMAGE_MIME = "image/png"
     _REQUEST_TIMEOUT = 30
     _GENERATION_TIMEOUT = 300
     _DEFAULT_POLL_INTERVAL = 3.0
@@ -74,19 +76,63 @@ class ImageService:
         payload: Dict[str, Any] = {
             "promptText": cleaned,
             "model": self._MODEL,
-            "ratio": f"{self._DEFAULT_WIDTH}:{self._DEFAULT_HEIGHT}"
+            "ratio": f"{self._DEFAULT_WIDTH}:{self._DEFAULT_HEIGHT}",
+            "outputFormat": self._DEFAULT_FORMAT,
         }
 
         logger.debug("Submitting generation task to Runway", extra={"payload": payload})
         response = self._request("POST", "/text_to_image", json=payload)
         data = self._safe_json(response)
 
-        task_id = data.get("id")
+        task_id = data.get("id") or self._extract_task_id(data)
         if not task_id:
             logger.error(f"No task ID in response: {data}")
             raise ImageGenerationError("شناسهٔ تسک از پاسخ Runway دریافت نشد.")
 
         logger.info("Runway task created", extra={"task_id": task_id})
+        return str(task_id)
+
+    def generate_image_from_image(
+        self,
+        prompt: str,
+        image_bytes: bytes,
+        *,
+        mime_type: str | None = None,
+    ) -> str:
+        """Submit an image-to-image generation task and return the task identifier."""
+
+        cleaned = (prompt or "").strip()
+        if not cleaned:
+            raise ImageGenerationError("متن تصویر نباید خالی باشد.")
+
+        if not image_bytes:
+            raise ImageGenerationError("تصویر مرجع ارسال نشده است.")
+
+        safe_mime = (mime_type or self._DEFAULT_IMAGE_MIME).split(";")[0].strip() or self._DEFAULT_IMAGE_MIME
+        encoded = base64.b64encode(image_bytes).decode("ascii")
+        data_url = f"data:{safe_mime};base64,{encoded}"
+
+        payload: Dict[str, Any] = {
+            "promptText": cleaned,
+            "model": self._MODEL,
+            "ratio": f"{self._DEFAULT_WIDTH}:{self._DEFAULT_HEIGHT}",
+            "outputFormat": self._DEFAULT_FORMAT,
+            "imageUrl": data_url,
+        }
+
+        logger.debug(
+            "Submitting image-to-image task to Runway",
+            extra={"payload_keys": list(payload.keys())},
+        )
+        response = self._request("POST", "/image_to_image", json=payload)
+        data = self._safe_json(response)
+
+        task_id = data.get("id") or self._extract_task_id(data)
+        if not task_id:
+            logger.error("No task ID in image-to-image response", extra={"response": data})
+            raise ImageGenerationError("شناسهٔ تسک از پاسخ Runway دریافت نشد.")
+
+        logger.info("Runway image-to-image task created", extra={"task_id": task_id})
         return str(task_id)
 
     def get_image_status(

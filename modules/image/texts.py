@@ -26,3 +26,15 @@ def not_configured(lang: str) -> str:
 
 def result_caption(lang: str) -> str:
     return t("image_result_caption", lang).format(cost=CREDIT_COST)
+
+
+def need_prompt(lang: str) -> str:
+    return t("image_need_prompt", lang)
+
+
+def invalid_reference(lang: str) -> str:
+    return t("image_invalid_reference", lang)
+
+
+def reference_download_error(lang: str) -> str:
+    return t("image_reference_download_error", lang)
