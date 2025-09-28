@@ -1,27 +1,27 @@
 # پلن‌های نمونه به تومان (صرفاً برای نمایش؛ ملاک نهایی، رسید پرداخت است)
 PAYMENT_PLANS = [
-    {"title": " 300 → 49,000T", "amount_toman": 49_000, "credits": 300},
-    {"title": " 550 → 69,000T", "amount_toman": 69_000, "credits": 550},
-    {"title": " 1039 → 88,000T", "amount_toman": 88_000, "credits": 1039},
-    {"title": " 2085 → 155,000T", "amount_toman": 155_000, "credits": 2085},
-    {"title": " 5230 → 320,000T", "amount_toman": 320_000, "credits": 5230},
+    {"title": " 25 → 55,000T", "amount_toman": 55_000, "credits": 25},
+    {"title": " 49 → 110,000T", "amount_toman": 110_000, "credits": 49},
+    {"title": " 99 → 205,000T", "amount_toman": 205_000, "credits": 99},
+    {"title": " 188 → 400,000T", "amount_toman": 400_000, "credits": 188},
+    {"title": " 345 → 733,000T", "amount_toman": 733_000, "credits": 345},
 
-    {"title": " 10,500 → 620,000T", "amount_toman": 620_000, "credits": 10500},
-    {"title": " 17,000 → 830,000T", "amount_toman": 830_000, "credits": 17000},
-    {"title": " 20,000 → 999,000T", "amount_toman": 999_000, "credits": 20000},
+    {"title": " 499 → 999,000T", "amount_toman": 999_000, "credits": 499},
+    {"title": " 1,155 → 2,500,000T", "amount_toman": 2_500_000, "credits": 1155},
+    {"title": " 1,800 → 3,999,000T", "amount_toman": 3_999_000, "credits": 1800},
 
-    {"title": " 26,000 → 1,420,000T", "amount_toman": 1_420_000, "credits": 26000},
-    {"title": " 35,000 → 1,999,000T", "amount_toman": 1_999_000, "credits": 35000},
+    {"title": " 2,450 → 5,390,000T", "amount_toman": 5_390_000, "credits": 2450},
+    {"title": " 3,200 → 7,150,000T", "amount_toman": 7_150_000, "credits": 3200},
 ]
 
 # بسته‌های Telegram Stars
 STAR_PACKAGES = [
-    {"stars": 16, "credits": 300, "title": "Pay ⭐️ 16 → 300"},
-    {"stars": 28, "credits": 590, "title": "Pay ⭐️ 28 → 590"},
-    {"stars": 55, "credits": 1230, "title": "Pay ⭐️ 55 → 1230"},
-    {"stars": 99, "credits": 2155, "title": "Pay ⭐️ 99 → 2155"},
-    {"stars": 185, "credits": 4500, "title": "Pay ⭐️ 185 → 4500"},
-    {"stars": 299, "credits": 8200, "title": "Pay ⭐️ 299 → 8200"}
+    {"stars": 21, "credits": 15, "title": "Pay ⭐️21 → 16"},
+    {"stars": 28, "credits": 590, "title": "Pay ⭐️39 → 29"},
+    {"stars": 52, "credits": 69, "title": "Pay ⭐️52 → 69"},
+    {"stars": 99, "credits": 138, "title": "Pay ⭐️99 → 138"},
+    {"stars": 340, "credits": 249, "title": "Pay ⭐️340 → 249"},
+    {"stars": 499, "credits": 680, "title": "Pay ⭐️499 → 680"}
 ]
 
 # زمان انتظار برای ارسال رسید (ثانیه)
