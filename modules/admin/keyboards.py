@@ -13,6 +13,7 @@ def admin_menu():
         InlineKeyboardButton("➕ افزودن کردیت", callback_data="admin:add"),
         InlineKeyboardButton("➖ کسر کردیت", callback_data="admin:sub"),
     )
+    kb.add(InlineKeyboardButton("🧮 فرمول کردیت همگانی", callback_data="admin:bulk_credit"))
     kb.add(InlineKeyboardButton("♻️ ریست کاربر", callback_data="admin:reset"))
     kb.row(
         InlineKeyboardButton("✉️ پیام تکی", callback_data="admin:dm"),

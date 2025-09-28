@@ -42,6 +42,13 @@ STATE_MSG_TXT = "ADMIN:DM:TXT"
 ASK_TXT_CAST  = "📣 متن پیام همگانی را بفرستید."
 STATE_CAST_TXT = "ADMIN:CAST:TXT"
 
+# ——— به‌روزرسانی همگانی کردیت با فرمول
+ASK_FORMULA     = (
+    "🧮 فرمول محاسبه کردیت جدید را بفرستید.\n"
+    "می‌توانید از متغیر <code>old</code> (کردیت فعلی) استفاده کنید، مثلا: <code>old * 0.045</code>."
+)
+STATE_FORMULA   = "ADMIN:CREDITS:FORMULA"
+
 # ——— تنظیمات: بونوس رفرال
 ASK_BONUS      = "🎁 مقدار بونوس رفرال را بفرستید (عدد)."
 STATE_SET_BONUS = "ADMIN:SET:BONUS"

@@ -354,6 +354,23 @@ def get_all_user_ids():
         cur.execute("SELECT user_id FROM users")
         return [r[0] for r in cur.fetchall()]
 
+def get_all_user_credits():
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute("SELECT user_id, credits FROM users ORDER BY user_id ASC")
+        return cur.fetchall()
+
+def bulk_update_user_credits(updates):
+    """updates should be iterable of (new_credits, user_id). Returns number of affected rows."""
+    updates = list(updates)
+    if not updates:
+        return 0
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.executemany("UPDATE users SET credits=? WHERE user_id=?", updates)
+        con.commit()
+        return len(updates)
+
 def export_user_messages_csv(user_id: int, path=None):
     if path is None:
         path = f"user_{user_id}_messages.csv"
