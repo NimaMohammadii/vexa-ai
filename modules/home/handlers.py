@@ -199,6 +199,13 @@ def register(bot):
             open_image(bot, cq)
             return
 
+        if route == "video":
+            bot.answer_callback_query(cq.id)
+            from modules.video.handlers import open_video
+
+            open_video(bot, cq)
+            return
+
         if route == "tts":
             bot.answer_callback_query(cq.id)
             from modules.tts.handlers import open_tts
