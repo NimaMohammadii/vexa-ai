@@ -351,6 +351,22 @@ def count_users_with_images() -> int:
         return result[0] if result else 0
 
 
+def count_users_by_lang():
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            """
+            SELECT COALESCE(NULLIF(lang, ''), 'fa') AS lang,
+                   COUNT(*) AS total
+              FROM users
+          GROUP BY COALESCE(NULLIF(lang, ''), 'fa')
+          ORDER BY total DESC
+            """
+        )
+        rows = cur.fetchall() or []
+    return [(row[0], row[1]) for row in rows]
+
+
 def _guess_image_extension(url: str, content_type: str | None) -> str:
     parsed = urlparse(url or "")
     candidate = os.path.splitext(parsed.path)[1]

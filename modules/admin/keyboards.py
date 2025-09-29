@@ -12,6 +12,9 @@ def admin_menu():
         InlineKeyboardButton("👥 کاربران", callback_data="admin:users"),
     )
     kb.row(
+        InlineKeyboardButton("🌐 کاربران بر اساس زبان", callback_data="admin:lang_users"),
+    )
+    kb.row(
         InlineKeyboardButton("🖼️ کاربران تصویر", callback_data="admin:image_users"),
     )
     kb.row(
