@@ -158,13 +158,13 @@ LABELS = {
 
     "image_intro": {
         "fa": "🖼️ <b>تولید عکس فوق‌حرفه‌ای</b>\nبا مدل gen4 و کیفیت 720p ساخته میشه. توضیح تصویری که می‌خوای رو بنویس یا عکس مرجع + توضیح رو بفرست؛ برای هر عکس {cost} کردیت ازت کم میشه.",
-        "en": "🖼️ <b>Pro image generation</b>\nRunway Gen-4 at 720p quality. Send the prompt you want—or add a reference photo with a caption. Each image costs {cost} credits.",
+        "en": "🖼️ <b>Pro image generation</b>\nVexa Gen-4 at 720p quality. Send the prompt you want—or add a reference photo with a caption. Each image costs {cost} credits.",
         "ar": "🖼️ <b>توليد صور احترافي</b>\nبجودة ‎720p‎ مع نموذج Gen-4. أرسل الوصف النصي أو صورة مرجعية مع تعليق. كل صورة تكلف {cost} رصيداً.",
-        "tr": "🖼️ <b>Profesyonel görsel üretimi</b>\nRunway Gen-4 ile 720p kalite. Metin açıklamasını gönder ya da referans görsel + not paylaş; her görsel {cost} kredi.",
+        "tr": "🖼️ <b>Profesyonel görsel üretimi</b>\nVexa Gen-4 ile 720p kalite. Metin açıklamasını gönder ya da referans görsel + not paylaş; her görsel {cost} kredi.",
         "ru": "🖼️ <b>Премиум-генерация изображений</b>\nМодель Gen-4 в 720p. Пришлите текстовый промпт или референс с описанием — каждое изображение стоит {cost} кредитов.",
-        "es": "🖼️ <b>Generación de imágenes pro</b>\nRunway Gen-4 en 720p. Envía tu prompt de texto o una foto de referencia con descripción; cada imagen cuesta {cost} créditos.",
-        "de": "🖼️ <b>Professionelle Bildgenerierung</b>\nRunway Gen-4 in 720p. Sende deinen Textprompt oder ein Referenzbild mit Beschreibung; jedes Bild kostet {cost} Credits.",
-        "fr": "🖼️ <b>Génération d'images pro</b>\nRunway Gen-4 en 720p. Envoie ton prompt texte ou une photo de référence avec légende ; chaque image coûte {cost} crédits.",
+        "es": "🖼️ <b>Generación de imágenes pro</b>\nVexa Gen-4 en 720p. Envía tu prompt de texto o una foto de referencia con descripción; cada imagen cuesta {cost} créditos.",
+        "de": "🖼️ <b>Professionelle Bildgenerierung</b>\nVexa Gen-4 in 720p. Sende deinen Textprompt oder ein Referenzbild mit Beschreibung; jedes Bild kostet {cost} Credits.",
+        "fr": "🖼️ <b>Génération d'images pro</b>\nVexa Gen-4 en 720p. Envoie ton prompt texte ou une photo de référence avec légende ; chaque image coûte {cost} crédits.",
     },
     "image_processing": {
         "fa": "🎨 <b>در حال ساخت تصویر...</b>",
