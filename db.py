@@ -1,8 +1,12 @@
+import base64
 import csv
 import datetime
+import hashlib
+import hmac
 import io
 import mimetypes
 import os
+import secrets
 import sqlite3
 import tempfile
 import time
@@ -11,15 +15,260 @@ from contextlib import closing
 from urllib.parse import urlparse
 
 import requests
+from cryptography.fernet import Fernet, InvalidToken
+
+from config import API_CREDIT_COST, API_KEY_ENCRYPTION_SECRET
 
 DB_DIR = os. getenv ("DB_DIR", "/data")
 os.makedirs(DB_DIR, exist_ok=True)
 DB_PATH = os.path.join(DB_DIR, "bot.db")
+_API_KEY_SECRET_FALLBACK_PATH = os.path.join(DB_DIR, "api_key_secret.key")
 
 print("DB_PATH =>", DB_PATH, flush=True)
 
 con = sqlite3.connect(DB_PATH, check_same_thread=False)
 cur = con.cursor()
+
+_API_KEY_HEADER_PREFIX = "VX"
+_API_KEY_VERSION = "1"
+_FERNET_KEY_CACHE: Fernet | None = None
+
+
+def _load_or_create_encryption_secret() -> str:
+    """Return a stable encryption secret stored alongside the database."""
+
+    try:
+        with open(_API_KEY_SECRET_FALLBACK_PATH, "r", encoding="utf-8") as fh:
+            secret = fh.read().strip()
+            if secret:
+                return secret
+    except FileNotFoundError:
+        pass
+
+    secret = secrets.token_urlsafe(64)
+    tmp_path = f"{_API_KEY_SECRET_FALLBACK_PATH}.tmp"
+    with open(tmp_path, "w", encoding="utf-8") as fh:
+        fh.write(secret)
+    os.replace(tmp_path, _API_KEY_SECRET_FALLBACK_PATH)
+    try:
+        os.chmod(_API_KEY_SECRET_FALLBACK_PATH, 0o600)
+    except OSError:
+        # Permission errors are expected on some platforms (e.g. Windows).
+        pass
+    return secret
+
+
+def _get_api_key_cipher() -> Fernet:
+    global _FERNET_KEY_CACHE
+    if _FERNET_KEY_CACHE is not None:
+        return _FERNET_KEY_CACHE
+    secret = (API_KEY_ENCRYPTION_SECRET or "").strip()
+    if not secret:
+        secret = _load_or_create_encryption_secret()
+    digest = hashlib.sha256(secret.encode("utf-8")).digest()
+    key = base64.urlsafe_b64encode(digest)
+    _FERNET_KEY_CACHE = Fernet(key)
+    return _FERNET_KEY_CACHE
+
+
+def _encrypt_api_key(value: str) -> str:
+    cipher = _get_api_key_cipher()
+    token = cipher.encrypt(value.encode("utf-8"))
+    return token.decode("utf-8")
+
+
+def _decrypt_api_key(token: str) -> str:
+    cipher = _get_api_key_cipher()
+    try:
+        value = cipher.decrypt(token.encode("utf-8"))
+    except InvalidToken as exc:
+        raise RuntimeError("Stored API key could not be decrypted") from exc
+    return value.decode("utf-8")
+
+
+def _generate_api_key_material() -> tuple[str, str, str]:
+    key_id = secrets.token_hex(8)
+    secret = secrets.token_urlsafe(32)
+    api_key = f"{_API_KEY_HEADER_PREFIX}{_API_KEY_VERSION}-{key_id}.{secret}"
+    return key_id, secret, api_key
+
+
+def _hash_secret(secret: str, salt: bytes) -> str:
+    digest = hashlib.pbkdf2_hmac(
+        "sha256",
+        secret.encode("utf-8"),
+        salt,
+        200_000,
+    )
+    return base64.urlsafe_b64encode(digest).decode("utf-8")
+
+
+def _generate_and_store_api_key(user_id: int, allow_existing: bool) -> str:
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            "SELECT api_key_id, api_key_encrypted, api_key_revoked_at FROM users WHERE user_id=?",
+            (user_id,),
+        )
+        row = cur.fetchone()
+        if not row:
+            raise ValueError(f"User {user_id} does not exist")
+        existing_id, encrypted_value, revoked_at = row
+        if allow_existing and existing_id and encrypted_value and not revoked_at:
+            return _decrypt_api_key(encrypted_value)
+
+        # Ensure uniqueness of key_id even though collisions are extremely unlikely
+        while True:
+            key_id, secret, api_key = _generate_api_key_material()
+            cur.execute("SELECT 1 FROM users WHERE api_key_id=?", (key_id,))
+            if not cur.fetchone():
+                break
+
+        salt = secrets.token_bytes(16)
+        secret_hash = _hash_secret(secret, salt)
+        encrypted_value = _encrypt_api_key(api_key)
+        now = int(time.time())
+        cur.execute(
+            """UPDATE users
+                   SET api_key_id=?,
+                       api_key_secret_hash=?,
+                       api_key_salt=?,
+                       api_key_encrypted=?,
+                       api_key_created_at=?,
+                       api_key_revoked_at=NULL
+                 WHERE user_id=?""",
+            (
+                key_id,
+                secret_hash,
+                base64.urlsafe_b64encode(salt).decode("utf-8"),
+                encrypted_value,
+                now,
+                user_id,
+            ),
+        )
+        con.commit()
+    return api_key
+
+
+def ensure_user_api_key(user_id: int) -> str:
+    return _generate_and_store_api_key(user_id, allow_existing=True)
+
+
+def regenerate_user_api_key(user_id: int) -> str:
+    return _generate_and_store_api_key(user_id, allow_existing=False)
+
+
+def revoke_user_api_key(user_id: int) -> None:
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            """UPDATE users
+                   SET api_key_id=NULL,
+                       api_key_secret_hash=NULL,
+                       api_key_salt=NULL,
+                       api_key_encrypted=NULL,
+                       api_key_revoked_at=?
+                 WHERE user_id=?""",
+            (
+                int(time.time()),
+                user_id,
+            ),
+        )
+        con.commit()
+        if cur.rowcount == 0:
+            raise ValueError(f"User {user_id} does not exist")
+
+
+def get_user_api_key(user_id: int, reveal: bool = False) -> dict | None:
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            """SELECT api_key_id, api_key_encrypted, api_key_created_at,
+                          api_key_last_used_at, api_key_revoked_at
+                   FROM users WHERE user_id=?""",
+            (user_id,),
+        )
+        row = cur.fetchone()
+        if not row:
+            return None
+    key_id, encrypted_value, created_at, last_used_at, revoked_at = row
+    api_key_value = None
+    if reveal and encrypted_value and not revoked_at:
+        api_key_value = _decrypt_api_key(encrypted_value)
+    masked_value = None
+    if encrypted_value and not revoked_at:
+        try:
+            full_value = _decrypt_api_key(encrypted_value)
+            masked_value = f"{full_value[:8]}…{full_value[-4:]}"
+        except Exception:
+            masked_value = None
+    return {
+        "user_id": user_id,
+        "key_id": key_id,
+        "masked_key": masked_value,
+        "api_key": api_key_value,
+        "created_at": created_at,
+        "last_used_at": last_used_at,
+        "revoked_at": revoked_at,
+    }
+
+
+def verify_api_key(api_key: str) -> dict | None:
+    if not api_key or "." not in api_key or "-" not in api_key:
+        return None
+    try:
+        prefix, secret = api_key.split(".", 1)
+        if not prefix.startswith(f"{_API_KEY_HEADER_PREFIX}{_API_KEY_VERSION}-"):
+            return None
+        _, key_id = prefix.split("-", 1)
+    except ValueError:
+        return None
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            """SELECT user_id, username, first_name, credits,
+                          api_key_secret_hash, api_key_salt, api_key_revoked_at
+                   FROM users WHERE api_key_id=?""",
+            (key_id,),
+        )
+        row = cur.fetchone()
+        if not row:
+            return None
+        user_id, username, first_name, credits, secret_hash, salt, revoked_at = row
+        if revoked_at:
+            return None
+        if not secret_hash or not salt:
+            return None
+        try:
+            salt_bytes = base64.urlsafe_b64decode(salt.encode("utf-8"))
+        except Exception:
+            return None
+        candidate = _hash_secret(secret, salt_bytes)
+        if not hmac.compare_digest(candidate, secret_hash):
+            return None
+        return {
+            "user_id": user_id,
+            "username": username,
+            "first_name": first_name,
+            "credits": credits,
+        }
+
+
+def consume_api_credit(user_id: int, cost: int | None = None) -> bool:
+    if cost is None:
+        cost = API_CREDIT_COST
+    cost = max(1, int(cost))
+    now = int(time.time())
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            """UPDATE users
+                   SET credits = credits - ?, api_key_last_used_at=?
+                 WHERE user_id=? AND credits >= ?""",
+            (cost, now, user_id, cost),
+        )
+        con.commit()
+        return cur.rowcount > 0
 
 def init_db():
     with closing(sqlite3.connect(DB_PATH)) as con:
@@ -593,6 +842,20 @@ def _migrate_users_table():
             cur.execute("ALTER TABLE users ADD COLUMN referred_by TEXT")
         if "lang" not in cols:
             cur.execute("ALTER TABLE users ADD COLUMN lang TEXT DEFAULT 'fa'")
+        if "api_key_id" not in cols:
+            cur.execute("ALTER TABLE users ADD COLUMN api_key_id TEXT")
+        if "api_key_secret_hash" not in cols:
+            cur.execute("ALTER TABLE users ADD COLUMN api_key_secret_hash TEXT")
+        if "api_key_salt" not in cols:
+            cur.execute("ALTER TABLE users ADD COLUMN api_key_salt TEXT")
+        if "api_key_encrypted" not in cols:
+            cur.execute("ALTER TABLE users ADD COLUMN api_key_encrypted TEXT")
+        if "api_key_created_at" not in cols:
+            cur.execute("ALTER TABLE users ADD COLUMN api_key_created_at INTEGER")
+        if "api_key_last_used_at" not in cols:
+            cur.execute("ALTER TABLE users ADD COLUMN api_key_last_used_at INTEGER")
+        if "api_key_revoked_at" not in cols:
+            cur.execute("ALTER TABLE users ADD COLUMN api_key_revoked_at INTEGER")
         con.commit()
 
 def get_or_create_user(u):
@@ -629,6 +892,10 @@ def get_or_create_user(u):
     user = get_user(u.id)
     if user and is_new:
         user["is_new"] = True
+        try:
+            ensure_user_api_key(u.id)
+        except Exception as exc:
+            print(f"[API-KEY] Failed to generate API key for user {u.id}: {exc}")
     return user
 
 def get_user(user_id):

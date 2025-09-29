@@ -21,7 +21,19 @@ LABELS = {
     "btn_invite": {"fa":"دعوت دوستان 🎁","en":"Invite Friends 🎁","ar":"دعوة الأصدقاء 🎁","tr":"Arkadaş Davet Et 🎁","ru":"Пригласить друзей 🎁","es":"Invitar amigos 🎁","de":"Freunde einladen 🎁","fr":"Inviter des amis 🎁"},
     "btn_lang":   {"fa":"Language 📚","en":"Language 📚","ar":"اللغة 📚","tr":"Dil 📚","ru":"Язык 📚","es":"Idioma 📚","de":"Sprache 📚","fr":"Langue 📚"},
     "btn_clone":  {"fa":"ساخت صدای شخصی 🧬","en":"Voice Clone 🧬","ar":"إنشاء صوت شخصي 🧬","tr":"Kişisel Ses Oluştur 🧬","ru":"Личный голос 🧬","es":"Voz personal 🧬","de":"Eigene Stimme 🧬","fr":"Voix perso 🧬"},
-    "home_back_to_menu": {"fa":"🏠 منوی اصلی","en":"🏠 Main menu","ar":"🏠 القائمة الرئيسية","tr":"🏠 Ana menü","ru":"🏠 Главное меню","es":"🏠 Menú principal","de":"🏠 Hauptmenü","fr":"🏠 Menu principal"},
+    "home_back_to_menu": {"fa":"🏠 منوی اصلی","en":"🏠 Main menu","ar":"🏠 القائمة الرئيسية","tr":"🏠 Ana Menü","ru":"🏠 Главное меню","es":"🏠 Menú principal","de":"🏠 Hauptmenü","fr":"🏠 Menu principal"},
+    "api_key_message": {
+        "fa": "🔑 <b>دسترسی API شما</b>\n\nاین کلید اختصاصیته:\n<code>{key}</code>\n\nدر هر درخواست HTTP هدر <code>{header}</code> را با همین مقدار بفرست. هر درخواست {cost} کردیت کم می‌کند.\n📚 مستندات: <code>{docs}</code>\n\n⚠️ این کلید را فقط خودت نگه دار.",
+        "en": "🔑 <b>Your API access</b>\n\nHere is your personal key:\n<code>{key}</code>\n\nSend it in the <code>{header}</code> header on every HTTP request. Each call consumes {cost} credits.\n📚 Docs: <code>{docs}</code>\n\n⚠️ Keep this key secret.",
+    },
+    "api_config_missing": {
+        "fa": "⚠️ صدور API Key روی سرور فعال نیست. لطفاً به پشتیبانی اطلاع بده.",
+        "en": "⚠️ API key issuing is not configured on the server yet. Please contact support.",
+    },
+    "api_unexpected_error": {
+        "fa": "⚠️ در ساخت API Key خطای غیرمنتظره رخ داد. کمی بعد دوباره تلاش کن.",
+        "en": "⚠️ Something went wrong while preparing your API key. Please try again shortly.",
+    },
 
     # Language
     "lang_title": {"fa":"انتخاب زبان","en":"Choose language","ar":"اختر اللغة","tr":"Dil seç","ru":"Выберите язык","es":"Elige idioma","de":"Sprache wählen","fr":"Choisir la langue"},
