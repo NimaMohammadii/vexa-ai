@@ -3,6 +3,7 @@ import datetime
 import io
 import mimetypes
 import os
+import secrets
 import sqlite3
 import tempfile
 import time
@@ -80,6 +81,18 @@ def init_db():
                 created_at INTEGER NOT NULL
             )"""
         )
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS api_tokens(
+                user_id INTEGER PRIMARY KEY,
+                token TEXT NOT NULL,
+                created_at INTEGER NOT NULL,
+                rotated_at INTEGER,
+                FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE
+            )"""
+        )
+        cur.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_api_tokens_token ON api_tokens(token)"
+        )
         con.commit()
     _migrate_users_table()
     ensure_default_settings()
@@ -97,6 +110,84 @@ def ensure_default_settings():
     for k,v in defaults.items():
         if get_setting(k) is None:
             set_setting(k,v)
+
+
+def _generate_api_token() -> str:
+    return secrets.token_urlsafe(32)
+
+
+def get_api_token(user_id: int) -> str | None:
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            "SELECT token FROM api_tokens WHERE user_id=? LIMIT 1",
+            (user_id,),
+        )
+        row = cur.fetchone()
+        return row[0] if row else None
+
+
+def _upsert_api_token(user_id: int, token: str) -> str:
+    now = int(time.time())
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            """INSERT INTO api_tokens(user_id, token, created_at, rotated_at)
+                   VALUES(?,?,?,NULL)
+                   ON CONFLICT(user_id) DO UPDATE SET
+                       token=excluded.token,
+                       rotated_at=?
+            """,
+            (user_id, token, now, now),
+        )
+        con.commit()
+    return token
+
+
+def get_or_create_api_token(user_id: int) -> str:
+    existing = get_api_token(user_id)
+    if existing:
+        return existing
+    token = _generate_api_token()
+    return _upsert_api_token(user_id, token)
+
+
+def rotate_api_token(user_id: int) -> str:
+    token = _generate_api_token()
+    return _upsert_api_token(user_id, token)
+
+
+def get_user_by_api_token(token: str):
+    cleaned = (token or "").strip()
+    if not cleaned:
+        return None
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            """SELECT u.user_id,u.username,u.first_name,u.joined_at,u.credits,u.ref_code,
+                       u.referred_by,u.banned,u.last_seen,u.lang
+                   FROM api_tokens t
+                   JOIN users u ON u.user_id = t.user_id
+                   WHERE t.token=?
+            """,
+            (cleaned,),
+        )
+        row = cur.fetchone()
+        if not row:
+            return None
+        keys = [
+            "user_id",
+            "username",
+            "first_name",
+            "joined_at",
+            "credits",
+            "ref_code",
+            "referred_by",
+            "banned",
+            "last_seen",
+            "lang",
+        ]
+        return dict(zip(keys, row))
 
 # -------------------
 # User Voice Helpers

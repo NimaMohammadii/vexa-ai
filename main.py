@@ -18,6 +18,7 @@ from modules.tts import handlers as tts_handlers
 from modules.gpt import handlers as gpt_handlers
 from modules.image import handlers as image_handlers
 from modules.video import handlers as video_handlers
+from modules.api_token import handlers as api_token_handlers
 
 # ========================= Telegram Bot Wiring =========================
 def create_bot() -> telebot.TeleBot:
@@ -37,6 +38,7 @@ def register_modules(bot: telebot.TeleBot) -> None:
     gpt_handlers.register(bot)
     image_handlers.register(bot)
     video_handlers.register(bot)
+    api_token_handlers.register(bot)
 
 def main() -> None:
     db.init_db()
