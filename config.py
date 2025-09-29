@@ -19,6 +19,15 @@ RUNWAY_API = (os.getenv("RUNWAY_API") or "").strip()
 # Backwards compatibility: some modules still import RUNWAY_API_KEY.
 RUNWAY_API_KEY = RUNWAY_API
 CARD_NUMBER = os.getenv("CARD_NUMBER", "****-****-****-****")
+API_KEY_HEADER_NAME = (os.getenv("API_KEY_HEADER_NAME") or "X-API-Key").strip() or "X-API-Key"
+ADMIN_API_KEY = (os.getenv("ADMIN_API_KEY") or "").strip()
+API_KEY_ENCRYPTION_SECRET = (os.getenv("API_KEY_ENCRYPTION_SECRET") or "").strip()
+
+try:
+    API_CREDIT_COST = int(os.getenv("API_CREDIT_COST", "1"))
+except Exception:
+    API_CREDIT_COST = 1
+API_CREDIT_COST = max(1, API_CREDIT_COST)
 
 try:
     BOT_OWNER_ID = int(os.getenv("BOT_OWNER_ID", "0"))
