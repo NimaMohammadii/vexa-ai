@@ -22,6 +22,7 @@ from config import API_CREDIT_COST, API_KEY_ENCRYPTION_SECRET
 DB_DIR = os. getenv ("DB_DIR", "/data")
 os.makedirs(DB_DIR, exist_ok=True)
 DB_PATH = os.path.join(DB_DIR, "bot.db")
+_API_KEY_SECRET_FALLBACK_PATH = os.path.join(DB_DIR, "api_key_secret.key")
 
 print("DB_PATH =>", DB_PATH, flush=True)
 
@@ -33,12 +34,37 @@ _API_KEY_VERSION = "1"
 _FERNET_KEY_CACHE: Fernet | None = None
 
 
+def _load_or_create_encryption_secret() -> str:
+    """Return a stable encryption secret stored alongside the database."""
+
+    try:
+        with open(_API_KEY_SECRET_FALLBACK_PATH, "r", encoding="utf-8") as fh:
+            secret = fh.read().strip()
+            if secret:
+                return secret
+    except FileNotFoundError:
+        pass
+
+    secret = secrets.token_urlsafe(64)
+    tmp_path = f"{_API_KEY_SECRET_FALLBACK_PATH}.tmp"
+    with open(tmp_path, "w", encoding="utf-8") as fh:
+        fh.write(secret)
+    os.replace(tmp_path, _API_KEY_SECRET_FALLBACK_PATH)
+    try:
+        os.chmod(_API_KEY_SECRET_FALLBACK_PATH, 0o600)
+    except OSError:
+        # Permission errors are expected on some platforms (e.g. Windows).
+        pass
+    return secret
+
+
 def _get_api_key_cipher() -> Fernet:
     global _FERNET_KEY_CACHE
     if _FERNET_KEY_CACHE is not None:
         return _FERNET_KEY_CACHE
     secret = (API_KEY_ENCRYPTION_SECRET or "").strip()
     if not secret:
+        secret = _load_or_create_encryption_secret()
         raise RuntimeError(
             "API_KEY_ENCRYPTION_SECRET must be set to enable API key encryption"
         )
