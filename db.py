@@ -255,6 +255,40 @@ def list_users(limit=20, offset=0):
                        ORDER BY joined_at DESC LIMIT ? OFFSET ?""", (limit, offset))
         return cur.fetchall()
 
+
+def list_image_users(limit=20, offset=0):
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            """
+            SELECT ig.user_id,
+                   u.username,
+                   u.credits,
+                   u.banned,
+                   COUNT(*) AS total_images,
+                   MAX(ig.created_at) AS last_created_at
+              FROM image_generations AS ig
+         LEFT JOIN users AS u ON u.user_id = ig.user_id
+          GROUP BY ig.user_id
+          ORDER BY last_created_at DESC
+             LIMIT ? OFFSET ?
+            """,
+            (limit, offset),
+        )
+        rows = cur.fetchall() or []
+
+    return [
+        {
+            "user_id": row[0],
+            "username": row[1] or "",
+            "credits": row[2] or 0,
+            "banned": bool(row[3]),
+            "total_images": row[4] or 0,
+            "last_created_at": row[5] or 0,
+        }
+        for row in rows
+    ]
+
 def set_ban(user_id, banned=True):
     with closing(sqlite3.connect(DB_PATH)) as con:
         cur = con.cursor()
