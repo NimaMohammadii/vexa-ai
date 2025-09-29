@@ -30,6 +30,9 @@ from .keyboards import (
     exports_menu,
     image_users_menu,
 )
+from modules.lang.keyboards import LANGS
+
+LANG_LABELS = {code: label for label, code in LANGS}
 
 # ---------- Helpers ----------
 def _is_owner(u) -> bool:
@@ -257,6 +260,30 @@ def register(bot):
                 edit_or_send(bot, cq.message.chat.id, cq.message.message_id, "👥 لیست کاربران:", users_menu(page))
             else:
                 edit_or_send(bot, cq.message.chat.id, cq.message.message_id, "👥 لیست کاربران:", users_menu())
+            return
+
+        if action == "lang_users":
+            stats = db.count_users_by_lang()
+            total = sum(count for _, count in stats)
+            lines = ["🌐 <b>کاربران بر اساس زبان</b>", ""]
+
+            if not total:
+                lines.append("هنوز کاربری ثبت نشده است.")
+            else:
+                for code, count in stats:
+                    label = LANG_LABELS.get(code)
+                    if not label:
+                        label = code or "نامشخص"
+                    if code not in LANG_LABELS and code:
+                        label = f"{label} ({code})"
+                    if total:
+                        percent = (count / total) * 100
+                        lines.append(f"• {label}: <b>{count}</b> ({percent:.1f}٪)")
+                    else:
+                        lines.append(f"• {label}: <b>{count}</b>")
+
+            txt = "\n".join(lines)
+            edit_or_send(bot, cq.message.chat.id, cq.message.message_id, txt, admin_menu())
             return
 
         # لیست کاربران تولید تصویر
