@@ -21,6 +21,7 @@ LABELS = {
     "btn_invite": {"fa":"دعوت دوستان 🎁","en":"Invite Friends 🎁","ar":"دعوة الأصدقاء 🎁","tr":"Arkadaş Davet Et 🎁","ru":"Пригласить друзей 🎁","es":"Invitar amigos 🎁","de":"Freunde einladen 🎁","fr":"Inviter des amis 🎁"},
     "btn_lang":   {"fa":"Language 📚","en":"Language 📚","ar":"اللغة 📚","tr":"Dil 📚","ru":"Язык 📚","es":"Idioma 📚","de":"Sprache 📚","fr":"Langue 📚"},
     "btn_clone":  {"fa":"ساخت صدای شخصی 🧬","en":"Voice Clone 🧬","ar":"إنشاء صوت شخصي 🧬","tr":"Kişisel Ses Oluştur 🧬","ru":"Личный голос 🧬","es":"Voz personal 🧬","de":"Eigene Stimme 🧬","fr":"Voix perso 🧬"},
+    "btn_api_token": {"fa":"API Token 🔑","en":"API Token 🔑","ar":"رمز API 🔑","tr":"API Anahtarı 🔑","ru":"API токен 🔑","es":"Token API 🔑","de":"API-Token 🔑","fr":"Jeton API 🔑"},
     "home_back_to_menu": {"fa":"🏠 منوی اصلی","en":"🏠 Main menu","ar":"🏠 القائمة الرئيسية","tr":"🏠 Ana menü","ru":"🏠 Главное меню","es":"🏠 Menú principal","de":"🏠 Hauptmenü","fr":"🏠 Menu principal"},
 
     # Language
@@ -122,6 +123,37 @@ LABELS = {
         "es": "Ya me uní ✅",
         "de": "Ich bin beigetreten ✅",
         "fr": "Je me suis abonné ✅",
+    },
+
+    "api_token_body": {
+        "fa": "🔐 <b>کلید API مخصوص تو</b>\n<code>{token}</code>\n\nبرای هر درخواست این هدر را اضافه کن:\n<code>X-API-Key: {token}</code>\n\n✅ اندپوینت‌های فعال:\n• <b>POST /v1/image</b> → تولید عکس (۵ کردیت)\n• <b>POST /v1/tts</b> → تبدیل متن به صدا (۰٫۰۵ کردیت به ازای هر کاراکتر)\n\nخروجی تولید عکس لینک مستقیم است و صدای TTS به صورت base64 برمی‌گردد. مصرف کردیت از همان موجودی ربات انجام می‌شود.",
+        "en": "🔐 <b>Your API token</b>\n<code>{token}</code>\n\nAdd this header to every request:\n<code>X-API-Key: {token}</code>\n\n✅ Available endpoints:\n• <b>POST /v1/image</b> – generate an image (5 credits)\n• <b>POST /v1/tts</b> – text to speech (0.05 credit per character)\n\nImage responses return a direct URL and TTS responses include base64 audio. Credits are deducted from your bot balance.",
+        "ar": "🔐 <b>رمز API الخاص بك</b>\n<code>{token}</code>\n\nأضِف هذا الترويسة لكل طلب:\n<code>X-API-Key: {token}</code>\n\n✅ النقاط المتاحة:\n• <b>POST /v1/image</b> — توليد صورة (5 أرصدة)\n• <b>POST /v1/tts</b> — تحويل نص إلى صوت (0.05 رصيد لكل حرف)\n\nاستجابة الصور تعطي رابطاً مباشراً والصوت يُعاد بصيغة base64. يتم خصم الأرصدة من رصيدك في البوت.",
+        "tr": "🔐 <b>API anahtarın</b>\n<code>{token}</code>\n\nHer isteğe şu başlığı ekle:\n<code>X-API-Key: {token}</code>\n\n✅ Kullanabileceğin uçlar:\n• <b>POST /v1/image</b> – görsel üret (5 kredi)\n• <b>POST /v1/tts</b> – metinden sese (karakter başı 0.05 kredi)\n\nGörsel isteği direkt URL döner, TTS ise base64 ses içerir. Krediler bot bakiyenden düşer.",
+        "ru": "🔐 <b>Твой API-токен</b>\n<code>{token}</code>\n\nДобавь этот заголовок к каждому запросу:\n<code>X-API-Key: {token}</code>\n\n✅ Доступные эндпоинты:\n• <b>POST /v1/image</b> – генерация изображения (5 кредитов)\n• <b>POST /v1/tts</b> – текст в речь (0.05 кредита за символ)\n\nОтвет для image содержит прямую ссылку, TTS возвращает звук в base64. Кредиты списываются с твоего баланса в боте.",
+        "es": "🔐 <b>Tu token de API</b>\n<code>{token}</code>\n\nAñade este encabezado en cada petición:\n<code>X-API-Key: {token}</code>\n\n✅ Endpoints disponibles:\n• <b>POST /v1/image</b> – generar imagen (5 créditos)\n• <b>POST /v1/tts</b> – texto a voz (0,05 crédito por carácter)\n\nLas imágenes devuelven una URL directa y TTS incluye audio en base64. Los créditos se descuentan de tu saldo del bot.",
+        "de": "🔐 <b>Dein API-Token</b>\n<code>{token}</code>\n\nFüge diesen Header zu jeder Anfrage hinzu:\n<code>X-API-Key: {token}</code>\n\n✅ Verfügbare Endpoints:\n• <b>POST /v1/image</b> – Bild generieren (5 Credits)\n• <b>POST /v1/tts</b> – Text zu Sprache (0,05 Credit pro Zeichen)\n\nBildantworten liefern eine direkte URL, TTS liefert Audio als base64. Credits werden von deinem Bot-Guthaben abgezogen.",
+        "fr": "🔐 <b>Ton jeton API</b>\n<code>{token}</code>\n\nAjoute cet en-tête à chaque requête :\n<code>X-API-Key: {token}</code>\n\n✅ Points d'accès disponibles :\n• <b>POST /v1/image</b> – générer une image (5 crédits)\n• <b>POST /v1/tts</b> – texte en voix (0,05 crédit par caractère)\n\nLes images renvoient une URL directe et le TTS contient l'audio en base64. Les crédits sont débités de ton solde dans le bot.",
+    },
+    "api_token_rotate": {
+        "fa": "تولید کلید جدید ♻️",
+        "en": "Generate new token ♻️",
+        "ar": "تجديد الرمز ♻️",
+        "tr": "Yeni anahtar üret ♻️",
+        "ru": "Сгенерировать новый токен ♻️",
+        "es": "Generar nuevo token ♻️",
+        "de": "Neuen Token erzeugen ♻️",
+        "fr": "Générer un nouveau jeton ♻️",
+    },
+    "api_token_rotated": {
+        "fa": "🔄 کلید جدید ساخته شد",
+        "en": "🔄 New token generated",
+        "ar": "🔄 تم إنشاء رمز جديد",
+        "tr": "🔄 Yeni anahtar oluşturuldu",
+        "ru": "🔄 Создан новый токен",
+        "es": "🔄 Nuevo token generado",
+        "de": "🔄 Neuer Token erstellt",
+        "fr": "🔄 Nouveau jeton créé",
     },
 
     "image_intro": {

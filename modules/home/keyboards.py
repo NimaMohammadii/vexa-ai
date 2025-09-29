@@ -18,6 +18,9 @@ def main_menu(lang: str) -> InlineKeyboardMarkup:
         InlineKeyboardButton(t("btn_gpt", lang), callback_data="home:gpt_chat"),
     )
     kb.row(
+        InlineKeyboardButton(t("btn_api_token", lang), callback_data="home:api_token"),
+    )
+    kb.row(
         InlineKeyboardButton(t("btn_lang", lang), callback_data="home:lang"),
         InlineKeyboardButton(t("btn_invite", lang), callback_data="home:invite"),
     )
