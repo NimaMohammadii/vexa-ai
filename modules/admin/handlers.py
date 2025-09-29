@@ -22,7 +22,14 @@ from .texts import (
     ASK_IG,    STATE_SET_IG,
     ASK_FORMULA, STATE_FORMULA,
 )
-from .keyboards import admin_menu, settings_menu, users_menu, user_actions, exports_menu
+from .keyboards import (
+    admin_menu,
+    settings_menu,
+    users_menu,
+    user_actions,
+    exports_menu,
+    image_users_menu,
+)
 
 # ---------- Helpers ----------
 def _is_owner(u) -> bool:
@@ -250,6 +257,28 @@ def register(bot):
                 edit_or_send(bot, cq.message.chat.id, cq.message.message_id, "👥 لیست کاربران:", users_menu(page))
             else:
                 edit_or_send(bot, cq.message.chat.id, cq.message.message_id, "👥 لیست کاربران:", users_menu())
+            return
+
+        # لیست کاربران تولید تصویر
+        if action == "image_users":
+            if len(p) >= 4 and p[2] in ("prev", "next"):
+                page = int(p[3])
+                page = max(0, page - 1) if p[2] == "prev" else page + 1
+                edit_or_send(
+                    bot,
+                    cq.message.chat.id,
+                    cq.message.message_id,
+                    "🖼️ کاربران تولید تصویر:",
+                    image_users_menu(page),
+                )
+            else:
+                edit_or_send(
+                    bot,
+                    cq.message.chat.id,
+                    cq.message.message_id,
+                    "🖼️ کاربران تولید تصویر:",
+                    image_users_menu(),
+                )
             return
 
         # پروفایل یک کاربر / lookup
