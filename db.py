@@ -64,10 +64,11 @@ def _get_api_key_cipher() -> Fernet:
         return _FERNET_KEY_CACHE
     secret = (API_KEY_ENCRYPTION_SECRET or "").strip()
     if not secret:
+        # Fall back to a stable secret stored alongside the database.  This keeps
+        # API key encryption working even when the environment variable is not
+        # explicitly configured (for example on existing deployments) while still
+        # allowing operators to override it when desired.
         secret = _load_or_create_encryption_secret()
-        raise RuntimeError(
-            "API_KEY_ENCRYPTION_SECRET must be set to enable API key encryption"
-        )
     digest = hashlib.sha256(secret.encode("utf-8")).digest()
     key = base64.urlsafe_b64encode(digest)
     _FERNET_KEY_CACHE = Fernet(key)
