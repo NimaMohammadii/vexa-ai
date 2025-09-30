@@ -238,7 +238,7 @@ def _build_headers() -> Dict[str, str]:
     return headers
 
 
-def _normalise_message(message: Dict[str, Any]) -> Dict[str, str]:
+def _normalise_message(message: Dict[str, Any]) -> Dict[str, Any]:
     if not isinstance(message, dict):
         raise GPTServiceError("messages must be a list of role/content objects")
 
@@ -247,28 +247,43 @@ def _normalise_message(message: Dict[str, Any]) -> Dict[str, str]:
         raise GPTServiceError(f"Unsupported message role: {role}")
 
     content = message.get("content")
-    if not isinstance(content, str) or not content:
-        raise GPTServiceError("Each message requires non-empty string content")
+    if isinstance(content, str):
+        if not content.strip():
+            raise GPTServiceError("Each message requires non-empty content")
+        return {"role": role, "content": content}
 
-    return {"role": role, "content": content}
+    if isinstance(content, list):
+        if not content:
+            raise GPTServiceError("Each message requires non-empty content")
+        validated: List[Dict[str, Any]] = []
+        for item in content:
+            if not isinstance(item, dict):
+                raise GPTServiceError("Each content part must be a dict")
+            part_type = (item.get("type") or "").strip()
+            if not part_type:
+                raise GPTServiceError("Each content part must include a type")
+            validated.append(item)
+        return {"role": role, "content": validated}
+
+    raise GPTServiceError("Each message requires non-empty content")
 
 
-def build_default_messages(history: Iterable[Dict[str, str]], user_text: str) -> List[Dict[str, str]]:
+def build_default_messages(history: Iterable[Dict[str, str]], user_content: Any) -> List[Dict[str, Any]]:
     """Compose a conversation list starting with the system prompt."""
 
-    messages: List[Dict[str, str]] = [{"role": "system", "content": GPT_SYSTEM_PROMPT}]
+    messages: List[Dict[str, Any]] = [{"role": "system", "content": GPT_SYSTEM_PROMPT}]
     for item in history:
         try:
             messages.append(_normalise_message(item))
         except GPTServiceError:
             if DEBUG:
                 print("Ignoring malformed GPT history item:", item)
-    messages.append({"role": "user", "content": user_text})
+    messages.append({"role": "user", "content": user_content})
     return messages
 
 
 def _prepare_chat_payload(
-    normalised: List[Dict[str, str]],
+    normalised: List[Dict[str, Any]],
     *,
     model: Optional[str],
     temperature: Optional[float],
@@ -292,7 +307,7 @@ def _prepare_chat_payload(
 
 
 def _prepare_assistant_payload(
-    normalised: List[Dict[str, str]],
+    normalised: List[Dict[str, Any]],
     *,
     model: Optional[str],
     temperature: Optional[float],
