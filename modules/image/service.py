@@ -12,12 +12,10 @@ hold the Runway API token.
 
 from __future__ import annotations
 
-import base64
 import logging
-import math
 import os
 import time
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional
 
 import requests
 
@@ -41,7 +39,6 @@ class ImageService:
     _DEFAULT_WIDTH = 1024
     _DEFAULT_HEIGHT = 1024
     _DEFAULT_FORMAT = "webp"
-    _DEFAULT_IMAGE_MIME = "image/png"
     _REQUEST_TIMEOUT = 30
     _GENERATION_TIMEOUT = 300
     _DEFAULT_POLL_INTERVAL = 3.0
@@ -77,67 +74,19 @@ class ImageService:
         payload: Dict[str, Any] = {
             "promptText": cleaned,
             "model": self._MODEL,
-            "ratio": f"{self._DEFAULT_WIDTH}:{self._DEFAULT_HEIGHT}",
-            "outputFormat": self._DEFAULT_FORMAT,
+            "ratio": f"{self._DEFAULT_WIDTH}:{self._DEFAULT_HEIGHT}"
         }
 
         logger.debug("Submitting generation task to Runway", extra={"payload": payload})
         response = self._request("POST", "/text_to_image", json=payload)
         data = self._safe_json(response)
 
-        task_id = data.get("id") or self._extract_task_id(data)
+        task_id = data.get("id")
         if not task_id:
             logger.error(f"No task ID in response: {data}")
             raise ImageGenerationError("شناسهٔ تسک از پاسخ Runway دریافت نشد.")
 
         logger.info("Runway task created", extra={"task_id": task_id})
-        return str(task_id)
-
-    def generate_image_from_image(
-        self,
-        prompt: str,
-        image_bytes: bytes,
-        *,
-        mime_type: str | None = None,
-    ) -> str:
-        """Submit an image-to-image generation task and return the task identifier."""
-
-        cleaned = (prompt or "").strip()
-        if not cleaned:
-            raise ImageGenerationError("متن تصویر نباید خالی باشد.")
-
-        if not image_bytes:
-            raise ImageGenerationError("تصویر مرجع ارسال نشده است.")
-
-        safe_mime = self._normalise_mime_type(image_bytes, mime_type)
-        encoded = base64.b64encode(image_bytes).decode("ascii")
-        data_url = f"data:{safe_mime};base64,{encoded}"
-
-        payload: Dict[str, Any] = {
-            "promptText": cleaned,
-            "model": self._MODEL,
-            "ratio": f"{self._DEFAULT_WIDTH}:{self._DEFAULT_HEIGHT}",
-            "outputFormat": self._DEFAULT_FORMAT,
-            "imageUrl": data_url,
-        }
-
-        derived_ratio = self._derive_ratio_from_image(image_bytes)
-        if derived_ratio:
-            payload["ratio"] = derived_ratio
-
-        logger.debug(
-            "Submitting image-to-image task to Runway",
-            extra={"payload_keys": list(payload.keys())},
-        )
-        response = self._request("POST", "/image_to_image", json=payload)
-        data = self._safe_json(response)
-
-        task_id = data.get("id") or self._extract_task_id(data)
-        if not task_id:
-            logger.error("No task ID in image-to-image response", extra={"response": data})
-            raise ImageGenerationError("شناسهٔ تسک از پاسخ Runway دریافت نشد.")
-
-        logger.info("Runway image-to-image task created", extra={"task_id": task_id})
         return str(task_id)
 
     def get_image_status(
@@ -163,29 +112,12 @@ class ImageService:
             logger.debug(f"Task {task_id} status: {status}")
 
             if status == "SUCCEEDED":
-                image_url = self._extract_image_url_direct(payload)
-
-                if not image_url:
-                    output = payload.get("output")
-                    image_url = self._extract_image_url_direct(output)
-
-                if not image_url:
-                    result = payload.get("result")
-                    image_url = self._extract_image_url_direct(result)
-
-                if not image_url:
-                    assets = self._fetch_assets(task_id)
-                    if assets:
-                        image_url = self._extract_image_url_direct(assets)
-
-                if image_url:
-                    logger.info(
-                        "Image URL extracted for task",
-                        extra={"task_id": task_id, "image_url": image_url[:100]},
-                    )
-                    return {"url": image_url}
-
-                logger.error("No image URL in Runway response", extra={"payload": payload})
+                # Extract image URL from output
+                output = payload.get("output", [])
+                if output and isinstance(output, list) and len(output) > 0:
+                    image_url = output[0]
+                    if isinstance(image_url, str) and image_url.strip():
+                        return {"url": image_url.strip()}
                 raise ImageGenerationError("خروجی تصویر در پاسخ موفق پیدا نشد.")
 
             if status in {"FAILED", "CANCELED"}:
@@ -199,216 +131,6 @@ class ImageService:
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
-    @classmethod
-    def _normalise_mime_type(cls, image_bytes: bytes, mime_type: str | None) -> str:
-        """Return a safe MIME type for the provided image bytes."""
-
-        candidate = (mime_type or "").split(";")[0].strip().lower()
-        detected = cls._detect_mime_type(image_bytes)
-
-        if detected:
-            if not candidate or candidate not in {detected, "image/jpg"}:
-                candidate = detected
-
-        if not candidate.startswith("image/"):
-            candidate = detected or cls._DEFAULT_IMAGE_MIME
-
-        if candidate == "image/jpg":
-            candidate = "image/jpeg"
-
-        return candidate or cls._DEFAULT_IMAGE_MIME
-
-    @staticmethod
-    def _detect_mime_type(image_bytes: bytes) -> str | None:
-        """Infer the MIME type from raw image bytes."""
-
-        if not image_bytes:
-            return None
-
-        header = image_bytes[:16]
-
-        if header.startswith(b"\x89PNG\r\n\x1a\n"):
-            return "image/png"
-
-        if header[:3] == b"\xff\xd8\xff":
-            return "image/jpeg"
-
-        if header.startswith(b"GIF87a") or header.startswith(b"GIF89a"):
-            return "image/gif"
-
-        if len(header) >= 12 and header[:4] == b"RIFF" and header[8:12] == b"WEBP":
-            return "image/webp"
-
-        return None
-
-    @classmethod
-    def _derive_ratio_from_image(cls, image_bytes: bytes) -> str | None:
-        """Return a reduced width:height ratio extracted from the image bytes."""
-
-        dimensions = cls._extract_image_dimensions(image_bytes)
-        if not dimensions:
-            return None
-
-        width, height = dimensions
-        if width <= 0 or height <= 0:
-            return None
-
-        gcd = math.gcd(width, height)
-        if gcd <= 0:
-            return None
-
-        normalised_width = max(1, width // gcd)
-        normalised_height = max(1, height // gcd)
-
-        return f"{normalised_width}:{normalised_height}"
-
-    @classmethod
-    def _extract_image_dimensions(cls, image_bytes: bytes) -> Tuple[int, int] | None:
-        """Best effort extraction of image dimensions without external deps."""
-
-        if not image_bytes:
-            return None
-
-        if image_bytes.startswith(b"\x89PNG\r\n\x1a\n") and len(image_bytes) >= 24:
-            width = int.from_bytes(image_bytes[16:20], "big", signed=False)
-            height = int.from_bytes(image_bytes[20:24], "big", signed=False)
-            if width and height:
-                return width, height
-
-        if image_bytes.startswith((b"GIF87a", b"GIF89a")) and len(image_bytes) >= 10:
-            width = int.from_bytes(image_bytes[6:8], "little", signed=False)
-            height = int.from_bytes(image_bytes[8:10], "little", signed=False)
-            if width and height:
-                return width, height
-
-        if image_bytes[:3] == b"\xff\xd8\xff":
-            dimensions = cls._extract_jpeg_dimensions(image_bytes)
-            if dimensions:
-                return dimensions
-
-        if len(image_bytes) >= 30 and image_bytes[:4] == b"RIFF" and image_bytes[8:12] == b"WEBP":
-            dimensions = cls._extract_webp_dimensions(image_bytes)
-            if dimensions:
-                return dimensions
-
-        return None
-
-    @staticmethod
-    def _extract_jpeg_dimensions(image_bytes: bytes) -> Tuple[int, int] | None:
-        """Parse JPEG markers to obtain the intrinsic dimensions."""
-
-        data = memoryview(image_bytes)
-        length = len(data)
-        index = 2  # Skip SOI
-
-        while index + 1 < length:
-            if data[index] != 0xFF:
-                index += 1
-                continue
-
-            while index < length and data[index] == 0xFF:
-                index += 1
-
-            if index >= length:
-                break
-
-            marker = data[index]
-            index += 1
-
-            if marker in (0xD8, 0xD9):
-                continue
-
-            if index + 1 >= length:
-                break
-
-            segment_length = (data[index] << 8) + data[index + 1]
-            if segment_length < 2:
-                break
-
-            data_start = index + 2
-
-            if marker in {
-                0xC0,
-                0xC1,
-                0xC2,
-                0xC3,
-                0xC5,
-                0xC6,
-                0xC7,
-                0xC9,
-                0xCA,
-                0xCB,
-                0xCD,
-                0xCE,
-                0xCF,
-            }:
-                if data_start + 4 >= length:
-                    break
-
-                height = (data[data_start + 1] << 8) + data[data_start + 2]
-                width = (data[data_start + 3] << 8) + data[data_start + 4]
-                if width and height:
-                    return width, height
-
-            index = data_start + (segment_length - 2)
-
-        return None
-
-    @staticmethod
-    def _extract_webp_dimensions(image_bytes: bytes) -> Tuple[int, int] | None:
-        """Parse a WebP container and attempt to read the canvas size."""
-
-        data = memoryview(image_bytes)
-        length = len(data)
-        offset = 12  # Skip RIFF header and WEBP signature
-
-        while offset + 8 <= length:
-            chunk_type = bytes(data[offset : offset + 4])
-            chunk_size = int.from_bytes(data[offset + 4 : offset + 8], "little", signed=False)
-            chunk_start = offset + 8
-            chunk_end = chunk_start + chunk_size
-
-            if chunk_end > length:
-                break
-
-            if chunk_type == b"VP8X" and chunk_size >= 10:
-                width = 1 + (
-                    data[chunk_start + 4]
-                    | (data[chunk_start + 5] << 8)
-                    | (data[chunk_start + 6] << 16)
-                )
-                height = 1 + (
-                    data[chunk_start + 7]
-                    | (data[chunk_start + 8] << 8)
-                    | (data[chunk_start + 9] << 16)
-                )
-                if width and height:
-                    return width, height
-
-            if chunk_type == b"VP8 " and chunk_size >= 10:
-                key_frame = data[chunk_start : chunk_start + 3]
-                if key_frame == b"\x9d\x01\x2a":
-                    width = data[chunk_start + 3] | ((data[chunk_start + 4] & 0x3F) << 8)
-                    height = data[chunk_start + 5] | ((data[chunk_start + 6] & 0x3F) << 8)
-                    if width and height:
-                        return width, height
-
-            if chunk_type == b"VP8L" and chunk_size >= 5:
-                if data[chunk_start] == 0x2F:
-                    b1 = data[chunk_start + 1]
-                    b2 = data[chunk_start + 2]
-                    b3 = data[chunk_start + 3]
-                    b4 = data[chunk_start + 4]
-                    width = 1 + b1 + ((b2 & 0x3F) << 8)
-                    height = 1 + ((b2 >> 6) | (b3 << 2) | (b4 << 10))
-                    if width and height:
-                        return width, height
-
-            # Chunks are padded to even sizes.
-            offset = chunk_end + (chunk_size % 2)
-
-        return None
-
     def _initialise_base_urls(self) -> list[str]:
         """Return the list of base URLs to try for the Runway API."""
 
@@ -559,79 +281,24 @@ class ImageService:
             return ""
         return str(value).strip()
 
-    def _extract_image_url_direct(self, data: Any, _visited: set[int] | None = None) -> str | None:
-        """Extract image URL from heterogeneous Runway responses."""
-
-        if data is None:
-            return None
-
-        if _visited is None:
-            _visited = set()
-
-        obj_id = id(data)
-        if obj_id in _visited:
-            return None
-        _visited.add(obj_id)
-
-        if isinstance(data, str):
-            candidate = data.strip()
-            if candidate and any(
-                candidate.startswith(prefix)
-                for prefix in (
-                    "http://",
-                    "https://",
-                    "data:image",
-                    "//",
-                    "ftp://",
-                    "file://",
-                )
-            ):
-                return candidate
-            return None
-
+    def _extract_image_url_direct(self, data: Any) -> str | None:
+        """Extract image URL from direct API response."""
         if isinstance(data, dict):
             # Check common keys for image URL
-            priority_keys = (
-                "url",
-                "image_url",
-                "output_url",
-                "download_url",
-                "imageUrl",
-                "outputUrl",
-                "asset_url",
-                "src",
-                "href",
-                "path",
-                "uri",
-            )
-
-            for key in priority_keys:
+            for key in ["url", "image_url", "output_url", "imageUrl", "outputUrl"]:
                 if key in data:
-                    url = self._extract_image_url_direct(data[key], _visited)
-                    if url:
-                        return url
-
-            # Some responses nest the useful data inside generic containers
-            for key in ("image", "result", "data", "output", "outputs", "assets"):
-                if key in data:
-                    url = self._extract_image_url_direct(data[key], _visited)
-                    if url:
-                        return url
-
-            # Fallback to inspect other values
-            for value in data.values():
-                url = self._extract_image_url_direct(value, _visited)
-                if url:
-                    return url
-
-            return None
-
-        if isinstance(data, (list, tuple, set)):
-            for item in data:
-                url = self._extract_image_url_direct(item, _visited)
-                if url:
-                    return url
-
+                    url = data[key]
+                    if isinstance(url, str) and url.strip():
+                        return url.strip()
+            
+            # Check if there's a nested structure
+            if "image" in data and isinstance(data["image"], dict):
+                return self._extract_image_url_direct(data["image"])
+            
+            # Check if there's an array of outputs
+            if "outputs" in data and isinstance(data["outputs"], list) and data["outputs"]:
+                return self._extract_image_url_direct(data["outputs"][0])
+                
         return None
 
     @classmethod
