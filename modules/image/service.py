@@ -14,9 +14,10 @@ from __future__ import annotations
 
 import base64
 import logging
+import math
 import os
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 import requests
 
@@ -119,6 +120,10 @@ class ImageService:
             "outputFormat": self._DEFAULT_FORMAT,
             "imageUrl": data_url,
         }
+
+        derived_ratio = self._derive_ratio_from_image(image_bytes)
+        if derived_ratio:
+            payload["ratio"] = derived_ratio
 
         logger.debug(
             "Submitting image-to-image task to Runway",
@@ -233,6 +238,174 @@ class ImageService:
 
         if len(header) >= 12 and header[:4] == b"RIFF" and header[8:12] == b"WEBP":
             return "image/webp"
+
+        return None
+
+    @classmethod
+    def _derive_ratio_from_image(cls, image_bytes: bytes) -> str | None:
+        """Return a reduced width:height ratio extracted from the image bytes."""
+
+        dimensions = cls._extract_image_dimensions(image_bytes)
+        if not dimensions:
+            return None
+
+        width, height = dimensions
+        if width <= 0 or height <= 0:
+            return None
+
+        gcd = math.gcd(width, height)
+        if gcd <= 0:
+            return None
+
+        normalised_width = max(1, width // gcd)
+        normalised_height = max(1, height // gcd)
+
+        return f"{normalised_width}:{normalised_height}"
+
+    @classmethod
+    def _extract_image_dimensions(cls, image_bytes: bytes) -> Tuple[int, int] | None:
+        """Best effort extraction of image dimensions without external deps."""
+
+        if not image_bytes:
+            return None
+
+        if image_bytes.startswith(b"\x89PNG\r\n\x1a\n") and len(image_bytes) >= 24:
+            width = int.from_bytes(image_bytes[16:20], "big", signed=False)
+            height = int.from_bytes(image_bytes[20:24], "big", signed=False)
+            if width and height:
+                return width, height
+
+        if image_bytes.startswith((b"GIF87a", b"GIF89a")) and len(image_bytes) >= 10:
+            width = int.from_bytes(image_bytes[6:8], "little", signed=False)
+            height = int.from_bytes(image_bytes[8:10], "little", signed=False)
+            if width and height:
+                return width, height
+
+        if image_bytes[:3] == b"\xff\xd8\xff":
+            dimensions = cls._extract_jpeg_dimensions(image_bytes)
+            if dimensions:
+                return dimensions
+
+        if len(image_bytes) >= 30 and image_bytes[:4] == b"RIFF" and image_bytes[8:12] == b"WEBP":
+            dimensions = cls._extract_webp_dimensions(image_bytes)
+            if dimensions:
+                return dimensions
+
+        return None
+
+    @staticmethod
+    def _extract_jpeg_dimensions(image_bytes: bytes) -> Tuple[int, int] | None:
+        """Parse JPEG markers to obtain the intrinsic dimensions."""
+
+        data = memoryview(image_bytes)
+        length = len(data)
+        index = 2  # Skip SOI
+
+        while index + 1 < length:
+            if data[index] != 0xFF:
+                index += 1
+                continue
+
+            while index < length and data[index] == 0xFF:
+                index += 1
+
+            if index >= length:
+                break
+
+            marker = data[index]
+            index += 1
+
+            if marker in (0xD8, 0xD9):
+                continue
+
+            if index + 1 >= length:
+                break
+
+            segment_length = (data[index] << 8) + data[index + 1]
+            if segment_length < 2:
+                break
+
+            data_start = index + 2
+
+            if marker in {
+                0xC0,
+                0xC1,
+                0xC2,
+                0xC3,
+                0xC5,
+                0xC6,
+                0xC7,
+                0xC9,
+                0xCA,
+                0xCB,
+                0xCD,
+                0xCE,
+                0xCF,
+            }:
+                if data_start + 4 >= length:
+                    break
+
+                height = (data[data_start + 1] << 8) + data[data_start + 2]
+                width = (data[data_start + 3] << 8) + data[data_start + 4]
+                if width and height:
+                    return width, height
+
+            index = data_start + (segment_length - 2)
+
+        return None
+
+    @staticmethod
+    def _extract_webp_dimensions(image_bytes: bytes) -> Tuple[int, int] | None:
+        """Parse a WebP container and attempt to read the canvas size."""
+
+        data = memoryview(image_bytes)
+        length = len(data)
+        offset = 12  # Skip RIFF header and WEBP signature
+
+        while offset + 8 <= length:
+            chunk_type = bytes(data[offset : offset + 4])
+            chunk_size = int.from_bytes(data[offset + 4 : offset + 8], "little", signed=False)
+            chunk_start = offset + 8
+            chunk_end = chunk_start + chunk_size
+
+            if chunk_end > length:
+                break
+
+            if chunk_type == b"VP8X" and chunk_size >= 10:
+                width = 1 + (
+                    data[chunk_start + 4]
+                    | (data[chunk_start + 5] << 8)
+                    | (data[chunk_start + 6] << 16)
+                )
+                height = 1 + (
+                    data[chunk_start + 7]
+                    | (data[chunk_start + 8] << 8)
+                    | (data[chunk_start + 9] << 16)
+                )
+                if width and height:
+                    return width, height
+
+            if chunk_type == b"VP8 " and chunk_size >= 10:
+                key_frame = data[chunk_start : chunk_start + 3]
+                if key_frame == b"\x9d\x01\x2a":
+                    width = data[chunk_start + 3] | ((data[chunk_start + 4] & 0x3F) << 8)
+                    height = data[chunk_start + 5] | ((data[chunk_start + 6] & 0x3F) << 8)
+                    if width and height:
+                        return width, height
+
+            if chunk_type == b"VP8L" and chunk_size >= 5:
+                if data[chunk_start] == 0x2F:
+                    b1 = data[chunk_start + 1]
+                    b2 = data[chunk_start + 2]
+                    b3 = data[chunk_start + 3]
+                    b4 = data[chunk_start + 4]
+                    width = 1 + b1 + ((b2 & 0x3F) << 8)
+                    height = 1 + ((b2 >> 6) | (b3 << 2) | (b4 << 10))
+                    if width and height:
+                        return width, height
+
+            # Chunks are padded to even sizes.
+            offset = chunk_end + (chunk_size % 2)
 
         return None
 
