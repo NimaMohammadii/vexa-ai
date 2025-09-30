@@ -16,7 +16,7 @@ from modules.home.texts import MAIN
 from modules.i18n import t
 from utils import edit_or_send
 from .keyboards import menu_keyboard, no_credit_keyboard
-from .service import ImageGenerationError, ImageService
+from .service import ImageGenerationError, ImageReference, ImageService
 from .settings import (
     CREDIT_COST,
     POLL_INTERVAL,
@@ -69,6 +69,7 @@ def _start_prompt_flow(
     message_id: int | None = None,
     show_intro: bool = True,
 ) -> None:
+    _clear_reference(bot, user_id)
     db.set_state(user_id, STATE_WAIT_PROMPT)
     if not show_intro:
         return
@@ -163,10 +164,79 @@ def _extract_image_url(data: Any, _visited: set[int] | None = None) -> str | Non
     return None
 
 
-def _process_prompt(bot: TeleBot, message: Message, user, prompt: str, lang: str) -> None:
+def _store_reference(bot: TeleBot, user_id: int, reference: ImageReference) -> None:
+    if not hasattr(bot, "_image_references"):
+        bot._image_references = {}
+    bot._image_references[user_id] = reference
+
+
+def _get_reference(bot: TeleBot, user_id: int) -> ImageReference | None:
+    store = getattr(bot, "_image_references", {})
+    return store.get(user_id)
+
+
+def _clear_reference(bot: TeleBot, user_id: int) -> None:
+    if hasattr(bot, "_image_references"):
+        bot._image_references.pop(user_id, None)
+
+
+def _download_reference(
+    bot: TeleBot, message: Message, lang: str
+) -> ImageReference | None:
+    file_id: str | None = None
+    mime_type = "image/jpeg"
+
+    if message.photo:
+        photo = message.photo[-1]
+        file_id = photo.file_id
+        mime_type = "image/jpeg"
+    elif message.document:
+        doc = message.document
+        mime_type = (doc.mime_type or "").strip()
+        if not mime_type.startswith("image/"):
+            bot.reply_to(message, t("image_invalid_reference", lang), parse_mode="HTML")
+            return None
+        file_id = doc.file_id
+        if not mime_type:
+            mime_type = "image/jpeg"
+    else:
+        bot.reply_to(message, t("image_invalid_reference", lang), parse_mode="HTML")
+        return None
+
+    try:
+        file_info = bot.get_file(file_id)
+        image_bytes = bot.download_file(file_info.file_path)
+    except Exception:
+        bot.reply_to(
+            message,
+            t("image_reference_download_error", lang),
+            parse_mode="HTML",
+        )
+        return None
+
+    return ImageReference(image_bytes, mime_type or "image/jpeg")
+
+
+def _process_prompt(
+    bot: TeleBot,
+    message: Message,
+    user,
+    prompt: str,
+    lang: str,
+    *,
+    reference: ImageReference | None = None,
+    reference_owner: int | None = None,
+) -> None:
     prompt = (prompt or "").strip()
     if not prompt:
-        _start_prompt_flow(bot, message.chat.id, user["user_id"], lang)
+        if reference is not None:
+            bot.reply_to(
+                message,
+                t("image_need_prompt", lang),
+                parse_mode="HTML",
+            )
+        else:
+            _start_prompt_flow(bot, message.chat.id, user["user_id"], lang)
         return
 
     try:
@@ -192,7 +262,7 @@ def _process_prompt(bot: TeleBot, message: Message, user, prompt: str, lang: str
 
     try:
         # Generate image and get task ID
-        task_id = service.generate_image(prompt)
+        task_id = service.generate_image(prompt, reference=reference)
         logger.info(f"Image task created: {task_id}")
         
         # Poll for completion and get image URL
@@ -239,6 +309,8 @@ def _process_prompt(bot: TeleBot, message: Message, user, prompt: str, lang: str
                 parse_mode="HTML",
             )
     finally:
+        if reference_owner is not None and reference is not None:
+            _clear_reference(bot, reference_owner)
         _start_prompt_flow(
             bot, message.chat.id, user["user_id"], lang, show_intro=False
         )
@@ -291,4 +363,44 @@ def register(bot: TeleBot) -> None:
         user, lang = _get_user_and_lang(message.from_user)
         if message.text and message.text.startswith("/"):
             return
-        _process_prompt(bot, message, user, message.text or "", lang)
+        reference = _get_reference(bot, user["user_id"])
+        reference_owner = user["user_id"] if reference is not None else None
+        _process_prompt(
+            bot,
+            message,
+            user,
+            message.text or "",
+            lang,
+            reference=reference,
+            reference_owner=reference_owner,
+        )
+
+    @bot.message_handler(
+        func=lambda m: (db.get_state(m.from_user.id) or "").startswith(STATE_WAIT_PROMPT),
+        content_types=["photo", "document"],
+    )
+    def on_reference(message: Message):
+        user, lang = _get_user_and_lang(message.from_user)
+        _clear_reference(bot, user["user_id"])
+        reference = _download_reference(bot, message, lang)
+        if reference is None:
+            return
+
+        caption = (message.caption or "").strip()
+        if not caption:
+            _store_reference(bot, user["user_id"], reference)
+            bot.reply_to(
+                message,
+                t("image_need_prompt", lang),
+                parse_mode="HTML",
+            )
+            return
+
+        _process_prompt(
+            bot,
+            message,
+            user,
+            caption,
+            lang,
+            reference=reference,
+        )
