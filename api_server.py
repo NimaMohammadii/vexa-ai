@@ -18,7 +18,13 @@ from pydantic import BaseModel, Field
 
 import db
 from modules.image.service import ImageGenerationError, ImageService
-from modules.image.settings import CREDIT_COST as IMAGE_CREDIT_COST, POLL_INTERVAL, POLL_TIMEOUT
+from modules.image.settings import (
+    CREDIT_COST as IMAGE_CREDIT_COST,
+    IMAGE_SIZE_OPTIONS,
+    POLL_INTERVAL,
+    POLL_TIMEOUT,
+    get_ratio_for_size,
+)
 from modules.tts.service import synthesize
 from modules.tts.settings import BANNED_WORDS, CREDIT_PER_CHAR, DEFAULT_VOICE_NAME, VOICES
 
@@ -45,6 +51,14 @@ class ImageRequest(BaseModel):
     mime_type: str | None = Field(
         default=None,
         description="Optional MIME type for the reference image (used when reference_image is provided)",
+    )
+    size: str | None = Field(
+        default=None,
+        description="Optional preset size key (e.g. square, landscape, portrait, classic)",
+    )
+    ratio: str | None = Field(
+        default=None,
+        description="Optional explicit Runway ratio string (e.g. 1024:768)",
     )
 
 
@@ -193,6 +207,16 @@ async def generate_image(payload: ImageRequest, current_user=Depends(_get_curren
     if credits < IMAGE_CREDIT_COST:
         raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail="Insufficient credits")
 
+    size_key = (payload.size or "").strip().lower() or None
+    ratio = payload.ratio.strip() if payload.ratio else None
+
+    if size_key:
+        if size_key not in IMAGE_SIZE_OPTIONS:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid size preset")
+        ratio = get_ratio_for_size(size_key)
+    elif ratio and ":" not in ratio:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid ratio format")
+
     try:
         service = ImageService()
     except ImageGenerationError as exc:
@@ -213,9 +237,10 @@ async def generate_image(payload: ImageRequest, current_user=Depends(_get_curren
                 prompt,
                 reference_bytes,
                 mime_type=mime_type,
+                ratio=ratio,
             )
         else:
-            task_id = service.generate_image(prompt)
+            task_id = service.generate_image(prompt, ratio=ratio)
 
         result = service.get_image_status(
             task_id,
