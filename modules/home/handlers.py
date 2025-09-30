@@ -207,7 +207,7 @@ def register(bot):
 
         if route == "video":
             bot.answer_callback_query(cq.id)
-            from modules.video.handlers import open_video
+            from modules.video_gen4.handlers import open_video
 
             open_video(bot, cq)
             return
