@@ -29,6 +29,7 @@ from .keyboards import (
     user_actions,
     exports_menu,
     image_users_menu,
+    gpt_users_menu,
 )
 from modules.lang.keyboards import LANGS
 
@@ -245,10 +246,15 @@ def register(bot):
                 image_users = db.count_users_with_images()
             except AttributeError:
                 image_users = 0
+            try:
+                gpt_users = db.count_users_with_gpt()
+            except AttributeError:
+                gpt_users = 0
             txt = (f"📊 <b>آمار</b>\n\n"
                    f"👥 کل کاربران: <b>{total}</b>\n"
                    f"⚡️ فعال ۲۴ساعت: <b>{active24}</b>\n"
-                   f"🖼️ کاربران تولید تصویر: <b>{image_users}</b>")
+                   f"🖼️ کاربران تولید تصویر: <b>{image_users}</b>\n"
+                   f"🤖 کاربران GPT: <b>{gpt_users}</b>")
             edit_or_send(bot, cq.message.chat.id, cq.message.message_id, txt, admin_menu())
             return
 
@@ -305,6 +311,27 @@ def register(bot):
                     cq.message.message_id,
                     "🖼️ کاربران تولید تصویر:",
                     image_users_menu(),
+                )
+            return
+
+        if action == "gpt_users":
+            if len(p) >= 4 and p[2] in ("prev", "next"):
+                page = int(p[3])
+                page = max(0, page - 1) if p[2] == "prev" else page + 1
+                edit_or_send(
+                    bot,
+                    cq.message.chat.id,
+                    cq.message.message_id,
+                    "🤖 کاربران GPT:",
+                    gpt_users_menu(page),
+                )
+            else:
+                edit_or_send(
+                    bot,
+                    cq.message.chat.id,
+                    cq.message.message_id,
+                    "🤖 کاربران GPT:",
+                    gpt_users_menu(),
                 )
             return
 
@@ -479,6 +506,45 @@ def register(bot):
             except Exception:
                 print("Error exporting user TTS:", traceback.format_exc())
                 bot.answer_callback_query(cq.id, "❌ خطا در تولید فایل خروجی.")
+            return
+
+        if action == "exp_user_gpt":
+            try:
+                uid = int(p[2])
+            except Exception:
+                bot.answer_callback_query(cq.id, "❌ آی‌دی نامعتبر.")
+                return
+
+            try:
+                bot.answer_callback_query(cq.id, "در حال آماده‌سازی فایل...")
+            except Exception:
+                pass
+
+            try:
+                path = db.export_user_gpt_messages_csv(uid)
+            except AttributeError:
+                bot.answer_callback_query(cq.id, "❌ خروجی پیام‌های GPT پشتیبانی نمی‌شود.")
+                return
+            except Exception:
+                print("Error exporting user GPT messages:", traceback.format_exc())
+                bot.answer_callback_query(cq.id, "❌ خطا در تولید فایل خروجی.")
+                return
+
+            if not path:
+                bot.answer_callback_query(cq.id, "⚠️ برای این کاربر گفتگوی GPT ثبت نشده است.")
+                return
+
+            if not os.path.isfile(path):
+                bot.answer_callback_query(cq.id, "❌ فایل خروجی پیدا نشد.")
+                return
+
+            try:
+                with open(path, "rb") as f:
+                    bot.send_document(cq.message.chat.id, f)
+                bot.answer_callback_query(cq.id, "📥 گفتگوهای GPT ارسال شد.")
+            except Exception:
+                print("Error sending exported GPT file:", traceback.format_exc())
+                bot.answer_callback_query(cq.id, "❌ خطا در ارسال فایل خروجی.")
             return
 
         if action == "exp_user_images":

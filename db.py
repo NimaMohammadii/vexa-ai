@@ -380,6 +380,41 @@ def list_image_users(limit=20, offset=0):
         for row in rows
     ]
 
+
+def list_gpt_users(limit=20, offset=0):
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            """
+            SELECT gm.user_id,
+                   u.username,
+                   u.credits,
+                   u.banned,
+                   COUNT(*) AS total_messages,
+                   MAX(gm.created_at) AS last_created_at
+              FROM gpt_messages AS gm
+         LEFT JOIN users AS u ON u.user_id = gm.user_id
+          GROUP BY gm.user_id
+          ORDER BY last_created_at DESC
+             LIMIT ? OFFSET ?
+            """,
+            (limit, offset),
+        )
+        rows = cur.fetchall() or []
+
+    return [
+        {
+            "user_id": row[0],
+            "username": row[1] or "",
+            "credits": row[2] or 0,
+            "banned": bool(row[3]),
+            "total_messages": row[4] or 0,
+            "last_created_at": row[5] or 0,
+        }
+        for row in rows
+    ]
+
+
 def set_ban(user_id, banned=True):
     with closing(sqlite3.connect(DB_PATH)) as con:
         cur = con.cursor()
@@ -438,6 +473,14 @@ def count_users_with_images() -> int:
     with closing(sqlite3.connect(DB_PATH)) as con:
         cur = con.cursor()
         cur.execute("SELECT COUNT(DISTINCT user_id) FROM image_generations")
+        result = cur.fetchone()
+        return result[0] if result else 0
+
+
+def count_users_with_gpt() -> int:
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute("SELECT COUNT(DISTINCT user_id) FROM gpt_messages")
         result = cur.fetchone()
         return result[0] if result else 0
 
@@ -683,6 +726,48 @@ def export_user_messages_csv(user_id: int, path=None):
         import csv; w = csv.writer(f)
         w.writerow(["id","direction","text","created_at"])
         w.writerows(cur.fetchall())
+    return path
+
+
+def export_user_gpt_messages_csv(user_id: int, path: str | None = None):
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            """SELECT id, role, content, created_at
+                   FROM gpt_messages
+                  WHERE user_id=?
+               ORDER BY id ASC""",
+            (user_id,),
+        )
+        rows = cur.fetchall() or []
+
+    if not rows:
+        return None
+
+    if path is None:
+        tmp_dir = DB_DIR if os.path.isdir(DB_DIR) else None
+        tmp = tempfile.NamedTemporaryFile(
+            delete=False,
+            prefix=f"user_{user_id}_gpt_",
+            suffix=".csv",
+            dir=tmp_dir or None,
+        )
+        path = tmp.name
+        tmp.close()
+    else:
+        os.makedirs(os.path.dirname(os.path.abspath(path)) or ".", exist_ok=True)
+
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["id", "role", "content", "created_at", "created_at_iso"])
+        for row_id, role, content, created_at in rows:
+            created_at = int(created_at or 0)
+            try:
+                created_iso = datetime.datetime.utcfromtimestamp(created_at).isoformat()
+            except Exception:
+                created_iso = ""
+            writer.writerow([row_id, role, content, created_at, created_iso])
+
     return path
 
 # ... بقیه کد همون قبلی ...

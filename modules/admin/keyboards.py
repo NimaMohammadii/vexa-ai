@@ -16,6 +16,7 @@ def admin_menu():
     )
     kb.row(
         InlineKeyboardButton("🖼️ کاربران تصویر", callback_data="admin:image_users"),
+        InlineKeyboardButton("🤖 کاربران GPT", callback_data="admin:gpt_users"),
     )
     kb.row(
         InlineKeyboardButton("➕ افزودن کردیت", callback_data="admin:add"),
@@ -126,6 +127,40 @@ def image_users_menu(page: int = 0, page_size: int = 10):
     kb.add(InlineKeyboardButton("⬅️ بازگشت", callback_data="admin:menu"))
     return kb
 
+
+def gpt_users_menu(page: int = 0, page_size: int = 10):
+    page = max(0, int(page))
+    offset = page * page_size
+    rows = db.list_gpt_users(limit=page_size, offset=offset)
+
+    kb = InlineKeyboardMarkup()
+    if not rows:
+        kb.add(InlineKeyboardButton("— کاربری یافت نشد —", callback_data="admin:noop"))
+    else:
+        for row in rows:
+            uid = row.get("user_id")
+            username = row.get("username")
+            banned = bool(row.get("banned"))
+            total = row.get("total_messages") or 0
+            last_ts = row.get("last_created_at")
+            label = f"{'🚫' if banned else '✅'} {uid}"
+            if username:
+                label += f" · @{username}"
+            label += f" · 💬 {total}"
+            label += f" · 🕒 {_format_ts(last_ts)}"
+            kb.add(InlineKeyboardButton(label, callback_data=f"admin:user:{uid}"))
+
+    nav = []
+    if page > 0:
+        nav.append(InlineKeyboardButton("◀️ قبلی", callback_data=f"admin:gpt_users:prev:{page}"))
+    if len(rows) == page_size:
+        nav.append(InlineKeyboardButton("بعدی ▶️", callback_data=f"admin:gpt_users:next:{page}"))
+    if nav:
+        kb.row(*nav)
+
+    kb.add(InlineKeyboardButton("⬅️ بازگشت", callback_data="admin:menu"))
+    return kb
+
 # ————— اکشن‌های مربوط به یک کاربر —————
 def user_actions(uid: int):
     u = db.get_user(uid) or {}
@@ -144,6 +179,12 @@ def user_actions(uid: int):
     kb.row(
         InlineKeyboardButton("📥 متن‌های TTS کاربر", callback_data=f"admin:exp_user_tts:{uid}"),
         InlineKeyboardButton("💬 پیام‌های کاربر",     callback_data=f"admin:exp_user_msgs:{uid}"),
+    )
+    kb.add(
+        InlineKeyboardButton(
+            "🤖 گفتگوهای GPT",
+            callback_data=f"admin:exp_user_gpt:{uid}",
+        )
     )
     kb.add(
         InlineKeyboardButton(
