@@ -21,13 +21,10 @@ from .keyboards import menu_keyboard, no_credit_keyboard
 from .service import ImageGenerationError, ImageService
 from .settings import (
     CREDIT_COST,
-    DEFAULT_SIZE_KEY,
-    IMAGE_SIZE_OPTIONS,
     POLL_INTERVAL,
     POLL_TIMEOUT,
     STATE_PROCESSING,
     STATE_WAIT_PROMPT,
-    get_ratio_for_size,
 )
 from .texts import (
     error as error_text,
@@ -39,10 +36,6 @@ from .texts import (
     processing,
     reference_download_error,
     result_caption,
-    size_hint,
-    size_invalid,
-    size_label,
-    size_selected,
 )
 
 logger = logging.getLogger(__name__)
@@ -74,24 +67,6 @@ def _get_user_and_lang(from_user):
     return user, lang
 
 
-def _extract_size_from_state(state: str | None) -> str | None:
-    if not state or not state.startswith("image:"):
-        return None
-    parts = state.split(":")
-    for part in reversed(parts):
-        if part in IMAGE_SIZE_OPTIONS:
-            return part
-    return None
-
-
-def _resolve_size_key(user_id: int) -> str:
-    state = db.get_state(user_id)
-    size = _extract_size_from_state(state)
-    if size:
-        return size
-    return DEFAULT_SIZE_KEY
-
-
 def _start_prompt_flow(
     bot: TeleBot,
     chat_id: int,
@@ -101,20 +76,16 @@ def _start_prompt_flow(
     message_id: int | None = None,
     show_intro: bool = True,
 ) -> None:
-    previous = db.get_state(user_id)
-    selected_size = _extract_size_from_state(previous) or DEFAULT_SIZE_KEY
-    db.set_state(user_id, f"{STATE_WAIT_PROMPT}:{selected_size}")
+    db.set_state(user_id, STATE_WAIT_PROMPT)
     if not show_intro:
         return
-    body = "\n\n".join([intro(lang), size_hint(lang)])
-    markup = menu_keyboard(lang, selected_size)
     if message_id is not None:
-        edit_or_send(bot, chat_id, message_id, body, markup)
+        edit_or_send(bot, chat_id, message_id, intro(lang), menu_keyboard(lang))
     else:
         bot.send_message(
             chat_id,
-            body,
-            reply_markup=markup,
+            intro(lang),
+            reply_markup=menu_keyboard(lang),
             parse_mode="HTML",
         )
 
@@ -289,15 +260,11 @@ def _process_prompt(
     lang: str,
     *,
     reference: ReferenceImage | None = None,
-    size_key: str | None = None,
 ) -> None:
     prompt = (prompt or "").strip()
     if not prompt:
         _start_prompt_flow(bot, message.chat.id, user["user_id"], lang)
         return
-
-    selected_size = size_key or _resolve_size_key(user["user_id"])
-    ratio = get_ratio_for_size(selected_size)
 
     try:
         service = ImageService()
@@ -317,7 +284,7 @@ def _process_prompt(
         )
         return
 
-    db.set_state(user["user_id"], f"{STATE_PROCESSING}:{selected_size}")
+    db.set_state(user["user_id"], STATE_PROCESSING)
     status = bot.send_message(message.chat.id, processing(lang), parse_mode="HTML")
 
     try:
@@ -326,17 +293,11 @@ def _process_prompt(
                 prompt,
                 reference.data,
                 mime_type=reference.mime_type,
-                ratio=ratio,
             )
-            logger.info(
-                "Image-to-image task created",
-                extra={"task_id": task_id, "ratio": ratio, "size": selected_size},
-            )
+            logger.info("Image-to-image task created: %s", task_id)
         else:
-            task_id = service.generate_image(prompt, ratio=ratio)
-            logger.info(
-                "Image task created", extra={"task_id": task_id, "ratio": ratio, "size": selected_size}
-            )
+            task_id = service.generate_image(prompt)
+            logger.info("Image task created: %s", task_id)
 
         # Poll for completion and get image URL
         result = service.get_image_status(
@@ -364,8 +325,6 @@ def _process_prompt(
         except Exception:
             logger.exception("Failed to log image generation for user %s", user["user_id"])
         db.deduct_credits(user["user_id"], CREDIT_COST)
-
-        db.set_state(user["user_id"], f"{STATE_WAIT_PROMPT}:{selected_size}")
 
         try:
             bot.delete_message(status.chat.id, status.message_id)
@@ -399,8 +358,6 @@ def _process_prompt(
                 body,
                 parse_mode="HTML",
             )
-        finally:
-            db.set_state(user["user_id"], f"{STATE_WAIT_PROMPT}:{selected_size}")
     finally:
         _start_prompt_flow(
             bot, message.chat.id, user["user_id"], lang, show_intro=False
@@ -439,50 +396,10 @@ def handle_img(bot: TeleBot, message: Message) -> None:
         _start_prompt_flow(bot, message.chat.id, user["user_id"], lang)
         return
 
-    size_key = _resolve_size_key(user["user_id"])
-    _process_prompt(
-        bot,
-        message,
-        user,
-        prompt,
-        lang,
-        reference=reference,
-        size_key=size_key,
-    )
+    _process_prompt(bot, message, user, prompt, lang, reference=reference)
 
 
 def register(bot: TeleBot) -> None:
-    @bot.callback_query_handler(func=lambda c: c.data.startswith("image:size:"))
-    def on_size(cq: CallbackQuery):
-        user, lang = _get_user_and_lang(cq.from_user)
-        if user.get("banned"):
-            bot.answer_callback_query(cq.id, t("error_banned", lang), show_alert=True)
-            return
-
-        try:
-            _, _, size_key = cq.data.split(":", 2)
-        except ValueError:
-            bot.answer_callback_query(cq.id, size_invalid(lang), show_alert=True)
-            return
-
-        if size_key not in IMAGE_SIZE_OPTIONS:
-            bot.answer_callback_query(cq.id, size_invalid(lang), show_alert=True)
-            return
-
-        db.set_state(user["user_id"], f"{STATE_WAIT_PROMPT}:{size_key}")
-        label = size_label(lang, size_key)
-
-        try:
-            bot.edit_message_reply_markup(
-                cq.message.chat.id,
-                cq.message.message_id,
-                reply_markup=menu_keyboard(lang, size_key),
-            )
-        except Exception:
-            pass
-
-        bot.answer_callback_query(cq.id, size_selected(lang, label))
-
     @bot.callback_query_handler(func=lambda c: c.data == "image:back")
     def on_back(cq: CallbackQuery):
         user, lang = _get_user_and_lang(cq.from_user)
@@ -502,7 +419,6 @@ def register(bot: TeleBot) -> None:
     )
     def on_prompt(message: Message):
         user, lang = _get_user_and_lang(message.from_user)
-        size_key = _resolve_size_key(user["user_id"])
 
         if message.content_type == "text":
             if message.text and message.text.startswith("/"):
@@ -525,7 +441,6 @@ def register(bot: TeleBot) -> None:
                 text_prompt,
                 lang,
                 reference=reference,
-                size_key=size_key,
             )
             return
 
@@ -555,5 +470,4 @@ def register(bot: TeleBot) -> None:
             prompt,
             lang,
             reference=reference,
-            size_key=size_key,
         )
