@@ -74,16 +74,40 @@ class ImageService:
 
         safe_ratio = ratio if ratio and ":" in ratio else self._DEFAULT_RATIO
 
-        payload: Dict[str, Any] = {
-            "promptText": cleaned,
-            "model": self._MODEL,
-            "ratio": safe_ratio,
-            "outputFormat": self._DEFAULT_FORMAT,
-        }
+        payload_variants = self._build_text_to_image_payloads(cleaned, safe_ratio)
+        last_error: ImageGenerationError | None = None
 
-        logger.debug("Submitting generation task to Runway", extra={"payload": payload})
-        response = self._request("POST", "/text_to_image", json=payload)
-        data = self._safe_json(response)
+        for index, payload in enumerate(payload_variants):
+            log_payload = dict(payload)
+            if "prompt" in log_payload:
+                log_payload["prompt"] = "<omitted>"
+            if "promptText" in log_payload:
+                log_payload["promptText"] = "<omitted>"
+
+            logger.debug(
+                "Submitting generation task to Runway",
+                extra={"payload": log_payload, "attempt": index + 1},
+            )
+
+            try:
+                response = self._request("POST", "/text_to_image", json=payload)
+            except ImageGenerationError as exc:
+                last_error = exc
+                if (
+                    index + 1 < len(payload_variants)
+                    and "Validation of body failed" in str(exc)
+                ):
+                    logger.info(
+                        "Runway rejected image payload, trying fallback schema",
+                        extra={"payload_keys": list(payload.keys())},
+                    )
+                    continue
+                raise
+
+            data = self._safe_json(response)
+            break
+        else:  # pragma: no cover - defensive guard
+            raise last_error or ImageGenerationError("ارسال درخواست به Runway ناموفق بود.")
 
         task_id = data.get("id") or self._extract_task_id(data)
         if not task_id:
@@ -116,20 +140,48 @@ class ImageService:
 
         safe_ratio = ratio if ratio and ":" in ratio else self._DEFAULT_RATIO
 
-        payload: Dict[str, Any] = {
-            "promptText": cleaned,
-            "model": self._MODEL,
-            "ratio": safe_ratio,
-            "outputFormat": self._DEFAULT_FORMAT,
-            "imageUrl": data_url,
-        }
-
-        logger.debug(
-            "Submitting image-to-image task to Runway",
-            extra={"payload_keys": list(payload.keys())},
+        payload_variants = self._build_image_to_image_payloads(
+            cleaned, safe_ratio, data_url, encoded, safe_mime
         )
-        response = self._request("POST", "/image_to_image", json=payload)
-        data = self._safe_json(response)
+        last_error: ImageGenerationError | None = None
+
+        for index, payload in enumerate(payload_variants):
+            log_payload = dict(payload)
+            if "prompt" in log_payload:
+                log_payload["prompt"] = "<omitted>"
+            if "promptText" in log_payload:
+                log_payload["promptText"] = "<omitted>"
+            if "image" in log_payload:
+                log_payload["image"] = "<omitted>"
+            if "imageUrl" in log_payload:
+                log_payload["imageUrl"] = "<omitted>"
+            if "imageData" in log_payload:
+                log_payload["imageData"] = "<omitted>"
+
+            logger.debug(
+                "Submitting image-to-image task to Runway",
+                extra={"payload": log_payload, "attempt": index + 1},
+            )
+
+            try:
+                response = self._request("POST", "/image_to_image", json=payload)
+            except ImageGenerationError as exc:
+                last_error = exc
+                if (
+                    index + 1 < len(payload_variants)
+                    and "Validation of body failed" in str(exc)
+                ):
+                    logger.info(
+                        "Runway rejected image-to-image payload, trying fallback schema",
+                        extra={"payload_keys": list(payload.keys())},
+                    )
+                    continue
+                raise
+
+            data = self._safe_json(response)
+            break
+        else:  # pragma: no cover - defensive guard
+            raise last_error or ImageGenerationError("ارسال درخواست به Runway ناموفق بود.")
 
         task_id = data.get("id") or self._extract_task_id(data)
         if not task_id:
@@ -464,6 +516,70 @@ class ImageService:
                     return url
 
         return None
+
+    def _build_text_to_image_payloads(self, prompt: str, ratio: str) -> list[Dict[str, Any]]:
+        """Return payload variations for text-to-image requests."""
+
+        modern_payload: Dict[str, Any] = {
+            "model": self._MODEL,
+            "prompt": prompt,
+            "aspectRatio": ratio,
+            "outputFormat": self._DEFAULT_FORMAT,
+        }
+
+        legacy_payload: Dict[str, Any] = {
+            "promptText": prompt,
+            "model": self._MODEL,
+            "ratio": ratio,
+            "outputFormat": self._DEFAULT_FORMAT,
+        }
+
+        return [modern_payload, legacy_payload]
+
+    def _build_image_to_image_payloads(
+        self,
+        prompt: str,
+        ratio: str,
+        data_url: str,
+        encoded: str,
+        mime_type: str,
+    ) -> list[Dict[str, Any]]:
+        """Return payload variations for image-to-image requests."""
+
+        modern_payload: Dict[str, Any] = {
+            "model": self._MODEL,
+            "prompt": prompt,
+            "aspectRatio": ratio,
+            "outputFormat": self._DEFAULT_FORMAT,
+            "image": {
+                "type": "BASE64",
+                "data": encoded,
+                "mimeType": mime_type,
+            },
+        }
+
+        # Some Runway endpoints accept a direct data URI instead of a structured image
+        # object; keep supporting the legacy ``imageUrl`` field as a final fallback.
+        data_uri_payload: Dict[str, Any] = {
+            "promptText": prompt,
+            "model": self._MODEL,
+            "ratio": ratio,
+            "outputFormat": self._DEFAULT_FORMAT,
+            "imageUrl": data_url,
+        }
+
+        base64_payload: Dict[str, Any] = {
+            "promptText": prompt,
+            "model": self._MODEL,
+            "ratio": ratio,
+            "outputFormat": self._DEFAULT_FORMAT,
+            "imageData": {
+                "data": encoded,
+                "mimeType": mime_type,
+            },
+        }
+
+        return [modern_payload, base64_payload, data_uri_payload]
 
     @classmethod
     def _extract_task_id(cls, payload: Dict[str, Any]) -> str | None:
