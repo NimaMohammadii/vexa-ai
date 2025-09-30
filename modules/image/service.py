@@ -37,8 +37,7 @@ class ImageService:
     )
     _MODEL = os.getenv("RUNWAY_MODEL", "gemini_2.5_flash")
     _API_VERSION = os.getenv("RUNWAY_API_VERSION", "2024-11-06")
-    _DEFAULT_WIDTH = 1024
-    _DEFAULT_HEIGHT = 1024
+    _DEFAULT_RATIO = os.getenv("RUNWAY_DEFAULT_RATIO", "1024:1024")
     _DEFAULT_FORMAT = "webp"
     _DEFAULT_IMAGE_MIME = "image/png"
     _REQUEST_TIMEOUT = 30
@@ -66,17 +65,19 @@ class ImageService:
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
-    def generate_image(self, prompt: str) -> str:
+    def generate_image(self, prompt: str, *, ratio: str | None = None) -> str:
         """Submit a new generation task and return the task identifier."""
 
         cleaned = (prompt or "").strip()
         if not cleaned:
             raise ImageGenerationError("متن تصویر نباید خالی باشد.")
 
+        safe_ratio = ratio if ratio and ":" in ratio else self._DEFAULT_RATIO
+
         payload: Dict[str, Any] = {
             "promptText": cleaned,
             "model": self._MODEL,
-            "ratio": f"{self._DEFAULT_WIDTH}:{self._DEFAULT_HEIGHT}",
+            "ratio": safe_ratio,
             "outputFormat": self._DEFAULT_FORMAT,
         }
 
@@ -98,6 +99,7 @@ class ImageService:
         image_bytes: bytes,
         *,
         mime_type: str | None = None,
+        ratio: str | None = None,
     ) -> str:
         """Submit an image-to-image generation task and return the task identifier."""
 
@@ -112,10 +114,12 @@ class ImageService:
         encoded = base64.b64encode(image_bytes).decode("ascii")
         data_url = f"data:{safe_mime};base64,{encoded}"
 
+        safe_ratio = ratio if ratio and ":" in ratio else self._DEFAULT_RATIO
+
         payload: Dict[str, Any] = {
             "promptText": cleaned,
             "model": self._MODEL,
-            "ratio": f"{self._DEFAULT_WIDTH}:{self._DEFAULT_HEIGHT}",
+            "ratio": safe_ratio,
             "outputFormat": self._DEFAULT_FORMAT,
             "imageUrl": data_url,
         }
