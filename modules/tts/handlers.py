@@ -192,18 +192,28 @@ def register(bot):
             # محاسبه هزینه: صداهای کاستوم دو برابر هزینه پایه دارند
             is_custom_voice = db.get_user_voice(user_id, voice_name) is not None
             multiplier = 2 if is_custom_voice else 1
-            cost = round(len(text) * CREDIT_PER_CHAR * multiplier, 2)
-            if user["credits"] < cost:
+            cost = db.normalize_credit_amount(len(text) * CREDIT_PER_CHAR * multiplier)
+            balance = db.normalize_credit_amount(user.get("credits", 0))
+            if balance < cost:
                 # state رو پاک نکن تا بتونیم منوی TTS رو بعداً پاک کنیم
                 from .keyboards import no_credit_keyboard
-                bot.send_message(msg.chat.id, NO_CREDIT(lang, user.get("credits", 0), cost), reply_markup=no_credit_keyboard(lang))
+                bot.send_message(
+                    msg.chat.id,
+                    NO_CREDIT(lang, balance, cost),
+                    reply_markup=no_credit_keyboard(lang),
+                )
                 return
 
             # کسر کردیت قبل از API call
             if not db.deduct_credits(user_id, cost):
                 refreshed = db.get_user(user_id) or {}
                 from .keyboards import no_credit_keyboard
-                bot.send_message(msg.chat.id, NO_CREDIT(lang, refreshed.get("credits", 0), cost), reply_markup=no_credit_keyboard(lang))
+                new_balance = db.normalize_credit_amount(refreshed.get("credits", 0))
+                bot.send_message(
+                    msg.chat.id,
+                    NO_CREDIT(lang, new_balance, cost),
+                    reply_markup=no_credit_keyboard(lang),
+                )
                 return
 
             status = bot.send_message(msg.chat.id, PROCESSING(lang))

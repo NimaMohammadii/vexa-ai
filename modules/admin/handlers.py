@@ -347,7 +347,7 @@ def register(bot):
             if not u:
                 bot.answer_callback_query(cq.id, "کاربر یافت نشد."); return
             txt = (f"👤 <b>{uid}</b>\n"
-                   f"@{u['username'] or '-'} | 💳 {u['credits']} | "
+                   f"@{u['username'] or '-'} | 💳 {db.format_credit_amount(u['credits'])} | "
                    f"{'🚫 بن' if u['banned'] else '✅ مجاز'}")
             edit_or_send(bot, cq.message.chat.id, cq.message.message_id, txt, user_actions(uid))
             return
@@ -356,14 +356,18 @@ def register(bot):
         if action == "ban":
             uid = int(p[2]); db.set_ban(uid, True)
             u = db.get_user(uid)
-            txt = (f"👤 <b>{uid}</b>\n@{u['username'] or '-'} | 💳 {u['credits']} | 🚫 بن")
+            txt = (
+                f"👤 <b>{uid}</b>\n@{u['username'] or '-'} | 💳 {db.format_credit_amount(u['credits'])} | 🚫 بن"
+            )
             edit_or_send(bot, cq.message.chat.id, cq.message.message_id, txt, user_actions(uid))
             bot.answer_callback_query(cq.id, "کاربر بن شد."); return
 
         if action == "unban":
             uid = int(p[2]); db.set_ban(uid, False)
             u = db.get_user(uid)
-            txt = (f"👤 <b>{uid}</b>\n@{u['username'] or '-'} | 💳 {u['credits']} | ✅ مجاز")
+            txt = (
+                f"👤 <b>{uid}</b>\n@{u['username'] or '-'} | 💳 {db.format_credit_amount(u['credits'])} | ✅ مجاز"
+            )
             edit_or_send(bot, cq.message.chat.id, cq.message.message_id, txt, user_actions(uid))
             bot.answer_callback_query(cq.id, "کاربر آن‌بن شد."); return
 
@@ -612,7 +616,7 @@ def register(bot):
         if not u:
             bot.reply_to(msg, "❌ کاربر یافت نشد."); return
         txt = (f"👤 <b>{uid}</b>\n"
-               f"@{u['username'] or '-'} | 💳 {u['credits']} | "
+               f"@{u['username'] or '-'} | 💳 {db.format_credit_amount(u['credits'])} | "
                f"{'🚫 بن' if u['banned'] else '✅ مجاز'}")
         edit_or_send(bot, msg.chat.id, msg.message_id, txt, user_actions(uid))
         db.clear_state(msg.from_user.id)

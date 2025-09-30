@@ -68,7 +68,7 @@ def users_menu(page: int = 0, page_size: int = 10):
             label = f"{'🚫' if banned else '✅'} {user_id}"
             if username:
                 label += f" · @{username}"
-            label += f" · 💳 {credits}"
+            label += f" · 💳 {db.format_credit_amount(credits)}"
             kb.add(InlineKeyboardButton(label, callback_data=f"admin:user:{user_id}"))
 
     nav = []
