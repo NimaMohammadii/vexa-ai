@@ -207,7 +207,7 @@ LABELS = {
         "fr": "⚠️ Le service de génération d'images n'est pas configuré. Réessaie plus tard.",
     },
     "image_result_caption": {
-        "fa": "🎉 تصویر آماده شد! {cost} کردیت از حسابت کم شد.",
+        "fa": "<b>تصویر آمـاده شد 🫟 <a href=\"https://t.me/AIvexaBOT\">Vexa.ai</a></b>",
         "en": "🎉 Image ready! {cost} credits were deducted.",
         "ar": "🎉 الصورة جاهزة! تم خصم {cost} رصيداً.",
         "tr": "🎉 Görsel hazır! {cost} kredi düşüldü.",
