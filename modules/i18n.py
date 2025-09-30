@@ -14,7 +14,7 @@ LABELS = {
         "fr": "<b>📖 Guide d'utilisation de Vexa</b>\n\n🔹 <b>Qu'est-ce qu'un crédit ?</b>\nChaque lettre, espace ou symbole = 1 crédit.\n\n🔹 <b>Crédits offerts au démarrage</b>\nAprès /start tu reçois <b>45 crédits</b>, de quoi tester « Salut, ici Vexa ».\n\n🔹 <b>Message « Crédits insuffisants » ?</b>\nEnvoie un texte plus court ou recharge d'abord.\n\n🔹 <b>Astuces pour une voix naturelle</b>\nUtilise la ponctuation :\n• Termine les phrases par un point.\n• Mets des virgules pour de courtes pauses.\n• Finis les questions par ?.\n• Ajoute ! pour l'énergie.\n\n✍️ <b>Exemple</b>\n• ❌ « salut ca va j'espère que tu vas bien »\n• ✅ « Salut ! Ça va ? J'espère que tu vas bien. »"
     },
     "btn_gpt":    {"fa":"GPT-5 🫧","en":"GPT-5 🫧","ar":"GPT-5 🫧","tr":"GPT-5 🫧","ru":"GPT-5 🫧","es":"GPT-5 🫧","de":"GPT-5 🤖","fr":"GPT-5 🤖"},
-    "btn_image":  {"fa":"<b>💎 استودیو لاکچری عکس</b>","en":"Image Studio 🖼️","ar":"توليد الصور 🖼️","tr":"Görsel Üretimi 🖼️","ru":"Генератор изображений 🖼️","es":"Generar imagen 🖼️","de":"Bildstudio 🖼️","fr":"Générer image 🖼️"},
+    "btn_image":  {"fa":"تولید تصویر 🖼️","en":"Generate Image 🖼️","ar":"توليد صورة 🖼️","tr":"Görsel Oluştur 🖼️","ru":"Создать изображение 🖼️","es":"Generar imagen 🖼️","de":"Bild erzeugen 🖼️","fr":"Générer une image 🖼️"},
     "btn_tts":    {"fa":"تبدیل متن به صدا 🎧","en":"Text to Speech 🎧","ar":"تحويل النص إلى صوت 🎧","tr":"Metinden Sese 🎧","ru":"Текст в речь 🎧","es":"Texto a voz 🎧","de":"Text zu Sprache 🎧","fr":"Texte en voix 🎧"},
     "btn_profile":{"fa":"پروفایل 🙋🏼‍♂️","en":"Profile 🙋🏼‍♂️","ar":"الملف الشخصي 🙋🏼‍♂️","tr":"Profil 🙋🏼‍♂️","ru":"Профиль 🙋🏼‍♂️","es":"Perfil 🙋🏼‍♂️","de":"Profil 🙋🏼‍♂️","fr":"Profil 🙋🏼‍♂️"},
     "btn_credit": {"fa":"خرید کردیـت 🛒","en":"Buy Credit 🛒","ar":"شراء الرصيد 🛒","tr":"Kredi Satın Al 🛒","ru":"Купить кредит 🛒","es":"Comprar crédito 🛒","de":"Guthaben kaufen 🛒","fr":"Acheter du crédit 🛒"},
@@ -157,14 +157,14 @@ LABELS = {
     },
 
     "image_intro": {
-        "fa": "🖼️ <b>تولید عکس فوق‌حرفه‌ای</b>\nبا مدل gen4 و کیفیت 720p ساخته میشه. توضیح تصویری که می‌خوای رو بنویس یا عکس مرجع + توضیح رو بفرست؛ برای هر عکس {cost} کردیت ازت کم میشه.",
-        "en": "🖼️ <b>Pro image generation</b>\nVexa Gen-4 at 720p quality. Send the prompt you want—or add a reference photo with a caption. Each image costs {cost} credits.",
-        "ar": "🖼️ <b>توليد صور احترافي</b>\nبجودة ‎720p‎ مع نموذج Gen-4. أرسل الوصف النصي أو صورة مرجعية مع تعليق. كل صورة تكلف {cost} رصيداً.",
-        "tr": "🖼️ <b>Profesyonel görsel üretimi</b>\nVexa Gen-4 ile 720p kalite. Metin açıklamasını gönder ya da referans görsel + not paylaş; her görsel {cost} kredi.",
-        "ru": "🖼️ <b>Премиум-генерация изображений</b>\nМодель Gen-4 в 720p. Пришлите текстовый промпт или референс с описанием — каждое изображение стоит {cost} кредитов.",
-        "es": "🖼️ <b>Generación de imágenes pro</b>\nVexa Gen-4 en 720p. Envía tu prompt de texto o una foto de referencia con descripción; cada imagen cuesta {cost} créditos.",
-        "de": "🖼️ <b>Professionelle Bildgenerierung</b>\nVexa Gen-4 in 720p. Sende deinen Textprompt oder ein Referenzbild mit Beschreibung; jedes Bild kostet {cost} Credits.",
-        "fr": "🖼️ <b>Génération d'images pro</b>\nVexa Gen-4 en 720p. Envoie ton prompt texte ou une photo de référence avec légende ; chaque image coûte {cost} crédits.",
+        "fa": "🖼️ <b>هرچی میخوای بنویس تا برات بسازمش.</b>\nهر تصویر {cost} کردیت از حسابت کم میشه.",
+        "en": "🖼️ <b>Describe anything you want and I'll make it.</b>\nEach image costs {cost} credits.",
+        "ar": "🖼️ <b>اكتب أي شيء تريده وسأصنعه لك.</b>\nكل صورة تخصم {cost} رصيداً.",
+        "tr": "🖼️ <b>Ne istersen yaz, senin için oluşturayım.</b>\nHer görsel için {cost} kredi düşer.",
+        "ru": "🖼️ <b>Опиши всё, что хочешь — я создам это.</b>\nЗа каждое изображение списывается {cost} кредитов.",
+        "es": "🖼️ <b>Describe lo que quieras y lo crearé para ti.</b>\nCada imagen cuesta {cost} créditos.",
+        "de": "🖼️ <b>Beschreibe, was du willst, und ich setze es um.</b>\nFür jedes Bild werden {cost} Credits abgezogen.",
+        "fr": "🖼️ <b>Décris ce que tu veux et je le créerai pour toi.</b>\nChaque image coûte {cost} crédits.",
     },
     "image_processing": {
         "fa": "🎨 <b>در حال ساخت تصویر...</b>",
