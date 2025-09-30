@@ -61,17 +61,40 @@ class VideoService:
         if not cleaned:
             raise VideoGenerationError("متن ویدیو نباید خالی باشد.")
 
-        payload: Dict[str, Any] = {
-            "promptText": cleaned,
-            "model": self._MODEL,
-            "ratio": self._DEFAULT_RATIO,
-            "duration": self._DEFAULT_DURATION,
-            "outputFormat": self._DEFAULT_FORMAT,
-        }
+        payload_variants = self._build_payload_variants(cleaned)
+        last_error: VideoGenerationError | None = None
 
-        logger.debug("Submitting video generation task", extra={"payload": payload})
-        response = self._request("POST", "/text_to_video", json=payload)
-        data = self._safe_json(response)
+        for index, payload in enumerate(payload_variants):
+            log_payload = dict(payload)
+            if "prompt" in log_payload:
+                log_payload["prompt"] = "<omitted>"
+            if "promptText" in log_payload:
+                log_payload["promptText"] = "<omitted>"
+
+            logger.debug(
+                "Submitting video generation task",
+                extra={"payload": log_payload, "attempt": index + 1},
+            )
+
+            try:
+                response = self._request("POST", "/text_to_video", json=payload)
+            except VideoGenerationError as exc:
+                last_error = exc
+                if (
+                    index + 1 < len(payload_variants)
+                    and "Validation of body failed" in str(exc)
+                ):
+                    logger.info(
+                        "Runway rejected payload, trying fallback schema",
+                        extra={"payload_keys": list(payload.keys())},
+                    )
+                    continue
+                raise
+
+            data = self._safe_json(response)
+            break
+        else:  # pragma: no cover - defensive guard, should not happen
+            raise last_error or VideoGenerationError("ارسال درخواست به Runway ناموفق بود.")
 
         task_id = self._extract_task_id(data) or data.get("id")
         if not task_id:
@@ -151,6 +174,29 @@ class VideoService:
             normalised.append(base.rstrip("/"))
 
         return normalised or list(self._DEFAULT_BASE_URLS)
+
+    def _build_payload_variants(self, prompt: str) -> list[Dict[str, Any]]:
+        base_duration = self._DEFAULT_DURATION
+        base_ratio = self._DEFAULT_RATIO
+        base_format = self._DEFAULT_FORMAT
+
+        modern_payload: Dict[str, Any] = {
+            "model": self._MODEL,
+            "prompt": prompt,
+            "aspectRatio": base_ratio,
+            "duration": base_duration,
+            "outputFormat": base_format,
+        }
+
+        legacy_payload: Dict[str, Any] = {
+            "promptText": prompt,
+            "model": self._MODEL,
+            "ratio": base_ratio,
+            "duration": base_duration,
+            "outputFormat": base_format,
+        }
+
+        return [modern_payload, legacy_payload]
 
     def _request(
         self,
