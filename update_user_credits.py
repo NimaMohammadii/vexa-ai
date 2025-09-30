@@ -1,10 +1,11 @@
-"""Utility script to recalculate user credits.
+"""Utility script to normalise user credits.
 
 The script connects to the project's database using the configuration provided
-by :mod:`db` and updates every user's ``credits`` value based on an exchange
-rate of 4.5% (0.045). The new value is rounded to the nearest integer before
-being persisted. Before the write operation takes place, the script prints each
-calculated change and waits for user confirmation (unless ``--yes`` is passed).
+by :mod:`db` and updates every user's ``credits`` value so that it contains at
+most two decimal places. Values are rounded using ``ROUND_HALF_UP`` to match
+the behaviour enforced by the runtime helpers. Before the write operation takes
+place, the script prints each calculated change and waits for user confirmation
+(unless ``--yes`` is passed).
 """
 from __future__ import annotations
 
@@ -15,14 +16,18 @@ from typing import Iterable, Tuple
 
 import db
 
-UserChange = Tuple[int, int, int]
+UserChange = Tuple[int, float, float]
 
 
 def _fetch_user_changes(cursor: sqlite3.Cursor) -> Iterable[UserChange]:
     cursor.execute("SELECT user_id, credits FROM users")
     for user_id, credits in cursor.fetchall():
-        old_credits = credits or 0
-        new_credits = round(old_credits * 0.045)
+        old_credits = float(credits or 0)
+        new_credits = db.normalize_credit_amount(old_credits)
+
+        if abs(new_credits - old_credits) < 1e-9:
+            continue
+
         yield user_id, old_credits, new_credits
 
 
@@ -43,13 +48,17 @@ def recalculate_user_credits(*, assume_yes: bool = False) -> None:
         changes = list(_fetch_user_changes(cursor))
 
         if not changes:
-            print("هیچ کاربری در جدول users پیدا نشد.")
+            print("هیچ کاربری در جدول users پیدا نشد یا نیازی به تغییر نبود.")
             return
 
         print("لیست تغییرات پیشنهادی:")
         for user_id, old_credits, new_credits in changes:
             print(
-                f"user_id={user_id} old_credits={old_credits} new_credits={new_credits}"
+                "user_id={user_id} old_credits={old:.5f} new_credits={new:.2f}".format(
+                    user_id=user_id,
+                    old=old_credits,
+                    new=new_credits,
+                )
             )
 
         if not assume_yes:
@@ -70,7 +79,7 @@ def recalculate_user_credits(*, assume_yes: bool = False) -> None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Recalculate user credits based on a 4.5% exchange rate."
+        description="Normalise all user credits to two decimal places."
     )
     parser.add_argument(
         "--yes",

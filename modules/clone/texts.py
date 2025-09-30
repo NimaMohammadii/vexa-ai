@@ -1,4 +1,5 @@
 # modules/clone/texts.py
+import db
 from modules.i18n import t
 
 
@@ -7,11 +8,14 @@ def MENU(lang: str = "fa") -> str:
 
 
 def PAYMENT_CONFIRM(lang: str = "fa", cost: int = 200) -> str:
-    return t("clone_payment_confirm", lang).format(cost=cost)
+    return t("clone_payment_confirm", lang).format(cost=db.format_credit_amount(cost))
 
 
-def NO_CREDIT_CLONE(lang: str = "fa", balance: int = 0, cost: int = 200) -> str:
-    return t("clone_insufficient_credit", lang).format(balance=balance, cost=cost)
+def NO_CREDIT_CLONE(lang: str = "fa", balance: float = 0, cost: int = 200) -> str:
+    return t("clone_insufficient_credit", lang).format(
+        balance=db.format_credit_amount(balance),
+        cost=db.format_credit_amount(cost),
+    )
 
 
 def ASK_NAME(lang: str = "fa") -> str:

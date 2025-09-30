@@ -1,12 +1,13 @@
 """Text helpers for the Gen-4 video module."""
 
+import db
 from modules.i18n import t
 
 from .settings import CREDIT_COST
 
 
 def intro(lang: str) -> str:
-    return t("video_gen4_intro", lang).format(cost=CREDIT_COST)
+    return t("video_gen4_intro", lang).format(cost=db.format_credit_amount(CREDIT_COST))
 
 
 def processing(lang: str) -> str:
@@ -17,8 +18,11 @@ def error(lang: str) -> str:
     return t("video_gen4_error", lang)
 
 
-def no_credit(lang: str, credits: int) -> str:
-    return t("video_gen4_no_credit", lang).format(cost=CREDIT_COST, credits=credits)
+def no_credit(lang: str, credits: float) -> str:
+    return t("video_gen4_no_credit", lang).format(
+        cost=db.format_credit_amount(CREDIT_COST),
+        credits=db.format_credit_amount(credits),
+    )
 
 
 def not_configured(lang: str) -> str:
@@ -38,4 +42,4 @@ def invalid_file(lang: str) -> str:
 
 
 def result_caption(lang: str) -> str:
-    return t("video_gen4_result_caption", lang).format(cost=CREDIT_COST)
+    return t("video_gen4_result_caption", lang).format(cost=db.format_credit_amount(CREDIT_COST))

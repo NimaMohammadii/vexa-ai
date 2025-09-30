@@ -53,9 +53,10 @@ def register(bot):
                 return
 
             # بررسی کردیت کافی
-            if user["credits"] < VOICE_CLONE_COST:
+            balance = db.normalize_credit_amount(user.get("credits", 0))
+            if balance < VOICE_CLONE_COST:
                 edit_or_send(bot, cq.message.chat.id, cq.message.message_id,
-                           NO_CREDIT_CLONE(lang, user["credits"], VOICE_CLONE_COST),
+                           NO_CREDIT_CLONE(lang, balance, VOICE_CLONE_COST),
                            no_credit_keyboard(lang))
                 bot.answer_callback_query(cq.id)
                 return

@@ -9,6 +9,7 @@ import tempfile
 import time
 import zipfile
 from contextlib import closing
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from urllib.parse import urlparse
 
 import requests
@@ -21,6 +22,56 @@ print("DB_PATH =>", DB_PATH, flush=True)
 
 con = sqlite3.connect(DB_PATH, check_same_thread=False)
 cur = con.cursor()
+
+
+_CREDIT_QUANTIZER = Decimal("0.01")
+
+
+def _to_decimal(value) -> Decimal:
+    if value is None:
+        return Decimal("0")
+    if isinstance(value, Decimal):
+        return value
+    try:
+        return Decimal(str(value))
+    except (InvalidOperation, TypeError, ValueError):
+        return Decimal("0")
+
+
+def normalize_credit_amount(value) -> float:
+    """Normalize a credit value to two decimal places.
+
+    The function accepts values such as ``None``, ``int``, ``float`` or strings
+    and returns a ``float`` rounded to two decimal places using
+    ``ROUND_HALF_UP``. Any invalid inputs are treated as ``0``.
+    """
+
+    decimal_value = _to_decimal(value)
+    normalized = decimal_value.quantize(_CREDIT_QUANTIZER, rounding=ROUND_HALF_UP)
+    return float(normalized)
+
+
+def format_credit_amount(value) -> str:
+    """Return a user-facing string for a credit value.
+
+    Numbers are rounded the same way as :func:`normalize_credit_amount` and
+    trailing zeros are trimmed so that ``1`` stays ``"1"`` and ``1.50`` becomes
+    ``"1.5"``. Negative balances are preserved.
+    """
+
+    normalized = _to_decimal(normalize_credit_amount(value))
+    quantized = normalized.quantize(_CREDIT_QUANTIZER, rounding=ROUND_HALF_UP)
+    text = format(quantized, "f")
+    if "." in text:
+        text = text.rstrip("0").rstrip(".")
+    return text or "0"
+
+
+def _normalize_user_dict(keys, row):
+    data = dict(zip(keys, row))
+    if "credits" in data:
+        data["credits"] = normalize_credit_amount(data["credits"])
+    return data
 
 def init_db():
     with closing(sqlite3.connect(DB_PATH)) as con:
@@ -261,25 +312,57 @@ def get_user_by_username(username:str):
         cur.execute("""SELECT user_id,username,first_name,joined_at,credits,ref_code,referred_by,banned,last_seen
                        FROM users WHERE LOWER(username)=LOWER(?) LIMIT 1""", (uname,))
         row = cur.fetchone()
-        if not row: return None
-        keys = ["user_id","username","first_name","joined_at","credits","ref_code","referred_by","banned","last_seen"]
-        return dict(zip(keys,row))
+        if not row:
+            return None
+        keys = [
+            "user_id",
+            "username",
+            "first_name",
+            "joined_at",
+            "credits",
+            "ref_code",
+            "referred_by",
+            "banned",
+            "last_seen",
+        ]
+        return _normalize_user_dict(keys, row)
 
 def add_credits(user_id, amount):
-    if amount == 0: return
+    amount = normalize_credit_amount(amount)
+    if amount == 0:
+        return
+
     with closing(sqlite3.connect(DB_PATH)) as con:
         cur = con.cursor()
-        cur.execute("UPDATE users SET credits = credits + ? WHERE user_id=?", (amount, user_id))
+        cur.execute("SELECT credits FROM users WHERE user_id=?", (user_id,))
+        row = cur.fetchone()
+        if not row:
+            return
+
+        current = normalize_credit_amount(row[0])
+        new_balance = normalize_credit_amount(current + amount)
+
+        cur.execute("UPDATE users SET credits=? WHERE user_id=?", (new_balance, user_id))
         con.commit()
 
 def deduct_credits(user_id, amount):
-    if amount <= 0: return True
+    amount = normalize_credit_amount(amount)
+    if amount <= 0:
+        return True
+
     with closing(sqlite3.connect(DB_PATH)) as con:
         cur = con.cursor()
         cur.execute("SELECT credits FROM users WHERE user_id=?", (user_id,))
         r = cur.fetchone()
-        if not r or r[0] < amount: return False
-        cur.execute("UPDATE users SET credits = credits - ? WHERE user_id=?", (amount, user_id))
+        if not r:
+            return False
+
+        current = normalize_credit_amount(r[0])
+        if current < amount:
+            return False
+
+        new_balance = normalize_credit_amount(current - amount)
+        cur.execute("UPDATE users SET credits=? WHERE user_id=?", (new_balance, user_id))
         con.commit()
         return True
 
@@ -344,7 +427,11 @@ def list_users(limit=20, offset=0):
         cur = con.cursor()
         cur.execute("""SELECT user_id, username, credits, banned FROM users
                        ORDER BY joined_at DESC LIMIT ? OFFSET ?""", (limit, offset))
-        return cur.fetchall()
+        rows = cur.fetchall()
+    return [
+        (user_id, username, normalize_credit_amount(credits), banned)
+        for user_id, username, credits, banned in rows
+    ]
 
 
 def list_image_users(limit=20, offset=0):
@@ -372,7 +459,7 @@ def list_image_users(limit=20, offset=0):
         {
             "user_id": row[0],
             "username": row[1] or "",
-            "credits": row[2] or 0,
+            "credits": normalize_credit_amount(row[2]),
             "banned": bool(row[3]),
             "total_images": row[4] or 0,
             "last_created_at": row[5] or 0,
@@ -406,7 +493,7 @@ def list_gpt_users(limit=20, offset=0):
         {
             "user_id": row[0],
             "username": row[1] or "",
-            "credits": row[2] or 0,
+            "credits": normalize_credit_amount(row[2]),
             "banned": bool(row[3]),
             "total_messages": row[4] or 0,
             "last_created_at": row[5] or 0,
@@ -701,18 +788,26 @@ def get_all_user_credits():
     with closing(sqlite3.connect(DB_PATH)) as con:
         cur = con.cursor()
         cur.execute("SELECT user_id, credits FROM users ORDER BY user_id ASC")
-        return cur.fetchall()
+        rows = cur.fetchall()
+    return [
+        (user_id, normalize_credit_amount(credits)) for user_id, credits in rows
+    ]
 
 def bulk_update_user_credits(updates):
     """updates should be iterable of (new_credits, user_id). Returns number of affected rows."""
-    updates = list(updates)
-    if not updates:
+
+    normalized_updates = [
+        (normalize_credit_amount(credits), user_id) for credits, user_id in updates
+    ]
+
+    if not normalized_updates:
         return 0
+
     with closing(sqlite3.connect(DB_PATH)) as con:
         cur = con.cursor()
-        cur.executemany("UPDATE users SET credits=? WHERE user_id=?", updates)
+        cur.executemany("UPDATE users SET credits=? WHERE user_id=?", normalized_updates)
         con.commit()
-        return len(updates)
+        return len(normalized_updates)
 
 def export_user_messages_csv(user_id: int, path=None):
     if path is None:
@@ -829,9 +924,21 @@ def get_user(user_id):
         cur.execute("""SELECT user_id,username,first_name,joined_at,credits,ref_code,referred_by,banned,last_seen,lang
                        FROM users WHERE user_id=?""", (user_id,))
         row = cur.fetchone()
-        if not row: return None
-        keys = ["user_id","username","first_name","joined_at","credits","ref_code","referred_by","banned","last_seen","lang"]
-        return dict(zip(keys,row))
+        if not row:
+            return None
+        keys = [
+            "user_id",
+            "username",
+            "first_name",
+            "joined_at",
+            "credits",
+            "ref_code",
+            "referred_by",
+            "banned",
+            "last_seen",
+            "lang",
+        ]
+        return _normalize_user_dict(keys, row)
 
 def set_user_lang(user_id:int, lang:str):
     with closing(sqlite3.connect(DB_PATH)) as con:

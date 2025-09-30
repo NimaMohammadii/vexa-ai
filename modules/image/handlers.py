@@ -90,7 +90,7 @@ def _start_prompt_flow(
         )
 
 
-def _send_no_credit(bot: TeleBot, chat_id: int, lang: str, credits: int) -> None:
+def _send_no_credit(bot: TeleBot, chat_id: int, lang: str, credits: float) -> None:
     bot.send_message(
         chat_id,
         no_credit_text(lang, credits),
@@ -276,7 +276,7 @@ def _process_prompt(
         return
 
     fresh = db.get_user(user["user_id"]) or user
-    credits = int(fresh.get("credits", 0) or 0)
+    credits = db.normalize_credit_amount(fresh.get("credits", 0))
     if credits < CREDIT_COST:
         _send_no_credit(bot, message.chat.id, lang, credits)
         _start_prompt_flow(
