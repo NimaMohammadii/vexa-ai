@@ -17,7 +17,7 @@ from modules.clone import handlers as clone_handlers
 from modules.tts import handlers as tts_handlers
 from modules.gpt import handlers as gpt_handlers
 from modules.image import handlers as image_handlers
-from modules.video import handlers as video_handlers
+from modules.video_gen4 import handlers as video_handlers
 from modules.api_token import handlers as api_token_handlers
 
 # ========================= Telegram Bot Wiring =========================
