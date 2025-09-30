@@ -12,9 +12,11 @@ hold the Runway API token.
 
 from __future__ import annotations
 
+import base64
 import logging
 import os
 import time
+from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
 import requests
@@ -25,6 +27,17 @@ logger = logging.getLogger(__name__)
 
 class ImageGenerationError(RuntimeError):
     """Raised when an image cannot be generated."""
+
+
+@dataclass(frozen=True)
+class ImageReference:
+    """Holds a reference image for image-to-image generation."""
+
+    data: bytes
+    mime_type: str
+
+    def as_base64(self) -> str:
+        return base64.b64encode(self.data).decode("ascii")
 
 
 class ImageService:
@@ -64,7 +77,9 @@ class ImageService:
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
-    def generate_image(self, prompt: str) -> str:
+    def generate_image(
+        self, prompt: str, reference: ImageReference | None = None
+    ) -> str:
         """Submit a new generation task and return the task identifier."""
 
         cleaned = (prompt or "").strip()
@@ -74,14 +89,32 @@ class ImageService:
         payload: Dict[str, Any] = {
             "promptText": cleaned,
             "model": self._MODEL,
-            "ratio": f"{self._DEFAULT_WIDTH}:{self._DEFAULT_HEIGHT}"
+            "ratio": f"{self._DEFAULT_WIDTH}:{self._DEFAULT_HEIGHT}",
         }
 
-        logger.debug("Submitting generation task to Runway", extra={"payload": payload})
-        response = self._request("POST", "/text_to_image", json=payload)
+        endpoint = "/text_to_image"
+
+        if reference is not None:
+            endpoint = "/image_to_image"
+            payload["image"] = {
+                "mimeType": reference.mime_type or "image/jpeg",
+                "type": "base64",
+                "data": reference.as_base64(),
+            }
+
+        logger.debug(
+            "Submitting generation task to Runway",
+            extra={
+                "payload": {
+                    **payload,
+                    "image": "<bytes>" if "image" in payload else None,
+                }
+            },
+        )
+        response = self._request("POST", endpoint, json=payload)
         data = self._safe_json(response)
 
-        task_id = data.get("id")
+        task_id = self._extract_task_id(data) or data.get("id")
         if not task_id:
             logger.error(f"No task ID in response: {data}")
             raise ImageGenerationError("شناسهٔ تسک از پاسخ Runway دریافت نشد.")
@@ -112,12 +145,25 @@ class ImageService:
             logger.debug(f"Task {task_id} status: {status}")
 
             if status == "SUCCEEDED":
-                # Extract image URL from output
-                output = payload.get("output", [])
-                if output and isinstance(output, list) and len(output) > 0:
-                    image_url = output[0]
-                    if isinstance(image_url, str) and image_url.strip():
-                        return {"url": image_url.strip()}
+                image_url = None
+
+                for candidate in (
+                    payload.get("output"),
+                    payload.get("result"),
+                    payload.get("data"),
+                    payload,
+                ):
+                    image_url = self._extract_image_url_direct(candidate)
+                    if image_url:
+                        break
+
+                if not image_url:
+                    assets = self._fetch_assets(task_id)
+                    image_url = self._extract_image_url_direct(assets)
+
+                if image_url:
+                    return {"url": image_url}
+
                 raise ImageGenerationError("خروجی تصویر در پاسخ موفق پیدا نشد.")
 
             if status in {"FAILED", "CANCELED"}:
@@ -290,15 +336,24 @@ class ImageService:
                     url = data[key]
                     if isinstance(url, str) and url.strip():
                         return url.strip()
-            
+
             # Check if there's a nested structure
             if "image" in data and isinstance(data["image"], dict):
                 return self._extract_image_url_direct(data["image"])
-            
+
             # Check if there's an array of outputs
             if "outputs" in data and isinstance(data["outputs"], list) and data["outputs"]:
                 return self._extract_image_url_direct(data["outputs"][0])
-                
+
+        if isinstance(data, list):
+            for item in data:
+                url = self._extract_image_url_direct(item)
+                if url:
+                    return url
+
+        if isinstance(data, str) and data.strip():
+            return data.strip()
+
         return None
 
     @classmethod
