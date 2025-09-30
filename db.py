@@ -728,6 +728,48 @@ def export_user_messages_csv(user_id: int, path=None):
         w.writerows(cur.fetchall())
     return path
 
+
+def export_user_gpt_messages_csv(user_id: int, path: str | None = None):
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            """SELECT id, role, content, created_at
+                   FROM gpt_messages
+                  WHERE user_id=?
+               ORDER BY id ASC""",
+            (user_id,),
+        )
+        rows = cur.fetchall() or []
+
+    if not rows:
+        return None
+
+    if path is None:
+        tmp_dir = DB_DIR if os.path.isdir(DB_DIR) else None
+        tmp = tempfile.NamedTemporaryFile(
+            delete=False,
+            prefix=f"user_{user_id}_gpt_",
+            suffix=".csv",
+            dir=tmp_dir or None,
+        )
+        path = tmp.name
+        tmp.close()
+    else:
+        os.makedirs(os.path.dirname(os.path.abspath(path)) or ".", exist_ok=True)
+
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["id", "role", "content", "created_at", "created_at_iso"])
+        for row_id, role, content, created_at in rows:
+            created_at = int(created_at or 0)
+            try:
+                created_iso = datetime.datetime.utcfromtimestamp(created_at).isoformat()
+            except Exception:
+                created_iso = ""
+            writer.writerow([row_id, role, content, created_at, created_iso])
+
+    return path
+
 # ... بقیه کد همون قبلی ...
 
 def _migrate_users_table():

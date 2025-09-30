@@ -182,6 +182,12 @@ def user_actions(uid: int):
     )
     kb.add(
         InlineKeyboardButton(
+            "🤖 گفتگوهای GPT",
+            callback_data=f"admin:exp_user_gpt:{uid}",
+        )
+    )
+    kb.add(
+        InlineKeyboardButton(
             "🖼️ دانلود تبدیل عکس‌های کاربر",
             callback_data=f"admin:exp_user_images:{uid}"
         )

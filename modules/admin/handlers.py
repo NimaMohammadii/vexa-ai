@@ -508,6 +508,45 @@ def register(bot):
                 bot.answer_callback_query(cq.id, "❌ خطا در تولید فایل خروجی.")
             return
 
+        if action == "exp_user_gpt":
+            try:
+                uid = int(p[2])
+            except Exception:
+                bot.answer_callback_query(cq.id, "❌ آی‌دی نامعتبر.")
+                return
+
+            try:
+                bot.answer_callback_query(cq.id, "در حال آماده‌سازی فایل...")
+            except Exception:
+                pass
+
+            try:
+                path = db.export_user_gpt_messages_csv(uid)
+            except AttributeError:
+                bot.answer_callback_query(cq.id, "❌ خروجی پیام‌های GPT پشتیبانی نمی‌شود.")
+                return
+            except Exception:
+                print("Error exporting user GPT messages:", traceback.format_exc())
+                bot.answer_callback_query(cq.id, "❌ خطا در تولید فایل خروجی.")
+                return
+
+            if not path:
+                bot.answer_callback_query(cq.id, "⚠️ برای این کاربر گفتگوی GPT ثبت نشده است.")
+                return
+
+            if not os.path.isfile(path):
+                bot.answer_callback_query(cq.id, "❌ فایل خروجی پیدا نشد.")
+                return
+
+            try:
+                with open(path, "rb") as f:
+                    bot.send_document(cq.message.chat.id, f)
+                bot.answer_callback_query(cq.id, "📥 گفتگوهای GPT ارسال شد.")
+            except Exception:
+                print("Error sending exported GPT file:", traceback.format_exc())
+                bot.answer_callback_query(cq.id, "❌ خطا در ارسال فایل خروجی.")
+            return
+
         if action == "exp_user_images":
             try:
                 uid = int(p[2])
