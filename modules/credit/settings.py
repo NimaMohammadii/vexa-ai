@@ -17,7 +17,7 @@ PAYMENT_PLANS = [
 # بسته‌های Telegram Stars
 STAR_PACKAGES = [
     {"stars": 21, "credits": 15, "title": "Pay ⭐️21 → 16"},
-    {"stars": 28, "credits": 590, "title": "Pay ⭐️39 → 29"},
+    {"stars": 39, "credits": 590, "title": "Pay ⭐️39 → 29"},
     {"stars": 52, "credits": 69, "title": "Pay ⭐️52 → 69"},
     {"stars": 99, "credits": 138, "title": "Pay ⭐️99 → 138"},
     {"stars": 340, "credits": 249, "title": "Pay ⭐️340 → 249"},
