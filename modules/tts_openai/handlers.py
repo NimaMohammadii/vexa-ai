@@ -88,7 +88,12 @@ def register(bot):
                 bot,
                 cq.message.chat.id,
                 cq.message.message_id,
-                ask_text(lang, voice_name, credit_per_char=CREDIT_PER_CHAR),
+                ask_text(
+                    lang,
+                    voice_name,
+                    credit_per_char=CREDIT_PER_CHAR,
+                    show_demo_link=False,
+                ),
                 tts_keyboard(voice_name, lang, user["user_id"]),
             )
             db.set_state(cq.from_user.id, _make_state(cq.message.message_id, voice_name))
@@ -112,7 +117,12 @@ def register(bot):
                 bot,
                 cq.message.chat.id,
                 cq.message.message_id,
-                ask_text(lang, name, credit_per_char=CREDIT_PER_CHAR),
+                ask_text(
+                    lang,
+                    name,
+                    credit_per_char=CREDIT_PER_CHAR,
+                    show_demo_link=False,
+                ),
                 tts_keyboard(name, lang, user["user_id"]),
             )
             db.set_state(cq.from_user.id, _make_state(cq.message.message_id, name))
@@ -209,7 +219,12 @@ def register(bot):
 
             new_menu = bot.send_message(
                 msg.chat.id,
-                ask_text(lang, voice_name, credit_per_char=CREDIT_PER_CHAR),
+                ask_text(
+                    lang,
+                    voice_name,
+                    credit_per_char=CREDIT_PER_CHAR,
+                    show_demo_link=False,
+                ),
                 reply_markup=tts_keyboard(voice_name, lang, user_id),
             )
             db.set_state(user_id, _make_state(new_menu.message_id, voice_name))
@@ -244,7 +259,12 @@ def open_tts(bot, cq, voice_name: str | None = None):
         bot,
         cq.message.chat.id,
         cq.message.message_id,
-        ask_text(lang, sel, credit_per_char=CREDIT_PER_CHAR),
+        ask_text(
+            lang,
+            sel,
+            credit_per_char=CREDIT_PER_CHAR,
+            show_demo_link=False,
+        ),
         tts_keyboard(sel, lang, user["user_id"]),
     )
     db.set_state(cq.from_user.id, _make_state(cq.message.message_id, sel))
