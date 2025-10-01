@@ -65,11 +65,11 @@ def keyboard(
 
     kb.row(
         InlineKeyboardButton(
-            ("✔️ " if quality == "pro" else "") + "کیفیت حرفه‌ای",
+            ("✔️ " if quality == "pro" else "") + t("tts_quality_pro", lang),
             callback_data=f"{prefix}:quality:pro",
         ),
         InlineKeyboardButton(
-            ("✔️ " if quality == "medium" else "") + "کیفیت متوسط",
+            ("✔️ " if quality == "medium" else "") + t("tts_quality_medium", lang),
             callback_data=f"{prefix}:quality:medium",
         ),
     )

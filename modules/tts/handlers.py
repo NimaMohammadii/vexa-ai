@@ -4,6 +4,7 @@ import time
 import db
 from utils import edit_or_send
 from config import DEBUG
+from modules.i18n import t
 from .texts import TITLE, ask_text, PROCESSING, NO_CREDIT, ERROR, BANNED
 from .keyboards import keyboard as tts_keyboard
 from .settings import (
@@ -91,14 +92,14 @@ def register(bot):
                 tts_keyboard(voice_name, lang, user["user_id"], quality="pro"),
             )
             db.set_state(cq.from_user.id, _make_state(cq.message.message_id, voice_name))
-            bot.answer_callback_query(cq.id, "کیفیت حرفه‌ای")
+            bot.answer_callback_query(cq.id, t("tts_quality_pro", lang))
             return
 
         if route == "quality:medium":
             from modules.tts_openai.handlers import open_tts as open_openai_tts
 
             open_openai_tts(bot, cq)
-            bot.answer_callback_query(cq.id, "کیفیت متوسط")
+            bot.answer_callback_query(cq.id, t("tts_quality_medium", lang))
             return
 
         if route.startswith("voice:"):

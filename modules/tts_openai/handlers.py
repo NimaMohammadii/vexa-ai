@@ -7,6 +7,7 @@ import time
 
 import db
 from utils import edit_or_send
+from modules.i18n import t
 from modules.tts.texts import ask_text, PROCESSING, NO_CREDIT, ERROR, BANNED
 from modules.tts.keyboards import no_credit_keyboard
 from .keyboards import keyboard as tts_keyboard
@@ -87,18 +88,18 @@ def register(bot):
                 bot,
                 cq.message.chat.id,
                 cq.message.message_id,
-                ask_text(lang, voice_name),
+                ask_text(lang, voice_name, credit_per_char=CREDIT_PER_CHAR),
                 tts_keyboard(voice_name, lang, user["user_id"]),
             )
             db.set_state(cq.from_user.id, _make_state(cq.message.message_id, voice_name))
-            bot.answer_callback_query(cq.id, "کیفیت متوسط")
+            bot.answer_callback_query(cq.id, t("tts_quality_medium", lang))
             return
 
         if route == "quality:pro":
             from modules.tts.handlers import open_tts as open_pro_tts
 
             open_pro_tts(bot, cq)
-            bot.answer_callback_query(cq.id, "کیفیت حرفه‌ای")
+            bot.answer_callback_query(cq.id, t("tts_quality_pro", lang))
             return
 
         if route.startswith("voice:"):
@@ -111,7 +112,7 @@ def register(bot):
                 bot,
                 cq.message.chat.id,
                 cq.message.message_id,
-                ask_text(lang, name),
+                ask_text(lang, name, credit_per_char=CREDIT_PER_CHAR),
                 tts_keyboard(name, lang, user["user_id"]),
             )
             db.set_state(cq.from_user.id, _make_state(cq.message.message_id, name))
@@ -208,7 +209,7 @@ def register(bot):
 
             new_menu = bot.send_message(
                 msg.chat.id,
-                ask_text(lang, voice_name),
+                ask_text(lang, voice_name, credit_per_char=CREDIT_PER_CHAR),
                 reply_markup=tts_keyboard(voice_name, lang, user_id),
             )
             db.set_state(user_id, _make_state(new_menu.message_id, voice_name))
@@ -243,7 +244,7 @@ def open_tts(bot, cq, voice_name: str | None = None):
         bot,
         cq.message.chat.id,
         cq.message.message_id,
-        ask_text(lang, sel),
+        ask_text(lang, sel, credit_per_char=CREDIT_PER_CHAR),
         tts_keyboard(sel, lang, user["user_id"]),
     )
     db.set_state(cq.from_user.id, _make_state(cq.message.message_id, sel))
