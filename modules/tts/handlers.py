@@ -111,14 +111,14 @@ def register(bot):
                 bot.answer_callback_query(cq.id, "Voice not found"); return
 
             # منوی «متن را بفرست» با صدای انتخابی
-                edit_or_send(
-                    bot,
-                    cq.message.chat.id,
-                    cq.message.message_id,
-                    ask_text(lang, name),
-                    tts_keyboard(name, lang, user["user_id"], quality="pro")
-                )
-                db.set_state(cq.from_user.id, _make_state(cq.message.message_id, name))
+            edit_or_send(
+                bot,
+                cq.message.chat.id,
+                cq.message.message_id,
+                ask_text(lang, name),
+                tts_keyboard(name, lang, user["user_id"], quality="pro"),
+            )
+            db.set_state(cq.from_user.id, _make_state(cq.message.message_id, name))
             bot.answer_callback_query(cq.id, name)
             return
 
