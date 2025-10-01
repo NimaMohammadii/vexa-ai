@@ -450,6 +450,36 @@ LABELS = {
     # Invite
     "invite_title":   {"fa":"دعوت دوستان 🎁","en":"Invite Friends 🎁","ar":"دعوة الأصدقاء 🎁","tr":"Arkadaş Davet Et 🎁","ru":"Пригласить друзей 🎁","es":"Invitar amigos 🎁","de":"Freunde einladen 🎁","fr":"Inviter des amis 🎁"},
     "invite_body":    {"fa":"لینک دعوت شما:\n<code>{ref}</code>\n\n<b>به ازای هر دعوت : +{bonus} کردیت</b>","en":"Your invite link:\n{ref}\nPer invite: {bonus} credits","ar":"رابط دعوتك:\n{ref}\nلكل دعوة: {bonus} رصيد","tr":"Davet bağlantın:\n{ref}\nDavet başına: {bonus} kredi","ru":"Ваша ссылка:\n{ref}\nЗа приглашение: {bonus} кредитов","es":"Tu enlace de invitación:\n{ref}\nPor invitación: {bonus} créditos","de":"Dein Einladungslink:\n{ref}\nPro Einladung: {bonus} Guthaben","fr":"Ton lien d'invitation :\n{ref}\nPar invitation : {bonus} crédits"},
+    "invite_daily_reward": {
+        "fa": "دریافت پاداش روزانه 🎁",
+        "en": "Claim daily reward 🎁",
+        "ar": "استلام مكافأة يومية 🎁",
+        "tr": "Günlük ödülü al 🎁",
+        "ru": "Получить дневной бонус 🎁",
+        "es": "Reclamar recompensa diaria 🎁",
+        "de": "Tägliche Belohnung holen 🎁",
+        "fr": "Obtenir la récompense quotidienne 🎁",
+    },
+    "invite_daily_reward_success": {
+        "fa": "🎉 امروز {amount} کردیت به عنوان پاداش روزانه گرفتی!",
+        "en": "🎉 You received {amount} credits as today's daily reward!",
+        "ar": "🎉 حصلت اليوم على {amount} رصيد كمكافأة يومية!",
+        "tr": "🎉 Bugünkü günlük ödül olarak {amount} kredi kazandın!",
+        "ru": "🎉 Ты получил сегодня {amount} кредитов как ежедневный бонус!",
+        "es": "🎉 ¡Recibiste {amount} créditos como recompensa diaria de hoy!",
+        "de": "🎉 Du hast heute {amount} Credits als tägliche Belohnung erhalten!",
+        "fr": "🎉 Tu as reçu {amount} crédits comme récompense quotidienne d'aujourd'hui !",
+    },
+    "invite_daily_reward_cooldown": {
+        "fa": "⏳ قبلاً پاداش امروز رو گرفتی. بعد از {time} دوباره تلاش کن.",
+        "en": "⏳ You've already claimed today's reward. Try again in {time}.",
+        "ar": "⏳ لقد استلمت مكافأة اليوم بالفعل. جرّب بعد {time}.",
+        "tr": "⏳ Bugünkü ödülü zaten aldın. {time} sonra tekrar dene.",
+        "ru": "⏳ Ты уже получил сегодняшний бонус. Попробуй снова через {time}.",
+        "es": "⏳ Ya reclamaste la recompensa de hoy. Vuelve en {time}.",
+        "de": "⏳ Du hast die heutige Belohnung schon erhalten. Versuche es in {time} erneut.",
+        "fr": "⏳ Tu as déjà récupéré la récompense d'aujourd'hui. Réessaie dans {time}.",
+    },
 }
 
 def t(key: str, lang: str) -> str:
