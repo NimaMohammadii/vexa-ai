@@ -880,6 +880,8 @@ def _migrate_users_table():
             cur.execute("ALTER TABLE users ADD COLUMN referred_by TEXT")
         if "lang" not in cols:
             cur.execute("ALTER TABLE users ADD COLUMN lang TEXT DEFAULT 'fa'")
+        if "last_daily_reward" not in cols:
+            cur.execute("ALTER TABLE users ADD COLUMN last_daily_reward INTEGER DEFAULT 0")
         con.commit()
 
 def get_or_create_user(u):
@@ -921,8 +923,24 @@ def get_or_create_user(u):
 def get_user(user_id):
     with closing(sqlite3.connect(DB_PATH)) as con:
         cur = con.cursor()
-        cur.execute("""SELECT user_id,username,first_name,joined_at,credits,ref_code,referred_by,banned,last_seen,lang
-                       FROM users WHERE user_id=?""", (user_id,))
+        cur.execute(
+            """
+            SELECT
+                user_id,
+                username,
+                first_name,
+                joined_at,
+                credits,
+                ref_code,
+                referred_by,
+                banned,
+                last_seen,
+                lang,
+                last_daily_reward
+            FROM users WHERE user_id=?
+            """,
+            (user_id,),
+        )
         row = cur.fetchone()
         if not row:
             return None
@@ -937,8 +955,37 @@ def get_user(user_id):
             "banned",
             "last_seen",
             "lang",
+            "last_daily_reward",
         ]
         return _normalize_user_dict(keys, row)
+
+
+def get_last_daily_reward(user_id: int) -> int:
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            "SELECT last_daily_reward FROM users WHERE user_id=?",
+            (user_id,),
+        )
+        row = cur.fetchone()
+        if not row:
+            return 0
+        value = row[0]
+        try:
+            return int(value or 0)
+        except (TypeError, ValueError):
+            return 0
+
+
+def set_last_daily_reward(user_id: int, timestamp: int | None = None) -> None:
+    ts = int(timestamp or time.time())
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            "UPDATE users SET last_daily_reward=? WHERE user_id=?",
+            (ts, user_id),
+        )
+        con.commit()
 
 def set_user_lang(user_id:int, lang:str):
     with closing(sqlite3.connect(DB_PATH)) as con:
