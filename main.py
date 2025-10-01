@@ -15,6 +15,7 @@ from modules.profile import handlers as profile_handlers
 from modules.credit import handlers as credit_handlers
 from modules.clone import handlers as clone_handlers
 from modules.tts import handlers as tts_handlers
+from modules.tts_openai import handlers as tts_openai_handlers
 from modules.gpt import handlers as gpt_handlers
 from modules.image import handlers as image_handlers
 from modules.video_gen4 import handlers as video_handlers
@@ -35,6 +36,7 @@ def register_modules(bot: telebot.TeleBot) -> None:
     credit_handlers.register (bot)
     clone_handlers.register(bot)
     tts_handlers.register(bot)
+    tts_openai_handlers.register(bot)
     gpt_handlers.register(bot)
     image_handlers.register(bot)
     video_handlers.register(bot)
