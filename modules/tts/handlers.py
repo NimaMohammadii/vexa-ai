@@ -77,23 +77,47 @@ def register(bot):
             edit_or_send(bot, cq.message.chat.id, cq.message.message_id, MAIN(lang), main_menu(lang))
             return
 
+        if route == "quality:pro":
+            state = db.get_state(cq.from_user.id) or ""
+            _, voice_name = _parse_state(state)
+            if not voice_name:
+                voice_name = DEFAULT_VOICE_NAME
+
+            edit_or_send(
+                bot,
+                cq.message.chat.id,
+                cq.message.message_id,
+                ask_text(lang, voice_name),
+                tts_keyboard(voice_name, lang, user["user_id"], quality="pro"),
+            )
+            db.set_state(cq.from_user.id, _make_state(cq.message.message_id, voice_name))
+            bot.answer_callback_query(cq.id, "کیفیت حرفه‌ای")
+            return
+
+        if route == "quality:medium":
+            from modules.tts_openai.handlers import open_tts as open_openai_tts
+
+            open_openai_tts(bot, cq)
+            bot.answer_callback_query(cq.id, "کیفیت متوسط")
+            return
+
         if route.startswith("voice:"):
             name = route.split(":", 1)[1]
-            
+
             # بررسی وجود صدا در لیست پیش‌فرض یا کاستوم
             custom_voice_id = db.get_user_voice(user["user_id"], name)
             if name not in VOICES and not custom_voice_id:
                 bot.answer_callback_query(cq.id, "Voice not found"); return
 
             # منوی «متن را بفرست» با صدای انتخابی
-            edit_or_send(
-                bot,
-                cq.message.chat.id,
-                cq.message.message_id,
-                ask_text(lang, name),
-                tts_keyboard(name, lang, user["user_id"])
-            )
-            db.set_state(cq.from_user.id, _make_state(cq.message.message_id, name))
+                edit_or_send(
+                    bot,
+                    cq.message.chat.id,
+                    cq.message.message_id,
+                    ask_text(lang, name),
+                    tts_keyboard(name, lang, user["user_id"], quality="pro")
+                )
+                db.set_state(cq.from_user.id, _make_state(cq.message.message_id, name))
             bot.answer_callback_query(cq.id, name)
             return
 
@@ -116,11 +140,11 @@ def register(bot):
                     # بازگشت به منوی انتخاب صدا
                     sel = DEFAULT_VOICE_NAME
                     edit_or_send(
-                        bot, 
-                        cq.message.chat.id, 
-                        cq.message.message_id, 
-                        ask_text(lang, sel), 
-                        tts_keyboard(sel, lang, user["user_id"])
+                        bot,
+                        cq.message.chat.id,
+                        cq.message.message_id,
+                        ask_text(lang, sel),
+                        tts_keyboard(sel, lang, user["user_id"], quality="pro")
                     )
                     db.set_state(cq.from_user.id, _make_state(cq.message.message_id, sel))
                 except Exception as e:
@@ -237,7 +261,7 @@ def register(bot):
             new_menu = bot.send_message(
                 msg.chat.id,
                 ask_text(lang, voice_name),
-                reply_markup=tts_keyboard(voice_name, lang, user_id)
+                reply_markup=tts_keyboard(voice_name, lang, user_id, quality="pro")
             )
             db.set_state(user_id, _make_state(new_menu.message_id, voice_name))
 
@@ -263,5 +287,11 @@ def open_tts(bot, cq):
     user = db.get_or_create_user(cq.from_user)
     lang = db.get_user_lang(user["user_id"], "fa")
     sel = DEFAULT_VOICE_NAME
-    edit_or_send(bot, cq.message.chat.id, cq.message.message_id, ask_text(lang, sel), tts_keyboard(sel, lang, user["user_id"]))
+    edit_or_send(
+        bot,
+        cq.message.chat.id,
+        cq.message.message_id,
+        ask_text(lang, sel),
+        tts_keyboard(sel, lang, user["user_id"], quality="pro"),
+    )
     db.set_state(cq.from_user.id, _make_state(cq.message.message_id, sel))
