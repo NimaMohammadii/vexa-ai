@@ -610,6 +610,13 @@ def request_response(history: List[Dict[str, Any]]) -> str:
 
     try:
         run_kwargs: Dict[str, Any] = {"thread_id": thread.id, "assistant_id": assistant_id}
+        # Ensure the OpenAI run has access to the locally implemented tools (such as
+        # ``web_search``).  Some deployments rely on supplying tools dynamically
+        # instead of configuring them on the remote assistant.  Without this the
+        # assistant would never be able to request a web search, even if it tries
+        # to do so, which is the root cause of search being unavailable in the
+        # bot.
+        run_kwargs["tools"] = _RESPONSE_TOOLS
         if model_override:
             run_kwargs["model"] = model_override
         run = client.beta.threads.runs.create(**run_kwargs)
