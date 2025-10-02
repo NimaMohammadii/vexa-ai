@@ -14,6 +14,7 @@ from config import (
     GPT_API_TIMEOUT,
     VEXA_ASSISTANT_API_KEY,
     VEXA_ASSISTANT_API_URL,
+    VEXA_ASSISTANT_ID,
     VEXA_ASSISTANT_MODEL,
 )
 from modules.gpt.service import extract_message_text, resolve_gpt_api_key
@@ -70,9 +71,35 @@ def prepare_messages(history: List[Dict[str, Any]]) -> Dict[str, Any]:
         normalised.append({"role": role, "content": content})
 
     payload: Dict[str, Any] = {
-        "model": (VEXA_ASSISTANT_MODEL or "gpt-4o-mini").strip() or "gpt-4o-mini",
         "input": normalised,
     }
+
+    assistant_id = (VEXA_ASSISTANT_ID or "").strip()
+    model_name = (VEXA_ASSISTANT_MODEL or "").strip()
+
+    if assistant_id:
+        payload["assistant_id"] = assistant_id
+    if not assistant_id:
+        payload["model"] = model_name or "gpt-4o-mini"
+    elif model_name:
+        # When an assistant is provided we still allow overriding the default
+        # model so that advanced capabilities (like web search or file tools)
+        # defined in the dashboard remain available while letting operators
+        # tune performance without editing the remote configuration.
+        payload["model"] = model_name
+
+    # Advertise the key built-in OpenAI tools to unlock web search, code
+    # execution, and file analysis when the remote assistant configuration does
+    # not already provide them.
+    payload["tools"] = [
+        {"type": "web_search"},
+        {"type": "code_interpreter"},
+        {"type": "file_search"},
+    ]
+
+    # Request support for both text and image modalities so that the assistant
+    # can return generated images when the upstream model supports it.
+    payload["modalities"] = ["text", "image"]
 
     return payload
 
