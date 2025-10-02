@@ -11,12 +11,11 @@ def main_menu(lang: str) -> InlineKeyboardMarkup:
         InlineKeyboardButton(t("btn_credit", lang), callback_data="home:credit"),
     )
     kb.row(
-        InlineKeyboardButton(t("btn_gpt", lang), callback_data="home:gpt_chat"),
-        InlineKeyboardButton(t("btn_anonymous_chat", lang), callback_data="home:anon_chat"),
+        InlineKeyboardButton(t("btn_tts", lang), callback_data="home:tts"),
     )
     kb.row(
         InlineKeyboardButton(t("btn_image", lang), callback_data="home:image"),
-        InlineKeyboardButton(t("btn_tts", lang), callback_data="home:tts"),
+        InlineKeyboardButton(t("btn_gpt", lang), callback_data="home:gpt_chat"),
     )
     kb.row(
         InlineKeyboardButton(t("btn_lang", lang), callback_data="home:lang"),
