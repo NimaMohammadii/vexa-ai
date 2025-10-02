@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import base64
 import html
+import mimetypes
 
 from telebot.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
@@ -86,6 +88,64 @@ def _load_history(user_id: int) -> list[dict[str, str]]:
         if role and content:
             valid.append({"role": role, "content": content})
     return valid
+
+
+def _guess_mime_type(file_path: str, fallback: str = "image/jpeg") -> str:
+    mime, _ = mimetypes.guess_type(file_path)
+    return mime or fallback
+
+
+def _download_file(bot, file_id: str) -> tuple[bytes, str | None]:
+    file_path: str | None = None
+
+    try:
+        file_info = bot.get_file(file_id)
+        file_path = getattr(file_info, "file_path", None)
+    except Exception:
+        file_info = None
+
+    content: bytes | None = None
+
+    if file_path:
+        try:
+            content = bot.download_file(file_path)
+        except Exception:
+            content = None
+
+    if content is None:
+        download_by_id = getattr(bot, "download_file_by_id", None)
+        if callable(download_by_id):
+            try:
+                content = download_by_id(file_id)
+            except Exception:
+                content = None
+
+    if not content:
+        raise RuntimeError("empty file content")
+
+    return content, file_path
+
+
+def _extract_image_data(bot, message: Message) -> str:
+    if getattr(message, "photo", None):
+        photo = message.photo[-1]
+        content, file_path = _download_file(bot, photo.file_id)
+        mime = _guess_mime_type(file_path or "")
+    elif getattr(message, "document", None):
+        doc = message.document
+        mime = (getattr(doc, "mime_type", "") or "").lower()
+        if mime and not mime.startswith("image/"):
+            raise ValueError("unsupported")
+        content, file_path = _download_file(bot, doc.file_id)
+        if not mime:
+            mime = _guess_mime_type(file_path or "")
+        if not mime.startswith("image/"):
+            raise ValueError("unsupported")
+    else:
+        raise ValueError("no image")
+
+    data_url = f"data:{mime};base64,{base64.b64encode(content).decode('ascii')}"
+    return data_url
 
 
 def _respond(bot, status_message: Message, lang: str, text: str) -> None:
@@ -222,6 +282,71 @@ def register(bot):
         history = _load_history(user["user_id"])
         history.append({"role": "user", "content": text})
         db.log_vexa_assistant_message(user["user_id"], "user", text)
+
+        thinking = bot.send_message(msg.chat.id, t("vexa_assistant_wait", lang), parse_mode="HTML")
+        try:
+            answer = request_response(history)
+        except VexaAssistantError as exc:
+            error_text = t("vexa_assistant_error", lang).format(
+                error=html.escape(str(exc))
+            )
+            _respond(bot, thinking, lang, error_text)
+            return
+
+        if not answer:
+            answer = t("vexa_assistant_empty", lang)
+
+        db.log_vexa_assistant_message(user["user_id"], "assistant", answer)
+        _respond(bot, thinking, lang, answer)
+
+    @bot.message_handler(func=_is_assistant_message, content_types=["photo", "document"])
+    def handle_image(msg: Message):
+        user = db.get_or_create_user(msg.from_user)
+        if user.get("banned"):
+            bot.reply_to(msg, "⛔️")
+            return
+
+        lang = db.get_user_lang(user["user_id"], "fa")
+        db.touch_last_seen(user["user_id"])
+
+        error = _ensure_ready(lang)
+        if error:
+            bot.reply_to(msg, error, parse_mode="HTML")
+            db.clear_state(user["user_id"])
+            return
+
+        try:
+            image_url = _extract_image_data(bot, msg)
+        except ValueError:
+            bot.reply_to(msg, t("gpt_image_unsupported", lang), parse_mode="HTML")
+            return
+        except Exception:
+            bot.reply_to(msg, t("gpt_image_download_error", lang), parse_mode="HTML")
+            return
+
+        if not _charge_for_message(
+            bot,
+            user["user_id"],
+            msg.chat.id,
+            lang,
+            VEXA_ASSISTANT_MESSAGE_COST,
+        ):
+            return
+
+        instructions = (msg.caption or "").strip() or t("gpt_image_default_prompt", lang)
+
+        history = _load_history(user["user_id"])
+        history.append(
+            {
+                "role": "user",
+                "content": [
+                    {"type": "input_text", "text": instructions},
+                    {"type": "input_image", "image_url": {"url": image_url}},
+                ],
+            }
+        )
+
+        db.log_vexa_assistant_message(user["user_id"], "user", f"[image] {instructions}")
 
         thinking = bot.send_message(msg.chat.id, t("vexa_assistant_wait", lang), parse_mode="HTML")
         try:
