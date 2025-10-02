@@ -91,12 +91,7 @@ GPT_ASSISTANT_ID = (
     or ""
 ).strip()
 
-VEXA_ASSISTANT_ID = (
-    os.getenv("VEXA_ASSISTANT")
-    or os.getenv("VEXA_ASSISTANT_ID")
-    or os.getenv("OPENAI_VEXA_ASSISTANT_ID")
-    or ""
-).strip()
+VEXA_ASSISTANT_ID = "asst_wS0b82xEC1HTZzXqlPFMA61c"
 
 VEXA_ASSISTANT_API_KEY = _first_non_empty(
     os.getenv("VEXA_ASSISTANT_API_KEY"),
