@@ -17,6 +17,7 @@ from modules.clone import handlers as clone_handlers
 from modules.tts import handlers as tts_handlers
 from modules.tts_openai import handlers as tts_openai_handlers
 from modules.gpt import handlers as gpt_handlers
+from modules.anonymous_chat import handlers as anonymous_chat_handlers
 from modules.image import handlers as image_handlers
 from modules.video_gen4 import handlers as video_handlers
 from modules.api_token import handlers as api_token_handlers
@@ -38,6 +39,7 @@ def register_modules(bot: telebot.TeleBot) -> None:
     tts_handlers.register(bot)
     tts_openai_handlers.register(bot)
     gpt_handlers.register(bot)
+    anonymous_chat_handlers.register(bot)
     image_handlers.register(bot)
     video_handlers.register(bot)
     api_token_handlers.register(bot)
