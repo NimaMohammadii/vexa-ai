@@ -91,6 +91,28 @@ GPT_ASSISTANT_ID = (
     or ""
 ).strip()
 
+VEXA_ASSISTANT_ID = (
+    os.getenv("VEXA_ASSISTANT")
+    or os.getenv("VEXA_ASSISTANT_ID")
+    or os.getenv("OPENAI_VEXA_ASSISTANT_ID")
+    or ""
+).strip()
+
+VEXA_ASSISTANT_API_KEY = _first_non_empty(
+    os.getenv("VEXA_ASSISTANT_API_KEY"),
+    os.getenv("VEXA_ASSISTANT_KEY"),
+    os.getenv("VEXA_ASSISTANT_TOKEN"),
+).strip()
+
+_DEFAULT_VEXA_ASSISTANT_API_URL = "https://api.openai.com/v1/responses"
+VEXA_ASSISTANT_API_URL = (
+    os.getenv("VEXA_ASSISTANT_API_URL") or _DEFAULT_VEXA_ASSISTANT_API_URL
+).strip() or _DEFAULT_VEXA_ASSISTANT_API_URL
+
+VEXA_ASSISTANT_MODEL = (
+    os.getenv("VEXA_ASSISTANT_MODEL") or "gpt-4o-mini"
+).strip() or "gpt-4o-mini"
+
 _DEFAULT_SYSTEM_PROMPT = (
     "You are Vexa , the built-in assistant of Vexa. Always reply in the user's language with concise answers that feel warm, caring, and emotionally aware. "
     "Keep every reply casual, friendly, and conversational—avoid stiff or overly formal language entirely, especially when chatting in Persian where you should sound کاملاً خودمونی. "
@@ -109,5 +131,17 @@ GPT_SEARCH_MESSAGE_COST = _parse_float(os.getenv("GPT_SEARCH_MESSAGE_COST", "0.1
 GPT_RESPONSE_CHAR_LIMIT = max(
     0,
     _parse_int(os.getenv("GPT_RESPONSE_CHAR_LIMIT", "900"), 900),
+)
+
+VEXA_ASSISTANT_HISTORY_LIMIT = max(
+    1,
+    _parse_int(
+        os.getenv("VEXA_ASSISTANT_HISTORY_LIMIT", str(GPT_HISTORY_LIMIT)),
+        GPT_HISTORY_LIMIT,
+    ),
+)
+VEXA_ASSISTANT_MESSAGE_COST = _parse_float(
+    os.getenv("VEXA_ASSISTANT_MESSAGE_COST", str(GPT_MESSAGE_COST)),
+    GPT_MESSAGE_COST,
 )
 

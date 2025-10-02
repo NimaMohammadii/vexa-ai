@@ -115,6 +115,15 @@ def init_db():
             content TEXT NOT NULL,
             created_at INTEGER NOT NULL
         )""")
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS vexa_assistant_messages(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                role TEXT NOT NULL,
+                content TEXT NOT NULL,
+                created_at INTEGER NOT NULL
+            )"""
+        )
         # 🟢 جدول جدید برای صداهای اختصاصی
         cur.execute("""CREATE TABLE IF NOT EXISTS user_voices(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -697,6 +706,10 @@ def reset_user(user_id: int) -> bool:
         cur.execute("DELETE FROM kv_state WHERE user_id=?", (user_id,))
         cur.execute("DELETE FROM messages WHERE user_id=?", (user_id,))
         cur.execute("DELETE FROM gpt_messages WHERE user_id=?", (user_id,))
+        cur.execute(
+            "DELETE FROM vexa_assistant_messages WHERE user_id=?",
+            (user_id,),
+        )
         cur.execute("DELETE FROM purchases WHERE user_id=?", (user_id,))
         cur.execute("DELETE FROM user_voices WHERE user_id=?", (user_id,))
         cur.execute("DELETE FROM image_generations WHERE user_id=?", (user_id,))
@@ -742,6 +755,60 @@ def clear_gpt_history(user_id: int) -> None:
     with closing(sqlite3.connect(DB_PATH)) as con:
         cur = con.cursor()
         cur.execute("DELETE FROM gpt_messages WHERE user_id=?", (user_id,))
+        con.commit()
+
+
+def log_vexa_assistant_message(user_id: int, role: str, content: str) -> None:
+    role_value = str(role or "assistant").strip() or "assistant"
+    text = (content or "").strip()
+    if not text:
+        return
+
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            """INSERT INTO vexa_assistant_messages(user_id, role, content, created_at)
+                   VALUES(?,?,?,?)""",
+            (user_id, role_value, text[:6000], int(time.time())),
+        )
+        con.commit()
+
+
+def get_recent_vexa_assistant_messages(user_id: int, limit: int) -> list[dict[str, str]]:
+    try:
+        lim = int(limit or 0)
+    except (TypeError, ValueError):
+        lim = 0
+    lim = max(0, lim)
+    if lim == 0:
+        return []
+
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            """SELECT role, content
+                   FROM vexa_assistant_messages
+                   WHERE user_id=?
+                   ORDER BY id DESC
+                   LIMIT ?""",
+            (user_id, lim),
+        )
+        rows = cur.fetchall() or []
+
+    return [
+        {"role": role, "content": content}
+        for role, content in reversed(rows)
+        if (role or "").strip() and (content or "").strip()
+    ]
+
+
+def clear_vexa_assistant_history(user_id: int) -> None:
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            "DELETE FROM vexa_assistant_messages WHERE user_id=?",
+            (user_id,),
+        )
         con.commit()
 
 def export_users_csv(path="users.csv"):
