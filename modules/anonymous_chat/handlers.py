@@ -6,7 +6,7 @@ import json
 import random
 import threading
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from telebot.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
@@ -24,6 +24,49 @@ DISCONNECTED_TEXT = "ارتباط قطع شد ❌"
 ENDED_TEXT = "ارتباط پایان یافت. برای شروع دوباره، روی 'چت ناشناس 🎭' کلیک کن."
 GPT_MISSING_TEXT = "❌ سرویس گفتگو در دسترس نیست."
 MAX_HISTORY_ITEMS = 12
+MIN_CONNECTION_DELAY = 12
+INITIAL_MESSAGE_DELAY_RANGE: Tuple[int, int] = (1, 5)
+RESPONSE_DELAY_RANGE: Tuple[int, int] = (8, 20)
+INITIAL_MESSAGE_PROBABILITY = 0.5
+STICKER_PROBABILITY = 0.01
+STICKER_FILE_IDS: Sequence[str] = ()
+
+INITIAL_MESSAGES: Sequence[Tuple[str, float]] = (
+    ("سلام", 0.80),
+    ("چطوری", 0.013),
+    ("خوبی؟", 0.013),
+    ("کجایی هستی؟", 0.013),
+    ("اسکل", 0.013),
+    ("😒", 0.01),
+    ("🤨", 0.02),
+    ("عجب", 0.013),
+    ("دختری یا پسر ؟", 0.013),
+    ("دختری؟", 0.013),
+    ("پسری یا چی ؟", 0.013),
+    ("دختری یا چی؟", 0.013),
+    ("کجا زندگی میکنی؟", 0.013),
+    ("سلم", 0.013),
+    ("های", 0.013),
+    ("کجایی هستی", 0.013),
+    ("عجیب نیست؟", 0.013),
+)
+
+
+def _weighted_choice(options: Sequence[Tuple[str, float]]) -> str:
+    if not options:
+        return "سلام"
+    total = sum(weight for _, weight in options if weight > 0)
+    if total <= 0:
+        return options[0][0]
+    threshold = random.uniform(0, total)
+    cumulative = 0.0
+    for text, weight in options:
+        if weight <= 0:
+            continue
+        cumulative += weight
+        if cumulative >= threshold:
+            return text
+    return options[-1][0]
 
 
 @dataclass
@@ -167,7 +210,7 @@ def _start_search(bot, user_id: int, chat_id: int) -> None:
     except Exception:
         return
 
-    delay = random.uniform(3, 5)
+    delay = random.uniform(MIN_CONNECTION_DELAY, MIN_CONNECTION_DELAY + 6)
 
     def _complete_connection() -> None:
         current = _load_session(user_id)
@@ -180,6 +223,23 @@ def _start_search(bot, user_id: int, chat_id: int) -> None:
             bot.send_message(chat_id, CONNECTED_TEXT, reply_markup=_make_keyboard())
         except Exception:
             pass
+        else:
+            def _send_initial_message() -> None:
+                session = _load_session(user_id)
+                if not session or session.status != "active":
+                    return
+                if random.random() > INITIAL_MESSAGE_PROBABILITY:
+                    return
+                text = _weighted_choice(INITIAL_MESSAGES)
+                try:
+                    bot.send_message(chat_id, text)
+                except Exception:
+                    pass
+
+            initial_delay = random.uniform(*INITIAL_MESSAGE_DELAY_RANGE)
+            timer = threading.Timer(initial_delay, _send_initial_message)
+            timer.daemon = True
+            timer.start()
 
     timer = threading.Timer(delay, _complete_connection)
     timer.daemon = True
@@ -229,12 +289,30 @@ def _process_user_message(bot, message: Message, session: AnonymousSession) -> N
     if not answer:
         answer = "😅"
 
+    answer = answer[:60]
+
     history.append({"role": "user", "content": text})
     history.append({"role": "assistant", "content": answer})
     session.history = _reset_history(history)
     _save_session(message.from_user.id, session)
 
-    bot.send_message(message.chat.id, answer)
+    def _send_response() -> None:
+        if random.random() < STICKER_PROBABILITY and STICKER_FILE_IDS:
+            sticker_id = random.choice(STICKER_FILE_IDS)
+            try:
+                bot.send_sticker(message.chat.id, sticker_id)
+                return
+            except Exception:
+                pass
+        try:
+            bot.send_message(message.chat.id, answer)
+        except Exception:
+            pass
+
+    delay = random.uniform(*RESPONSE_DELAY_RANGE)
+    timer = threading.Timer(delay, _send_response)
+    timer.daemon = True
+    timer.start()
 
 
 def register(bot) -> None:
