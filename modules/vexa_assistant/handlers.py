@@ -41,7 +41,7 @@ def _ensure_ready(lang: str) -> str | None:
     ok, error = ensure_ready()
     if ok:
         return None
-    if error in {"missing_api_key", "missing_assistant_id"}:
+    if error in {"missing_api_key"}:
         return t("vexa_assistant_not_configured", lang)
     return t("vexa_assistant_error", lang).format(error=html.escape(str(error)))
 
