@@ -18,7 +18,7 @@ from config import (
     VEXA_ASSISTANT_ID,
     VEXA_ASSISTANT_MODEL,
 )
-from modules.gpt.service import extract_message_text, resolve_gpt_api_key
+from modules.gpt.service import extract_message_text, resolve_gpt_api_key, web_search
 
 
 class VexaAssistantError(RuntimeError):
@@ -64,6 +64,13 @@ def prepare_messages(history: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         normalised.append({"role": role, "content": content})
 
     return normalised
+
+
+# ---------------------------------------------------------------------------
+# OpenAI helpers
+# ---------------------------------------------------------------------------
+
+
 
 
 # ---------------------------------------------------------------------------
@@ -152,10 +159,37 @@ def _serialise_tool_result(result: Any) -> str:
 # ---------------------------------------------------------------------------
 
 
+def _format_search_results(results: List[Dict[str, Any]]) -> str:
+    if not results:
+        return "No results were found for the requested search."
+
+    lines: List[str] = []
+    for index, item in enumerate(results, start=1):
+        title = str(item.get("title") or "Untitled result").strip()
+        url = str(item.get("url") or "").strip()
+        snippet = str(item.get("snippet") or "").strip()
+
+        header = f"{index}. {title}" if title else f"{index}. Result"
+        if url:
+            header = f"{header} — {url}"
+        lines.append(header)
+        if snippet:
+            lines.append(snippet)
+
+    return "\n".join(lines)
+
+
 def do_web_search(args: Dict[str, Any]) -> str:
     query = args.get("query") or args.get("q") or ""
     if not query:
         return "Web search was requested but no query was provided."
+
+    try:
+        results = web_search(str(query), max_results=int(args.get("max_results", 3)))
+    except Exception as exc:  # pragma: no cover - network errors
+        return f"Web search failed: {exc}"
+
+    return _format_search_results(results)
     return f"Web search is not configured in this environment. Query received: {query}"
 
 
