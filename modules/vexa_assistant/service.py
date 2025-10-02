@@ -71,6 +71,13 @@ def prepare_messages(history: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 # ---------------------------------------------------------------------------
 
 
+
+
+# ---------------------------------------------------------------------------
+# OpenAI helpers
+# ---------------------------------------------------------------------------
+
+
 def _normalise_base_url(url: Optional[str]) -> str:
     """Return the base URL to be used with the OpenAI client."""
 
@@ -183,6 +190,7 @@ def do_web_search(args: Dict[str, Any]) -> str:
         return f"Web search failed: {exc}"
 
     return _format_search_results(results)
+    return f"Web search is not configured in this environment. Query received: {query}"
 
 
 def call_openai_image(args: Dict[str, Any]) -> Any:
