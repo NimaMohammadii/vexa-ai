@@ -164,7 +164,7 @@ def register(bot):
         func=lambda c: (
             c.data
             and c.data.startswith("home:")
-            and c.data not in {"home:gpt_chat", "home:api_token"}
+            and c.data not in {"home:gpt_chat", "home:api_token", "home:anon_chat"}
         )
     )
     def home_router(cq: CallbackQuery):

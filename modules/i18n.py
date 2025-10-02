@@ -14,6 +14,16 @@ LABELS = {
         "fr": "<b>📖 Guide d'utilisation de Vexa</b>\n\n🔹 <b>Qu'est-ce qu'un crédit ?</b>\nChaque lettre, espace ou symbole = 1 crédit.\n\n🔹 <b>Crédits offerts au démarrage</b>\nAprès /start tu reçois <b>45 crédits</b>, de quoi tester « Salut, ici Vexa ».\n\n🔹 <b>Message « Crédits insuffisants » ?</b>\nEnvoie un texte plus court ou recharge d'abord.\n\n🔹 <b>Astuces pour une voix naturelle</b>\nUtilise la ponctuation :\n• Termine les phrases par un point.\n• Mets des virgules pour de courtes pauses.\n• Finis les questions par ?.\n• Ajoute ! pour l'énergie.\n\n✍️ <b>Exemple</b>\n• ❌ « salut ca va j'espère que tu vas bien »\n• ✅ « Salut ! Ça va ? J'espère que tu vas bien. »"
     },
     "btn_gpt":    {"fa":"GPT-5 🫧","en":"GPT-5 🫧","ar":"GPT-5 🫧","tr":"GPT-5 🫧","ru":"GPT-5 🫧","es":"GPT-5 🫧","de":"GPT-5 🤖","fr":"GPT-5 🤖"},
+    "btn_anonymous_chat": {
+        "fa": "چت ناشناس 🎭",
+        "en": "Anonymous Chat 🎭",
+        "ar": "دردشة مجهولة 🎭",
+        "tr": "Anonim Sohbet 🎭",
+        "ru": "Анонимный чат 🎭",
+        "es": "Chat anónimo 🎭",
+        "de": "Anonymer Chat 🎭",
+        "fr": "Chat anonyme 🎭",
+    },
     "btn_image":  {"fa":"تولید تصویر 🖼️","en":"Generate Image 🖼️","ar":"توليد صورة 🖼️","tr":"Görsel Oluştur 🖼️","ru":"Создать изображение 🖼️","es":"Generar imagen 🖼️","de":"Bild erzeugen 🖼️","fr":"Générer une image 🖼️"},
     "btn_video":  {"fa":"تولید ویدیو 🎬","en":"Generate Video 🎬","ar":"توليد فيديو 🎬","tr":"Video Oluştur 🎬","ru":"Создать видео 🎬","es":"Generar video 🎬","de":"Video erstellen 🎬","fr":"Créer une vidéo 🎬"},
     "btn_tts":    {"fa":"تبدیل متن به صدا 🎧","en":"Text to Speech 🎧","ar":"تحويل النص إلى صوت 🎧","tr":"Metinden Sese 🎧","ru":"Текст в речь 🎧","es":"Texto a voz 🎧","de":"Text zu Sprache 🎧","fr":"Texte en voix 🎧"},
