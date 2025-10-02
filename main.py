@@ -38,7 +38,6 @@ def register_modules(bot: telebot.TeleBot) -> None:
     clone_handlers.register(bot)
     tts_handlers.register(bot)
     tts_openai_handlers.register(bot)
-    vexa_assistant_handlers.register(bot)
     gpt_handlers.register(bot)
     anonymous_chat_handlers.register(bot)
     image_handlers.register(bot)
