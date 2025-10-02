@@ -28,6 +28,34 @@ class VexaAssistantError(RuntimeError):
 _cached_api_key: Optional[str] = None
 
 
+_RESPONSE_TOOLS: List[Dict[str, Any]] = [
+    {
+        "type": "function",
+        "function": {
+            "name": "web_search",
+            "description": "Search the web for up-to-date information using DuckDuckGo.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Search query provided by the user.",
+                    },
+                    "max_results": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 5,
+                        "default": 3,
+                        "description": "Maximum number of results to return.",
+                    },
+                },
+                "required": ["query"],
+            },
+        },
+    }
+]
+
+
 def resolve_api_key(force_refresh: bool = False) -> str:
     """Return the API key used for the Vexa Assistant."""
 
@@ -190,7 +218,6 @@ def do_web_search(args: Dict[str, Any]) -> str:
         return f"Web search failed: {exc}"
 
     return _format_search_results(results)
-    return f"Web search is not configured in this environment. Query received: {query}"
 
 
 def call_openai_image(args: Dict[str, Any]) -> Any:
@@ -420,6 +447,95 @@ def _handle_requires_action(client: OpenAI, thread_id: str, run: Any) -> Any:
         raise VexaAssistantError(f"submit_tool_outputs_failed: {exc}") from exc
 
 
+def _handle_response_requires_action(client: OpenAI, response: Any) -> Any:
+    action = getattr(response, "required_action", None)
+    if action is None:
+        return response
+
+    submit = getattr(action, "submit_tool_outputs", None)
+    if submit is None:
+        return response
+
+    tool_calls = getattr(submit, "tool_calls", None)
+    if not isinstance(tool_calls, Iterable):
+        return response
+
+    outputs: List[Dict[str, str]] = []
+    for tool_call in tool_calls:
+        tool_dict = _to_dict(tool_call)
+        function_dict = tool_dict.get("function", {}) if isinstance(tool_dict, dict) else {}
+        name = function_dict.get("name")
+        raw_arguments = function_dict.get("arguments")
+
+        if not name:
+            continue
+
+        try:
+            parsed_args = json.loads(raw_arguments or "{}") if raw_arguments else {}
+        except json.JSONDecodeError:
+            parsed_args = {"raw_arguments": raw_arguments}
+
+        parsed_args["_client"] = client
+
+        handler = tool_router.get(name)
+        if handler is None:
+            result = f"Tool '{name}' is not implemented."
+        else:
+            try:
+                result = handler(parsed_args)
+            except Exception as exc:  # pragma: no cover - defensive
+                if DEBUG:
+                    print(f"Tool '{name}' raised an exception:", exc)
+                result = f"Tool '{name}' failed: {exc}"
+
+        outputs.append(
+            {
+                "tool_call_id": tool_dict.get("id") or getattr(tool_call, "id", ""),
+                "output": _serialise_tool_result(result),
+            }
+        )
+
+    try:
+        return client.responses.submit_tool_outputs(
+            response_id=getattr(response, "id"),
+            tool_outputs=outputs,
+        )
+    except Exception as exc:  # pragma: no cover - network errors
+        raise VexaAssistantError(f"submit_tool_outputs_failed: {exc}") from exc
+
+
+def _wait_for_response_completion(client: OpenAI, response: Any) -> Any:
+    poll_interval = 0.5
+    max_wait = 90
+    waited = 0.0
+
+    current = response
+    while True:
+        status = getattr(current, "status", None)
+        if status in {None, "completed"}:
+            return current
+        if status == "requires_action":
+            current = _handle_response_requires_action(client, current)
+            waited = 0.0
+            continue
+        if status in {"failed", "cancelled", "expired"}:
+            error = getattr(current, "last_error", None)
+            message = "response_failed"
+            if error is not None:
+                error_dict = _to_dict(error)
+                message = error_dict.get("message") or error_dict.get("code") or message
+            raise VexaAssistantError(message)
+
+        time.sleep(poll_interval)
+        waited += poll_interval
+        if waited >= max_wait:
+            raise VexaAssistantError("response_timeout")
+        try:
+            current = client.responses.retrieve(getattr(current, "id"))
+        except Exception as exc:  # pragma: no cover - network errors
+            raise VexaAssistantError(f"response_retrieve_failed: {exc}") from exc
+
+
 def _wait_for_run_completion(client: OpenAI, thread_id: str, run: Any) -> str:
     poll_interval = 0.5
     max_wait = 90
@@ -479,9 +595,11 @@ def request_response(history: List[Dict[str, Any]]) -> str:
             response = client.responses.create(
                 model=model_override or "gpt-4o-mini",
                 messages=messages,
+                tools=_RESPONSE_TOOLS,
             )
         except Exception as exc:  # pragma: no cover - network errors
             raise VexaAssistantError(f"request_failed: {exc}") from exc
+        response = _wait_for_response_completion(client, response)
         answer = _extract_output_text(response)
         return answer.strip()
 
