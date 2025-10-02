@@ -15,7 +15,6 @@ from config import (
     GPT_API_KEY_PREFIX,
     GPT_API_TIMEOUT,
     GPT_API_URL,
-    GPT_ASSISTANT_ID,
     GPT_MAX_TOKENS,
     GPT_MODEL,
     GPT_MODE,
@@ -329,9 +328,6 @@ def _prepare_assistant_payload(
         "temperature": temperature if temperature is not None else GPT_TEMPERATURE,
         "top_p": top_p if top_p is not None else GPT_TOP_P,
     }
-
-    if GPT_ASSISTANT_ID:
-        payload["assistant_id"] = GPT_ASSISTANT_ID
 
     limit = max_tokens if max_tokens is not None else GPT_MAX_TOKENS
     if limit > 0:

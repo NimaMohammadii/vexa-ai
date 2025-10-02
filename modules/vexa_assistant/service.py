@@ -14,7 +14,6 @@ from config import (
     GPT_API_TIMEOUT,
     VEXA_ASSISTANT_API_KEY,
     VEXA_ASSISTANT_API_URL,
-    VEXA_ASSISTANT_ID,
     VEXA_ASSISTANT_MODEL,
 )
 from modules.gpt.service import extract_message_text, resolve_gpt_api_key
@@ -58,8 +57,6 @@ def ensure_ready(force_refresh: bool = False) -> tuple[bool, Optional[str]]:
     key = resolve_api_key(force_refresh=force_refresh)
     if not key:
         return False, "missing_api_key"
-    if not VEXA_ASSISTANT_ID:
-        return False, "missing_assistant_id"
     return True, None
 
 
@@ -76,9 +73,6 @@ def prepare_messages(history: List[Dict[str, Any]]) -> Dict[str, Any]:
         "model": (VEXA_ASSISTANT_MODEL or "gpt-4o-mini").strip() or "gpt-4o-mini",
         "input": normalised,
     }
-
-    if VEXA_ASSISTANT_ID:
-        payload["assistant_id"] = VEXA_ASSISTANT_ID
 
     return payload
 
