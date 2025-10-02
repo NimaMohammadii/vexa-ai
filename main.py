@@ -21,7 +21,6 @@ from modules.anonymous_chat import handlers as anonymous_chat_handlers
 from modules.image import handlers as image_handlers
 from modules.video_gen4 import handlers as video_handlers
 from modules.api_token import handlers as api_token_handlers
-from modules.vexa_assistant import handlers as vexa_assistant_handlers
 
 # ========================= Telegram Bot Wiring =========================
 def create_bot() -> telebot.TeleBot:
