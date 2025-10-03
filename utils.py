@@ -1,4 +1,5 @@
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+from telebot.apihelper import ApiTelegramException
 
 from modules.i18n import t
 
@@ -6,6 +7,12 @@ def edit_or_send(bot, chat_id, message_id, text, reply_markup=None, parse_mode="
     try:
         bot.edit_message_text(chat_id=chat_id, message_id=message_id,
                               text=text, reply_markup=reply_markup, parse_mode=parse_mode)
+    except ApiTelegramException as exc:
+        # اگر پیام تغییری نکرده باشد، تلگرام خطای «message is not modified» می‌دهد.
+        # در این حالت نیازی به ارسال پیام جدید نیست.
+        if "message is not modified" in str(exc).lower():
+            return
+        bot.send_message(chat_id, text, reply_markup=reply_markup, parse_mode=parse_mode)
     except Exception:
         bot.send_message(chat_id, text, reply_markup=reply_markup, parse_mode=parse_mode)
 
