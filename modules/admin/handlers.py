@@ -30,6 +30,7 @@ from .keyboards import (
     exports_menu,
     image_users_menu,
     gpt_users_menu,
+    daily_reward_users_menu,
 )
 from modules.lang.keyboards import LANGS
 
@@ -250,11 +251,16 @@ def register(bot):
                 gpt_users = db.count_users_with_gpt()
             except AttributeError:
                 gpt_users = 0
+            try:
+                daily_reward_users = db.count_daily_reward_users()
+            except AttributeError:
+                daily_reward_users = 0
             txt = (f"📊 <b>آمار</b>\n\n"
                    f"👥 کل کاربران: <b>{total}</b>\n"
                    f"⚡️ فعال ۲۴ساعت: <b>{active24}</b>\n"
                    f"🖼️ کاربران تولید تصویر: <b>{image_users}</b>\n"
-                   f"🤖 کاربران GPT: <b>{gpt_users}</b>")
+                   f"🤖 کاربران GPT: <b>{gpt_users}</b>\n"
+                   f"🎁 پاداش روزانه: <b>{daily_reward_users}</b>")
             edit_or_send(bot, cq.message.chat.id, cq.message.message_id, txt, admin_menu())
             return
 
@@ -332,6 +338,32 @@ def register(bot):
                     cq.message.message_id,
                     "🤖 کاربران GPT:",
                     gpt_users_menu(),
+                )
+            return
+
+        if action == "daily_reward_users":
+            if len(p) >= 4 and p[2] in ("prev", "next"):
+                page = int(p[3])
+                page = max(0, page - 1) if p[2] == "prev" else page + 1
+                edit_or_send(
+                    bot,
+                    cq.message.chat.id,
+                    cq.message.message_id,
+                    "🎁 کاربران پاداش روزانه:",
+                    daily_reward_users_menu(page),
+                )
+            else:
+                count = 0
+                try:
+                    count = db.count_daily_reward_users()
+                except AttributeError:
+                    count = 0
+                edit_or_send(
+                    bot,
+                    cq.message.chat.id,
+                    cq.message.message_id,
+                    f"🎁 کاربران پاداش روزانه: <b>{count}</b>",
+                    daily_reward_users_menu(),
                 )
             return
 

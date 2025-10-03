@@ -18,6 +18,7 @@ def admin_menu():
         InlineKeyboardButton("🖼️ کاربران تصویر", callback_data="admin:image_users"),
         InlineKeyboardButton("🤖 کاربران GPT", callback_data="admin:gpt_users"),
     )
+    kb.add(InlineKeyboardButton("🎁 پاداش روزانه", callback_data="admin:daily_reward_users"))
     kb.row(
         InlineKeyboardButton("➕ افزودن کردیت", callback_data="admin:add"),
         InlineKeyboardButton("➖ کسر کردیت", callback_data="admin:sub"),
@@ -155,6 +156,40 @@ def gpt_users_menu(page: int = 0, page_size: int = 10):
         nav.append(InlineKeyboardButton("◀️ قبلی", callback_data=f"admin:gpt_users:prev:{page}"))
     if len(rows) == page_size:
         nav.append(InlineKeyboardButton("بعدی ▶️", callback_data=f"admin:gpt_users:next:{page}"))
+    if nav:
+        kb.row(*nav)
+
+    kb.add(InlineKeyboardButton("⬅️ بازگشت", callback_data="admin:menu"))
+    return kb
+
+
+def daily_reward_users_menu(page: int = 0, page_size: int = 10):
+    page = max(0, int(page))
+    offset = page * page_size
+    rows = db.list_daily_reward_users(limit=page_size, offset=offset)
+
+    kb = InlineKeyboardMarkup()
+    if not rows:
+        kb.add(InlineKeyboardButton("— کاربری یافت نشد —", callback_data="admin:noop"))
+    else:
+        for row in rows:
+            uid = row.get("user_id")
+            username = row.get("username")
+            banned = bool(row.get("banned"))
+            credits = row.get("credits") or 0
+            last_ts = row.get("last_daily_reward")
+            label = f"{'🚫' if banned else '✅'} {uid}"
+            if username:
+                label += f" · @{username}"
+            label += f" · 💳 {db.format_credit_amount(credits)}"
+            label += f" · 🕒 {_format_ts(last_ts)}"
+            kb.add(InlineKeyboardButton(label, callback_data=f"admin:user:{uid}"))
+
+    nav = []
+    if page > 0:
+        nav.append(InlineKeyboardButton("◀️ قبلی", callback_data=f"admin:daily_reward_users:prev:{page}"))
+    if len(rows) == page_size:
+        nav.append(InlineKeyboardButton("بعدی ▶️", callback_data=f"admin:daily_reward_users:next:{page}"))
     if nav:
         kb.row(*nav)
 

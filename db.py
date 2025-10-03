@@ -1054,6 +1054,52 @@ def set_last_daily_reward(user_id: int, timestamp: int | None = None) -> None:
         )
         con.commit()
 
+
+def count_daily_reward_users() -> int:
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            "SELECT COUNT(*) FROM users WHERE IFNULL(last_daily_reward, 0) > 0"
+        )
+        row = cur.fetchone()
+        return int(row[0]) if row else 0
+
+
+def list_daily_reward_users(limit: int = 10, offset: int = 0):
+    limit = max(0, int(limit))
+    offset = max(0, int(offset))
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            """
+            SELECT
+                user_id,
+                username,
+                credits,
+                banned,
+                last_daily_reward
+            FROM users
+            WHERE IFNULL(last_daily_reward, 0) > 0
+            ORDER BY last_daily_reward DESC
+            LIMIT ? OFFSET ?
+            """,
+            (limit, offset),
+        )
+        rows = cur.fetchall() or []
+    result = []
+    for row in rows:
+        result.append(
+            {
+                "user_id": row[0],
+                "username": row[1],
+                "credits": row[2],
+                "banned": bool(row[3]),
+                "last_daily_reward": row[4],
+            }
+        )
+    return result
+
+
 def set_user_lang(user_id:int, lang:str):
     with closing(sqlite3.connect(DB_PATH)) as con:
         cur = con.cursor()
