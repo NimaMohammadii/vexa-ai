@@ -1065,6 +1065,38 @@ def count_daily_reward_users() -> int:
         return int(row[0]) if row else 0
 
 
+def count_daily_reward_users_since(*, seconds: float | None = None, hours: float | None = None, days: float | None = None) -> int:
+    total_seconds = 0.0
+    if seconds is not None:
+        try:
+            total_seconds += float(seconds)
+        except (TypeError, ValueError):
+            total_seconds += 0.0
+    if hours is not None:
+        try:
+            total_seconds += float(hours) * 3600.0
+        except (TypeError, ValueError):
+            total_seconds += 0.0
+    if days is not None:
+        try:
+            total_seconds += float(days) * 86400.0
+        except (TypeError, ValueError):
+            total_seconds += 0.0
+
+    if total_seconds <= 0:
+        return count_daily_reward_users()
+
+    threshold = int(time.time() - total_seconds)
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            "SELECT COUNT(*) FROM users WHERE IFNULL(last_daily_reward, 0) >= ?",
+            (threshold,),
+        )
+        row = cur.fetchone()
+        return int(row[0]) if row else 0
+
+
 def list_daily_reward_users(limit: int = 10, offset: int = 0):
     limit = max(0, int(limit))
     offset = max(0, int(offset))
