@@ -253,14 +253,20 @@ def register(bot):
                 gpt_users = 0
             try:
                 daily_reward_users = db.count_daily_reward_users()
+                daily_reward_users_24h = db.count_daily_reward_users_since(hours=24)
+                daily_reward_users_7d = db.count_daily_reward_users_since(days=7)
             except AttributeError:
                 daily_reward_users = 0
+                daily_reward_users_24h = 0
+                daily_reward_users_7d = 0
             txt = (f"📊 <b>آمار</b>\n\n"
                    f"👥 کل کاربران: <b>{total}</b>\n"
                    f"⚡️ فعال ۲۴ساعت: <b>{active24}</b>\n"
                    f"🖼️ کاربران تولید تصویر: <b>{image_users}</b>\n"
                    f"🤖 کاربران GPT: <b>{gpt_users}</b>\n"
-                   f"🎁 پاداش روزانه: <b>{daily_reward_users}</b>")
+                   f"🎁 پاداش روزانه (کل): <b>{daily_reward_users}</b>\n"
+                   f"   ├ ۲۴ ساعت گذشته: <b>{daily_reward_users_24h}</b>\n"
+                   f"   └ ۷ روز گذشته: <b>{daily_reward_users_7d}</b>")
             edit_or_send(bot, cq.message.chat.id, cq.message.message_id, txt, admin_menu())
             return
 
