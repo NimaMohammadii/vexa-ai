@@ -64,7 +64,7 @@ def _format_username_line(user) -> str:
         return f"🔗 @{escape(uname)}"
     return f"🔗 {t('support_no_username', 'fa')}"
 
-def _send_content_to_user(bot, uid: int, msg: types.Message):
+def _send_content_to_user(bot, uid: int, msg: types.Message, reply_markup=None):
     """
     Try to send the admin's message (text/photo/document/audio/voice/video/sticker/...) to `uid`.
     Returns (True, None) on success.
@@ -76,7 +76,7 @@ def _send_content_to_user(bot, uid: int, msg: types.Message):
     try:
         # TEXT
         if c == "text":
-            bot.send_message(uid, msg.text or "")
+            bot.send_message(uid, msg.text or "", reply_markup=reply_markup)
             db.log_message(uid, "out", msg.text or "")
             return True, None
 
@@ -84,7 +84,7 @@ def _send_content_to_user(bot, uid: int, msg: types.Message):
         if c == "photo" and getattr(msg, "photo", None):
             file_id = msg.photo[-1].file_id
             try:
-                bot.send_photo(uid, file_id, caption=(msg.caption or ""))
+                bot.send_photo(uid, file_id, caption=(msg.caption or ""), reply_markup=reply_markup)
                 db.log_message(uid, "out", msg.caption or "<photo>")
                 return True, None
             except Exception as e:
@@ -95,7 +95,7 @@ def _send_content_to_user(bot, uid: int, msg: types.Message):
             file_id = msg.document.file_id
             caption = msg.caption or ""
             try:
-                bot.send_document(uid, file_id, caption=caption)
+                bot.send_document(uid, file_id, caption=caption, reply_markup=reply_markup)
                 fn = getattr(msg.document, "file_name", "")
                 db.log_message(uid, "out", caption or f"<document:{fn}>")
                 return True, None
@@ -106,7 +106,7 @@ def _send_content_to_user(bot, uid: int, msg: types.Message):
         if c == "audio" and getattr(msg, "audio", None):
             file_id = msg.audio.file_id
             try:
-                bot.send_audio(uid, file_id, caption=(msg.caption or ""))
+                bot.send_audio(uid, file_id, caption=(msg.caption or ""), reply_markup=reply_markup)
                 db.log_message(uid, "out", msg.caption or "<audio>")
                 return True, None
             except Exception as e:
@@ -116,7 +116,7 @@ def _send_content_to_user(bot, uid: int, msg: types.Message):
         if c == "voice" and getattr(msg, "voice", None):
             file_id = msg.voice.file_id
             try:
-                bot.send_voice(uid, file_id, caption=(msg.caption or ""))
+                bot.send_voice(uid, file_id, caption=(msg.caption or ""), reply_markup=reply_markup)
                 db.log_message(uid, "out", msg.caption or "<voice>")
                 return True, None
             except Exception as e:
@@ -126,7 +126,7 @@ def _send_content_to_user(bot, uid: int, msg: types.Message):
         if c == "video" and getattr(msg, "video", None):
             file_id = msg.video.file_id
             try:
-                bot.send_video(uid, file_id, caption=(msg.caption or ""))
+                bot.send_video(uid, file_id, caption=(msg.caption or ""), reply_markup=reply_markup)
                 db.log_message(uid, "out", msg.caption or "<video>")
                 return True, None
             except Exception as e:
@@ -136,7 +136,7 @@ def _send_content_to_user(bot, uid: int, msg: types.Message):
         if c == "sticker" and getattr(msg, "sticker", None):
             file_id = msg.sticker.file_id
             try:
-                bot.send_sticker(uid, file_id)
+                bot.send_sticker(uid, file_id, reply_markup=reply_markup)
                 db.log_message(uid, "out", "<sticker>")
                 return True, None
             except Exception as e:
@@ -146,7 +146,7 @@ def _send_content_to_user(bot, uid: int, msg: types.Message):
         try:
             # copy_message does not require the bot to be able to access the original chat as a member in the same way forward does,
             # and it preserves media without reuploading whenever possible.
-            bot.copy_message(uid, msg.chat.id, msg.message_id)
+            bot.copy_message(uid, msg.chat.id, msg.message_id, reply_markup=reply_markup)
             db.log_message(uid, "out", f"<copied:{c}>")
             return True, None
         except Exception as e:
@@ -245,7 +245,7 @@ def register(bot):
             bot.answer_callback_query(cq.id, "❌ کاربر یافت نشد."); return
 
         if action == "reply":
-            db.set_state(cq.from_user.id, f"{STATE_MSG_TXT}:{uid}")
+            db.set_state(cq.from_user.id, f"{STATE_MSG_TXT}:{uid}:support")
             bot.answer_callback_query(cq.id, t("support_admin_reply_ready", "fa"))
             hint_lines = [
                 t("support_admin_reply_hint", "fa"),
@@ -851,18 +851,33 @@ def register(bot):
     @bot.message_handler(func=lambda m: (db.get_state(m.from_user.id) or "").startswith(STATE_MSG_TXT), content_types=['text', 'photo', 'document', 'audio', 'voice', 'video', 'sticker'])
     def s_msg_txt(msg: types.Message):
         if not _is_owner(msg.from_user): return
-        raw = (db.get_state(msg.from_user.id) or "").split(":")
-        uid = int(raw[-1]) if raw and raw[-1].isdigit() else None
+        state_raw = db.get_state(msg.from_user.id) or ""
+        raw = state_raw.split(":")
+        uid = None
+        for part in reversed(raw):
+            if part.isdigit():
+                uid = int(part)
+                break
         if not uid:
             db.clear_state(msg.from_user.id); bot.reply_to(msg, "⚠️ وضعیت نامعتبر."); return
 
-        success, err = _send_content_to_user(bot, uid, msg)
+        support_mode = state_raw.endswith(":support")
+        reply_markup = None
+        if support_mode:
+            from modules.support.keyboards import support_chat_kb
+
+            lang = db.get_user_lang(uid, "fa")
+            reply_markup = support_chat_kb(lang)
+
+        success, err = _send_content_to_user(bot, uid, msg, reply_markup=reply_markup)
         if success:
             bot.reply_to(msg, DONE)
         else:
             # give a clearer message and include the error string for debugging
             bot.reply_to(msg, f"❌ ارسال نشد: {err}\n(ممکن است کاربر استارت نکرده باشد یا خطای دیگری وجود دارد.)")
-        db.clear_state(msg.from_user.id)
+
+        if not support_mode:
+            db.clear_state(msg.from_user.id)
 
     # پیام همگانی
     @bot.message_handler(func=lambda m: db.get_state(m.from_user.id) == STATE_CAST_TXT, content_types=['text', 'photo', 'document', 'audio', 'voice', 'video', 'sticker'])

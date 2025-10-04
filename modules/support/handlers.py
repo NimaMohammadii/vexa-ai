@@ -92,6 +92,32 @@ def _send_to_admin(bot, user, msg: Message) -> tuple[bool, str]:
     message_text = "\n".join(info_lines)
     markup = _admin_keyboard(user.get("user_id"), include_reply=True)
 
+    error_details = ""
+    if BOT_TOKEN_2:
+        url = f"https://api.telegram.org/bot{BOT_TOKEN_2}/sendMessage"
+        payload = {
+            "chat_id": BOT_OWNER_ID,
+            "text": message_text,
+            "parse_mode": "HTML",
+            "disable_web_page_preview": True,
+        }
+        try:
+            payload["reply_markup"] = markup.to_dict()
+        except AttributeError:
+            pass
+        try:
+            response = requests.post(url, json=payload, timeout=15)
+            data = (
+                response.json()
+                if response.headers.get("Content-Type", "").startswith("application/json")
+                else {}
+            )
+            if response.ok and data.get("ok", True):
+                return True, ""
+            error_details = str(data.get("description") or response.text)
+        except Exception as http_exc:  # pragma: no cover - network failures
+            error_details = str(http_exc)
+
     try:
         bot.send_message(
             BOT_OWNER_ID,
@@ -101,30 +127,8 @@ def _send_to_admin(bot, user, msg: Message) -> tuple[bool, str]:
         )
         return True, ""
     except Exception as exc:
-        if BOT_TOKEN_2:
-            url = f"https://api.telegram.org/bot{BOT_TOKEN_2}/sendMessage"
-            payload = {
-                "chat_id": BOT_OWNER_ID,
-                "text": message_text,
-                "parse_mode": "HTML",
-                "disable_web_page_preview": True,
-            }
-            try:
-                payload["reply_markup"] = markup.to_dict()
-            except AttributeError:
-                pass
-            try:
-                response = requests.post(url, json=payload, timeout=15)
-                data = (
-                    response.json()
-                    if response.headers.get("Content-Type", "").startswith("application/json")
-                    else {}
-                )
-                if response.ok and data.get("ok", True):
-                    return True, ""
-                return False, str(data.get("description") or response.text)
-            except Exception as http_exc:  # pragma: no cover - network failures
-                return False, str(http_exc)
+        if error_details:
+            return False, error_details
         return False, str(exc)
 
 
@@ -148,34 +152,35 @@ def _notify_admin_chat_closed(bot, user: dict | None, closed_by: str) -> None:
         f"🔗 {username}",
     ]
 
+    markup = _admin_keyboard(user.get("user_id"), include_reply=(closed_by == "user"))
+
+    if BOT_TOKEN_2:
+        url = f"https://api.telegram.org/bot{BOT_TOKEN_2}/sendMessage"
+        payload = {
+            "chat_id": BOT_OWNER_ID,
+            "text": "\n".join(lines),
+            "parse_mode": "HTML",
+            "disable_web_page_preview": True,
+        }
+        try:
+            payload["reply_markup"] = markup.to_dict()
+        except AttributeError:
+            pass
+        try:
+            requests.post(url, json=payload, timeout=15)
+            return
+        except Exception:  # pragma: no cover - best effort notification
+            pass
+
     try:
         bot.send_message(
             BOT_OWNER_ID,
             "\n".join(lines),
             disable_web_page_preview=True,
-            reply_markup=_admin_keyboard(
-                user.get("user_id"), include_reply=(closed_by == "user")
-            ),
+            reply_markup=markup,
         )
     except Exception:
-        if BOT_TOKEN_2:
-            url = f"https://api.telegram.org/bot{BOT_TOKEN_2}/sendMessage"
-            payload = {
-                "chat_id": BOT_OWNER_ID,
-                "text": "\n".join(lines),
-                "parse_mode": "HTML",
-                "disable_web_page_preview": True,
-            }
-            try:
-                payload["reply_markup"] = _admin_keyboard(
-                    user.get("user_id"), include_reply=(closed_by == "user")
-                ).to_dict()
-            except AttributeError:
-                pass
-            try:
-                requests.post(url, json=payload, timeout=15)
-            except Exception:  # pragma: no cover - best effort notification
-                pass
+        pass
 
 
 def open_support(bot, cq: CallbackQuery) -> None:
@@ -277,7 +282,4 @@ def register(bot):
         db.log_message(user["user_id"], "in", _describe_message(msg))
         state = db.get_state(user["user_id"])
         if state == STATE_SUPPORT_CHAT:
-            bot.reply_to(msg, t("support_wait_for_reply", lang))
             db.set_state(user["user_id"], STATE_SUPPORT_WAITING)
-        else:
-            bot.reply_to(msg, t("support_sent", lang))
