@@ -1,10 +1,10 @@
 """Handlers for the support flow."""
 from __future__ import annotations
 
-import requests
 from html import escape
 
-from telebot.types import CallbackQuery, Message
+import requests
+from telebot.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 import db
 from config import BOT_OWNER_ID, BOT_TOKEN_2
@@ -15,6 +15,25 @@ from .texts import SUPPORT_INTRO, SUPPORT_PROMPT
 
 
 STATE_SUPPORT_CHAT = "support:await_message"
+STATE_SUPPORT_WAITING = f"{STATE_SUPPORT_CHAT}:waiting"
+
+
+def _admin_keyboard(user_id: int, include_reply: bool = True) -> InlineKeyboardMarkup:
+    kb = InlineKeyboardMarkup()
+    if include_reply:
+        kb.add(
+            InlineKeyboardButton(
+                t("support_admin_reply_button", "fa"),
+                callback_data=f"support:admin:reply:{user_id}",
+            )
+        )
+    kb.add(
+        InlineKeyboardButton(
+            t("support_admin_close_button", "fa"),
+            callback_data=f"support:admin:end:{user_id}",
+        )
+    )
+    return kb
 
 
 def _format_username(username: str | None) -> str:
@@ -49,8 +68,8 @@ def _describe_message(msg: Message) -> str:
     return label
 
 
-def _send_to_admin(user, msg: Message) -> tuple[bool, str]:
-    if not BOT_TOKEN_2 or not BOT_OWNER_ID:
+def _send_to_admin(bot, user, msg: Message) -> tuple[bool, str]:
+    if not BOT_OWNER_ID:
         return False, "not_configured"
 
     credits = db.format_credit_amount(user.get("credits")) if user else "0"
@@ -70,22 +89,93 @@ def _send_to_admin(user, msg: Message) -> tuple[bool, str]:
         _describe_message(msg) or t("support_admin_empty", "fa"),
     ]
 
-    url = f"https://api.telegram.org/bot{BOT_TOKEN_2}/sendMessage"
-    payload = {
-        "chat_id": BOT_OWNER_ID,
-        "text": "\n".join(info_lines),
-        "parse_mode": "HTML",
-        "disable_web_page_preview": True,
-    }
+    message_text = "\n".join(info_lines)
+    markup = _admin_keyboard(user.get("user_id"), include_reply=True)
 
     try:
-        response = requests.post(url, json=payload, timeout=15)
-        data = response.json() if response.headers.get("Content-Type", "").startswith("application/json") else {}
-        if response.ok and data.get("ok", True):
-            return True, ""
-        return False, str(data.get("description") or response.text)
-    except Exception as exc:  # pragma: no cover - network failures
+        bot.send_message(
+            BOT_OWNER_ID,
+            message_text,
+            reply_markup=markup,
+            disable_web_page_preview=True,
+        )
+        return True, ""
+    except Exception as exc:
+        if BOT_TOKEN_2:
+            url = f"https://api.telegram.org/bot{BOT_TOKEN_2}/sendMessage"
+            payload = {
+                "chat_id": BOT_OWNER_ID,
+                "text": message_text,
+                "parse_mode": "HTML",
+                "disable_web_page_preview": True,
+            }
+            try:
+                payload["reply_markup"] = markup.to_dict()
+            except AttributeError:
+                pass
+            try:
+                response = requests.post(url, json=payload, timeout=15)
+                data = (
+                    response.json()
+                    if response.headers.get("Content-Type", "").startswith("application/json")
+                    else {}
+                )
+                if response.ok and data.get("ok", True):
+                    return True, ""
+                return False, str(data.get("description") or response.text)
+            except Exception as http_exc:  # pragma: no cover - network failures
+                return False, str(http_exc)
         return False, str(exc)
+
+
+def _notify_admin_chat_closed(bot, user: dict | None, closed_by: str) -> None:
+    if not BOT_OWNER_ID or not user:
+        return
+
+    header_key = (
+        "support_admin_chat_closed_by_user"
+        if closed_by == "user"
+        else "support_admin_chat_closed_by_admin"
+    )
+
+    first_name = escape(user.get("first_name") or "-")
+    username = _format_username(user.get("username"))
+    lines = [
+        t(header_key, "fa"),
+        "",
+        f"🆔 <code>{user.get('user_id')}</code>",
+        f"👤 {first_name}",
+        f"🔗 {username}",
+    ]
+
+    try:
+        bot.send_message(
+            BOT_OWNER_ID,
+            "\n".join(lines),
+            disable_web_page_preview=True,
+            reply_markup=_admin_keyboard(
+                user.get("user_id"), include_reply=(closed_by == "user")
+            ),
+        )
+    except Exception:
+        if BOT_TOKEN_2:
+            url = f"https://api.telegram.org/bot{BOT_TOKEN_2}/sendMessage"
+            payload = {
+                "chat_id": BOT_OWNER_ID,
+                "text": "\n".join(lines),
+                "parse_mode": "HTML",
+                "disable_web_page_preview": True,
+            }
+            try:
+                payload["reply_markup"] = _admin_keyboard(
+                    user.get("user_id"), include_reply=(closed_by == "user")
+                ).to_dict()
+            except AttributeError:
+                pass
+            try:
+                requests.post(url, json=payload, timeout=15)
+            except Exception:  # pragma: no cover - best effort notification
+                pass
 
 
 def open_support(bot, cq: CallbackQuery) -> None:
@@ -133,6 +223,7 @@ def register(bot):
 
         if cq.data == "support:cancel":
             db.clear_state(user["user_id"])
+            _notify_admin_chat_closed(bot, user, "user")
             from modules.home.texts import MAIN
             from modules.home.keyboards import main_menu
 
@@ -146,7 +237,7 @@ def register(bot):
             bot.answer_callback_query(cq.id, t("support_cancelled", lang))
 
     @bot.message_handler(
-        func=lambda m: (db.get_state(m.from_user.id) or "") == STATE_SUPPORT_CHAT,
+        func=lambda m: (db.get_state(m.from_user.id) or "").startswith(STATE_SUPPORT_CHAT),
         content_types=[
             "text",
             "photo",
@@ -166,7 +257,7 @@ def register(bot):
         db.touch_last_seen(user["user_id"])
         lang = db.get_user_lang(user["user_id"], "fa")
 
-        ok, error = _send_to_admin(user, msg)
+        ok, error = _send_to_admin(bot, user, msg)
         if not ok:
             bot.reply_to(msg, t("support_send_failed", lang))
             if error == "not_configured":
@@ -184,4 +275,9 @@ def register(bot):
             return
 
         db.log_message(user["user_id"], "in", _describe_message(msg))
-        bot.reply_to(msg, t("support_sent", lang))
+        state = db.get_state(user["user_id"])
+        if state == STATE_SUPPORT_CHAT:
+            bot.reply_to(msg, t("support_wait_for_reply", lang))
+            db.set_state(user["user_id"], STATE_SUPPORT_WAITING)
+        else:
+            bot.reply_to(msg, t("support_sent", lang))

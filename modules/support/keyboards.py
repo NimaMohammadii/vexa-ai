@@ -15,5 +15,5 @@ def support_entry_kb(lang: str) -> InlineKeyboardMarkup:
 
 def support_chat_kb(lang: str) -> InlineKeyboardMarkup:
     kb = InlineKeyboardMarkup()
-    kb.add(InlineKeyboardButton(t("support_cancel", lang), callback_data="support:cancel"))
+    kb.add(InlineKeyboardButton(t("support_end_chat", lang), callback_data="support:cancel"))
     return kb

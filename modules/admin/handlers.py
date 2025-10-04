@@ -1,5 +1,8 @@
 # modules/admin/handlers.py
+from html import escape
+
 from telebot import types
+
 from utils import edit_or_send, parse_int
 from config import BOT_OWNER_ID
 import db
@@ -33,6 +36,7 @@ from .keyboards import (
     daily_reward_users_menu,
 )
 from modules.lang.keyboards import LANGS
+from modules.i18n import t
 
 LANG_LABELS = {code: label for label, code in LANGS}
 
@@ -51,6 +55,14 @@ def _resolve_user_id(text: str):
         pass
     u = db.get_user_by_username(t)
     return (u and u.get("user_id")) or None
+
+
+def _format_username_line(user) -> str:
+    username = (user or {}).get("username") or ""
+    uname = username.strip().lstrip("@")
+    if uname:
+        return f"🔗 @{escape(uname)}"
+    return f"🔗 {t('support_no_username', 'fa')}"
 
 def _send_content_to_user(bot, uid: int, msg: types.Message):
     """
@@ -212,6 +224,75 @@ def register(bot):
             bot.reply_to(msg, DENY); return
         db.clear_state(msg.from_user.id)
         edit_or_send(bot, msg.chat.id, msg.message_id, f"{TITLE}\n\n{MENU}", admin_menu())
+
+    @bot.callback_query_handler(func=lambda c: (c.data or "").startswith("support:admin:"))
+    def support_router(cq: types.CallbackQuery):
+        if not _is_owner(cq.from_user):
+            bot.answer_callback_query(cq.id, "⛔️"); return
+
+        parts = (cq.data or "").split(":")
+        if len(parts) < 4:
+            bot.answer_callback_query(cq.id, "⚠️"); return
+
+        action = parts[2]
+        try:
+            uid = int(parts[3])
+        except (TypeError, ValueError):
+            bot.answer_callback_query(cq.id, "⚠️"); return
+
+        user = db.get_user(uid)
+        if not user:
+            bot.answer_callback_query(cq.id, "❌ کاربر یافت نشد."); return
+
+        if action == "reply":
+            db.set_state(cq.from_user.id, f"{STATE_MSG_TXT}:{uid}")
+            bot.answer_callback_query(cq.id, t("support_admin_reply_ready", "fa"))
+            hint_lines = [
+                t("support_admin_reply_hint", "fa"),
+                "",
+                f"🆔 <code>{uid}</code>",
+                f"👤 {escape(user.get('first_name') or '-')}",
+                _format_username_line(user),
+            ]
+            bot.send_message(cq.message.chat.id, "\n".join(hint_lines))
+            return
+
+        if action == "end":
+            lang = db.get_user_lang(uid, "fa")
+            closing_text = t("support_closed_by_admin", lang)
+            try:
+                bot.send_message(uid, closing_text)
+                db.log_message(uid, "out", closing_text)
+            except Exception:
+                bot.answer_callback_query(cq.id, "❌ ارسال نشد.")
+                return
+
+            db.clear_state(uid)
+            try:
+                from modules.home.texts import MAIN
+                from modules.home.keyboards import main_menu
+
+                bot.send_message(uid, MAIN(lang), reply_markup=main_menu(lang))
+            except Exception:
+                pass
+
+            db.clear_state(cq.from_user.id)
+            summary_lines = [
+                t("support_admin_chat_closed_by_admin", "fa"),
+                "",
+                f"🆔 <code>{uid}</code>",
+                f"👤 {escape(user.get('first_name') or '-')}",
+                _format_username_line(user),
+            ]
+            bot.send_message(cq.message.chat.id, "\n".join(summary_lines))
+            bot.answer_callback_query(cq.id, t("support_admin_closed_chat", "fa"))
+            try:
+                bot.edit_message_reply_markup(cq.message.chat.id, cq.message.message_id, reply_markup=None)
+            except Exception:
+                pass
+            return
+
+        bot.answer_callback_query(cq.id, "❓")
 
     @bot.callback_query_handler(func=lambda c: c.data and c.data.startswith("admin:"))
     def router(cq: types.CallbackQuery):
