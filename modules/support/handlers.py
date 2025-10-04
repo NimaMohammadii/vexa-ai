@@ -72,6 +72,11 @@ def _send_to_admin(bot, user, msg: Message) -> tuple[bool, str]:
     if not BOT_OWNER_ID:
         return False, "not_configured"
 
+    try:
+        admin_chat_id = int(BOT_OWNER_ID)
+    except (TypeError, ValueError):
+        admin_chat_id = BOT_OWNER_ID
+
     credits = db.format_credit_amount(user.get("credits")) if user else "0"
     first_name = escape((user.get("first_name") or "-") if user else "-")
     username = _format_username(user.get("username") if user else None)
@@ -93,6 +98,8 @@ def _send_to_admin(bot, user, msg: Message) -> tuple[bool, str]:
     markup = _admin_keyboard(user.get("user_id"), include_reply=True)
 
     error_details = ""
+    info_sent = False
+
     if BOT_TOKEN_2:
         url = f"https://api.telegram.org/bot{BOT_TOKEN_2}/sendMessage"
         payload = {
@@ -113,23 +120,92 @@ def _send_to_admin(bot, user, msg: Message) -> tuple[bool, str]:
                 else {}
             )
             if response.ok and data.get("ok", True):
-                return True, ""
-            error_details = str(data.get("description") or response.text)
+                info_sent = True
+                result = data.get("result") or {}
+                msg_id = result.get("message_id")
+                if msg_id is not None:
+                    try:
+                        db.remember_support_inbox_message(
+                            admin_chat_id,
+                            int(msg_id),
+                            user.get("user_id"),
+                            msg.message_id,
+                        )
+                    except Exception:
+                        pass
+            else:
+                error_details = str(data.get("description") or response.text)
         except Exception as http_exc:  # pragma: no cover - network failures
             error_details = str(http_exc)
 
+    sent_message = None
+    if not info_sent:
+        try:
+            sent_message = bot.send_message(
+                BOT_OWNER_ID,
+                message_text,
+                reply_markup=markup,
+                disable_web_page_preview=True,
+            )
+            info_sent = True
+        except Exception as exc:
+            if error_details:
+                return False, error_details
+            return False, str(exc)
+
+    if sent_message is not None:
+        chat_id = getattr(getattr(sent_message, "chat", None), "id", admin_chat_id)
+        message_id = getattr(sent_message, "message_id", None)
+        if message_id is not None:
+            try:
+                db.remember_support_inbox_message(
+                    chat_id,
+                    message_id,
+                    user.get("user_id"),
+                    msg.message_id,
+                )
+            except Exception:
+                pass
+
+    def _remember_forwarded(forwarded_msg):
+        if forwarded_msg is None:
+            return
+        chat = getattr(forwarded_msg, "chat", None)
+        chat_id = getattr(chat, "id", admin_chat_id)
+        message_id = getattr(forwarded_msg, "message_id", None)
+        if message_id is None:
+            try:
+                message_id = int(forwarded_msg)
+            except Exception:
+                message_id = None
+        if message_id is None:
+            return
+        try:
+            db.remember_support_inbox_message(
+                chat_id,
+                message_id,
+                user.get("user_id"),
+                msg.message_id,
+            )
+        except Exception:
+            pass
+
+    mirror_errors: list[Exception] = []
+
     try:
-        bot.send_message(
-            BOT_OWNER_ID,
-            message_text,
-            reply_markup=markup,
-            disable_web_page_preview=True,
-        )
-        return True, ""
-    except Exception as exc:
-        if error_details:
-            return False, error_details
-        return False, str(exc)
+        forwarded = bot.copy_message(admin_chat_id, msg.chat.id, msg.message_id)
+        _remember_forwarded(forwarded)
+    except Exception as copy_exc:
+        mirror_errors.append(copy_exc)
+        try:
+            forwarded = bot.forward_message(admin_chat_id, msg.chat.id, msg.message_id)
+            _remember_forwarded(forwarded)
+        except Exception as forward_exc:
+            mirror_errors.append(forward_exc)
+            if mirror_errors:
+                print("Failed to mirror support message for admin:", mirror_errors, flush=True)
+
+    return True, ""
 
 
 def _notify_admin_chat_closed(bot, user: dict | None, closed_by: str) -> None:
@@ -228,6 +304,7 @@ def register(bot):
 
         if cq.data == "support:cancel":
             db.clear_state(user["user_id"])
+            db.clear_support_inbox_for_user(user["user_id"])
             _notify_admin_chat_closed(bot, user, "user")
             from modules.home.texts import MAIN
             from modules.home.keyboards import main_menu
