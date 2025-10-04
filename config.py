@@ -14,6 +14,7 @@ load_dotenv()
 load_dotenv(Path(__file__).resolve().parent / ".env")
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
+BOT_TOKEN_2 = (os.getenv("BOT_TOKEN_2") or "").strip()
 ELEVEN_API_KEY = os.getenv("ELEVEN_API_KEY")
 RUNWAY_API = (os.getenv("RUNWAY_API") or "").strip()
 # Backwards compatibility: some modules still import RUNWAY_API_KEY.

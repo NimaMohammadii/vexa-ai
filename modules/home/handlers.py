@@ -224,6 +224,12 @@ def register(bot):
 
             open_tts(bot, cq)
             return
+        if route == "support":
+            bot.answer_callback_query(cq.id)
+            from modules.support.handlers import open_support
+
+            open_support(bot, cq)
+            return
 
         if route == "profile":
             bot.answer_callback_query(cq.id)
