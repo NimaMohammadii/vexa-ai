@@ -153,19 +153,6 @@ def init_db():
         cur.execute(
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_api_tokens_token ON api_tokens(token)"
         )
-        cur.execute(
-            """CREATE TABLE IF NOT EXISTS support_inbox (
-                chat_id INTEGER NOT NULL,
-                admin_message_id INTEGER NOT NULL,
-                user_id INTEGER NOT NULL,
-                user_message_id INTEGER,
-                created_at INTEGER NOT NULL,
-                PRIMARY KEY (chat_id, admin_message_id)
-            )"""
-        )
-        cur.execute(
-            "CREATE INDEX IF NOT EXISTS idx_support_inbox_user ON support_inbox(user_id)"
-        )
         con.commit()
     _migrate_users_table()
     ensure_default_settings()
@@ -407,60 +394,6 @@ def clear_state(user_id):
     with closing(sqlite3.connect(DB_PATH)) as con:
         cur = con.cursor()
         cur.execute("DELETE FROM kv_state WHERE user_id=?", (user_id,))
-        con.commit()
-
-
-def remember_support_inbox_message(
-    chat_id: int,
-    admin_message_id: int,
-    user_id: int,
-    user_message_id: int | None = None,
-    max_age: int = 14 * 24 * 3600,
-):
-    """Store a mapping between an admin-side message and the originating user.
-
-    The mapping lets the admin reply directly to a forwarded/copied message
-    without mixing up conversations. ``max_age`` controls how long records are
-    kept before being pruned (defaults to 14 days).
-    """
-
-    now = int(time.time())
-    with closing(sqlite3.connect(DB_PATH)) as con:
-        cur = con.cursor()
-        cur.execute(
-            """INSERT INTO support_inbox(chat_id, admin_message_id, user_id, user_message_id, created_at)
-                   VALUES(?,?,?,?,?)
-                   ON CONFLICT(chat_id, admin_message_id) DO UPDATE SET
-                       user_id=excluded.user_id,
-                       user_message_id=excluded.user_message_id,
-                       created_at=excluded.created_at""",
-            (chat_id, admin_message_id, user_id, user_message_id, now),
-        )
-        if max_age:
-            cutoff = now - int(max_age)
-            cur.execute("DELETE FROM support_inbox WHERE created_at < ?", (cutoff,))
-        con.commit()
-
-
-def resolve_support_inbox_target(chat_id: int, admin_message_id: int) -> int | None:
-    """Return the user ID associated with an admin-side message."""
-
-    with closing(sqlite3.connect(DB_PATH)) as con:
-        cur = con.cursor()
-        cur.execute(
-            "SELECT user_id FROM support_inbox WHERE chat_id=? AND admin_message_id=?",
-            (chat_id, admin_message_id),
-        )
-        row = cur.fetchone()
-        return row[0] if row else None
-
-
-def clear_support_inbox_for_user(user_id: int) -> None:
-    """Remove stored mappings for a specific user."""
-
-    with closing(sqlite3.connect(DB_PATH)) as con:
-        cur = con.cursor()
-        cur.execute("DELETE FROM support_inbox WHERE user_id=?", (user_id,))
         con.commit()
 
 def set_referred_by(user_id, code):

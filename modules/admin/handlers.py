@@ -62,7 +62,7 @@ def _format_username_line(user) -> str:
     uname = username.strip().lstrip("@")
     if uname:
         return f"🔗 @{escape(uname)}"
-    return f"🔗 {t('support_no_username', 'fa')}"
+    return "🔗 -"
 
 def _send_content_to_user(bot, uid: int, msg: types.Message, reply_markup=None):
     """
@@ -224,76 +224,6 @@ def register(bot):
             bot.reply_to(msg, DENY); return
         db.clear_state(msg.from_user.id)
         edit_or_send(bot, msg.chat.id, msg.message_id, f"{TITLE}\n\n{MENU}", admin_menu())
-
-    @bot.callback_query_handler(func=lambda c: (c.data or "").startswith("support:admin:"))
-    def support_router(cq: types.CallbackQuery):
-        if not _is_owner(cq.from_user):
-            bot.answer_callback_query(cq.id, "⛔️"); return
-
-        parts = (cq.data or "").split(":")
-        if len(parts) < 4:
-            bot.answer_callback_query(cq.id, "⚠️"); return
-
-        action = parts[2]
-        try:
-            uid = int(parts[3])
-        except (TypeError, ValueError):
-            bot.answer_callback_query(cq.id, "⚠️"); return
-
-        user = db.get_user(uid)
-        if not user:
-            bot.answer_callback_query(cq.id, "❌ کاربر یافت نشد."); return
-
-        if action == "reply":
-            db.set_state(cq.from_user.id, f"{STATE_MSG_TXT}:{uid}:support")
-            bot.answer_callback_query(cq.id, t("support_admin_reply_ready", "fa"))
-            hint_lines = [
-                t("support_admin_reply_hint", "fa"),
-                "",
-                f"🆔 <code>{uid}</code>",
-                f"👤 {escape(user.get('first_name') or '-')}",
-                _format_username_line(user),
-            ]
-            bot.send_message(cq.message.chat.id, "\n".join(hint_lines))
-            return
-
-        if action == "end":
-            lang = db.get_user_lang(uid, "fa")
-            closing_text = t("support_closed_by_admin", lang)
-            try:
-                bot.send_message(uid, closing_text)
-                db.log_message(uid, "out", closing_text)
-            except Exception:
-                bot.answer_callback_query(cq.id, "❌ ارسال نشد.")
-                return
-
-            db.clear_state(uid)
-            db.clear_support_inbox_for_user(uid)
-            try:
-                from modules.home.texts import MAIN
-                from modules.home.keyboards import main_menu
-
-                bot.send_message(uid, MAIN(lang), reply_markup=main_menu(lang))
-            except Exception:
-                pass
-
-            db.clear_state(cq.from_user.id)
-            summary_lines = [
-                t("support_admin_chat_closed_by_admin", "fa"),
-                "",
-                f"🆔 <code>{uid}</code>",
-                f"👤 {escape(user.get('first_name') or '-')}",
-                _format_username_line(user),
-            ]
-            bot.send_message(cq.message.chat.id, "\n".join(summary_lines))
-            bot.answer_callback_query(cq.id, t("support_admin_closed_chat", "fa"))
-            try:
-                bot.edit_message_reply_markup(cq.message.chat.id, cq.message.message_id, reply_markup=None)
-            except Exception:
-                pass
-            return
-
-        bot.answer_callback_query(cq.id, "❓")
 
     @bot.callback_query_handler(func=lambda c: c.data and c.data.startswith("admin:"))
     def router(cq: types.CallbackQuery):
@@ -862,42 +792,16 @@ def register(bot):
         if not uid:
             db.clear_state(msg.from_user.id); bot.reply_to(msg, "⚠️ وضعیت نامعتبر."); return
 
-        support_mode = ":support" in state_raw
-        direct_support = ":support:direct" in state_raw
-        reply_markup = None
-        if support_mode:
-            from modules.support.keyboards import support_chat_kb
+        lang = db.get_user_lang(uid, "fa")
 
-            if direct_support:
-                lang = db.get_user_lang(uid, "fa")
-                reply_markup = support_chat_kb(lang)
-            else:
-                reply_to = msg.reply_to_message
-                if not reply_to:
-                    bot.reply_to(msg, t("support_admin_reply_need_quote", "fa")); return
-                reply_chat_id = getattr(getattr(reply_to, "chat", None), "id", msg.chat.id)
-                reply_message_id = getattr(reply_to, "message_id", None)
-                if reply_message_id is None:
-                    bot.reply_to(msg, t("support_admin_reply_not_found", "fa")); return
-                target_uid = db.resolve_support_inbox_target(reply_chat_id, reply_message_id)
-                if not target_uid:
-                    bot.reply_to(msg, t("support_admin_reply_not_found", "fa")); return
-                uid = int(target_uid)
-                db.set_state(msg.from_user.id, f"{STATE_MSG_TXT}:{uid}:support")
-                lang = db.get_user_lang(uid, "fa")
-                reply_markup = support_chat_kb(lang)
-        else:
-            lang = db.get_user_lang(uid, "fa")
-
-        success, err = _send_content_to_user(bot, uid, msg, reply_markup=reply_markup)
+        success, err = _send_content_to_user(bot, uid, msg)
         if success:
             bot.reply_to(msg, DONE)
         else:
             # give a clearer message and include the error string for debugging
             bot.reply_to(msg, f"❌ ارسال نشد: {err}\n(ممکن است کاربر استارت نکرده باشد یا خطای دیگری وجود دارد.)")
 
-        if not support_mode:
-            db.clear_state(msg.from_user.id)
+        db.clear_state(msg.from_user.id)
 
     # پیام همگانی
     @bot.message_handler(func=lambda m: db.get_state(m.from_user.id) == STATE_CAST_TXT, content_types=['text', 'photo', 'document', 'audio', 'voice', 'video', 'sticker'])

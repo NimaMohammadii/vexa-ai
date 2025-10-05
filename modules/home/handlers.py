@@ -5,11 +5,9 @@ import db
 from telebot.types import CallbackQuery, Message
 
 from utils import edit_or_send, check_force_sub
-from config import BOT_OWNER_ID
 from modules.i18n import t
 from .texts import MAIN, HELP
 from .keyboards import main_menu, _back_to_home_kb
-from modules.support.handlers import handle_admin_deeplink
 
 
 def _apply_referral(bot, user, ref_code: str, chat_id: int, user_lang: str) -> None:
@@ -88,10 +86,6 @@ def register(bot):
 
         parts = (msg.text or "").split(maxsplit=1)
         start_param = parts[1].strip() if len(parts) == 2 else ""
-
-        if start_param and msg.from_user.id == BOT_OWNER_ID:
-            if handle_admin_deeplink(bot, msg.from_user, start_param):
-                return
 
         if user.get("banned"):
             bot.reply_to(msg, t("error_banned", lang))
@@ -232,13 +226,6 @@ def register(bot):
 
             open_tts(bot, cq)
             return
-        if route == "support":
-            bot.answer_callback_query(cq.id)
-            from modules.support.handlers import open_support
-
-            open_support(bot, cq)
-            return
-
         if route == "profile":
             bot.answer_callback_query(cq.id)
             from modules.profile.handlers import open_profile
