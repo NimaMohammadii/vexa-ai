@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from html import escape
+from urllib.parse import quote_plus
 
 import requests
 from telebot.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
@@ -17,16 +18,32 @@ from .texts import SUPPORT_INTRO, SUPPORT_PROMPT
 STATE_SUPPORT_CHAT = "support:await_message"
 STATE_SUPPORT_WAITING = f"{STATE_SUPPORT_CHAT}:waiting"
 
+_MAIN_BOT_USERNAME: str | None = None
 
-def _admin_keyboard(user_id: int, include_reply: bool = True) -> InlineKeyboardMarkup:
+
+def _admin_keyboard(
+    user_id: int,
+    include_reply: bool = True,
+    *,
+    bot_username: str | None = None,
+) -> InlineKeyboardMarkup:
     kb = InlineKeyboardMarkup()
     if include_reply:
-        kb.add(
-            InlineKeyboardButton(
-                t("support_admin_reply_button", "fa"),
-                callback_data=f"support:admin:reply:{user_id}",
+        if BOT_TOKEN_2 and bot_username:
+            deep_link = f"https://t.me/{quote_plus(bot_username)}?start=support-{user_id}"
+            kb.add(
+                InlineKeyboardButton(
+                    t("support_admin_reply_button", "fa"),
+                    url=deep_link,
+                )
             )
-        )
+        else:
+            kb.add(
+                InlineKeyboardButton(
+                    t("support_admin_reply_button", "fa"),
+                    callback_data=f"support:admin:reply:{user_id}",
+                )
+            )
     kb.add(
         InlineKeyboardButton(
             t("support_admin_close_button", "fa"),
@@ -34,6 +51,29 @@ def _admin_keyboard(user_id: int, include_reply: bool = True) -> InlineKeyboardM
         )
     )
     return kb
+
+
+def _get_main_bot_username(bot) -> str | None:
+    global _MAIN_BOT_USERNAME
+
+    if _MAIN_BOT_USERNAME:
+        return _MAIN_BOT_USERNAME
+
+    try:
+        me = bot.get_me()
+    except Exception:
+        return None
+
+    username = getattr(me, "username", None)
+    if not username:
+        return None
+
+    cleaned = username.strip().lstrip("@")
+    if not cleaned:
+        return None
+
+    _MAIN_BOT_USERNAME = cleaned
+    return _MAIN_BOT_USERNAME
 
 
 def _format_username(username: str | None) -> str:
@@ -72,6 +112,11 @@ def _send_to_admin(bot, user, msg: Message) -> tuple[bool, str]:
     if not BOT_OWNER_ID:
         return False, "not_configured"
 
+    try:
+        admin_chat_id = int(BOT_OWNER_ID)
+    except (TypeError, ValueError):
+        admin_chat_id = BOT_OWNER_ID
+
     credits = db.format_credit_amount(user.get("credits")) if user else "0"
     first_name = escape((user.get("first_name") or "-") if user else "-")
     username = _format_username(user.get("username") if user else None)
@@ -90,9 +135,14 @@ def _send_to_admin(bot, user, msg: Message) -> tuple[bool, str]:
     ]
 
     message_text = "\n".join(info_lines)
-    markup = _admin_keyboard(user.get("user_id"), include_reply=True)
+    bot_username = _get_main_bot_username(bot)
+    markup = _admin_keyboard(
+        user.get("user_id"), include_reply=True, bot_username=bot_username
+    )
 
     error_details = ""
+    info_sent = False
+
     if BOT_TOKEN_2:
         url = f"https://api.telegram.org/bot{BOT_TOKEN_2}/sendMessage"
         payload = {
@@ -113,23 +163,55 @@ def _send_to_admin(bot, user, msg: Message) -> tuple[bool, str]:
                 else {}
             )
             if response.ok and data.get("ok", True):
-                return True, ""
-            error_details = str(data.get("description") or response.text)
+                info_sent = True
+                result = data.get("result") or {}
+                msg_id = result.get("message_id")
+                if msg_id is not None:
+                    try:
+                        db.remember_support_inbox_message(
+                            admin_chat_id,
+                            int(msg_id),
+                            user.get("user_id"),
+                            msg.message_id,
+                        )
+                    except Exception:
+                        pass
+            else:
+                error_details = str(data.get("description") or response.text)
         except Exception as http_exc:  # pragma: no cover - network failures
             error_details = str(http_exc)
 
-    try:
-        bot.send_message(
-            BOT_OWNER_ID,
-            message_text,
-            reply_markup=markup,
-            disable_web_page_preview=True,
-        )
-        return True, ""
-    except Exception as exc:
-        if error_details:
-            return False, error_details
-        return False, str(exc)
+    if not info_sent:
+        try:
+            sent_message = bot.send_message(
+                BOT_OWNER_ID,
+                message_text,
+                reply_markup=_admin_keyboard(
+                    user.get("user_id"),
+                    include_reply=True,
+                    bot_username=None,
+                ),
+                disable_web_page_preview=True,
+            )
+            info_sent = True
+            message_id = getattr(sent_message, "message_id", None)
+            if message_id is not None:
+                try:
+                    db.remember_support_inbox_message(
+                        getattr(getattr(sent_message, "chat", None), "id", admin_chat_id),
+                        message_id,
+                        user.get("user_id"),
+                        msg.message_id,
+                        delivered_to_main=True,
+                    )
+                except Exception:
+                    pass
+        except Exception as exc:
+            if error_details:
+                return False, error_details
+            return False, str(exc)
+
+    return info_sent, ""
 
 
 def _notify_admin_chat_closed(bot, user: dict | None, closed_by: str) -> None:
@@ -152,7 +234,12 @@ def _notify_admin_chat_closed(bot, user: dict | None, closed_by: str) -> None:
         f"🔗 {username}",
     ]
 
-    markup = _admin_keyboard(user.get("user_id"), include_reply=(closed_by == "user"))
+    bot_username = _get_main_bot_username(bot)
+    markup = _admin_keyboard(
+        user.get("user_id"),
+        include_reply=(closed_by == "user"),
+        bot_username=bot_username,
+    )
 
     if BOT_TOKEN_2:
         url = f"https://api.telegram.org/bot{BOT_TOKEN_2}/sendMessage"
@@ -228,6 +315,7 @@ def register(bot):
 
         if cq.data == "support:cancel":
             db.clear_state(user["user_id"])
+            db.clear_support_inbox_for_user(user["user_id"])
             _notify_admin_chat_closed(bot, user, "user")
             from modules.home.texts import MAIN
             from modules.home.keyboards import main_menu

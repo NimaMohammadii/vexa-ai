@@ -153,8 +153,23 @@ def init_db():
         cur.execute(
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_api_tokens_token ON api_tokens(token)"
         )
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS support_inbox (
+                chat_id INTEGER NOT NULL,
+                admin_message_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                user_message_id INTEGER,
+                delivered_to_main INTEGER NOT NULL DEFAULT 0,
+                created_at INTEGER NOT NULL,
+                PRIMARY KEY (chat_id, admin_message_id)
+            )"""
+        )
+        cur.execute(
+            "CREATE INDEX IF NOT EXISTS idx_support_inbox_user ON support_inbox(user_id)"
+        )
         con.commit()
     _migrate_users_table()
+    _migrate_support_inbox_table()
     ensure_default_settings()
     _migrate_messages_kind()
 
@@ -394,6 +409,104 @@ def clear_state(user_id):
     with closing(sqlite3.connect(DB_PATH)) as con:
         cur = con.cursor()
         cur.execute("DELETE FROM kv_state WHERE user_id=?", (user_id,))
+        con.commit()
+
+
+def remember_support_inbox_message(
+    chat_id: int,
+    admin_message_id: int,
+    user_id: int,
+    user_message_id: int | None = None,
+    *,
+    max_age: int = 14 * 24 * 3600,
+    delivered_to_main: bool = False,
+):
+    """Store a mapping between an admin-side message and the originating user.
+
+    The mapping lets the admin reply directly to a forwarded/copied message
+    without mixing up conversations. ``max_age`` controls how long records are
+    kept before being pruned (defaults to 14 days).
+    """
+
+    now = int(time.time())
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            """INSERT INTO support_inbox(chat_id, admin_message_id, user_id, user_message_id, delivered_to_main, created_at)
+                   VALUES(?,?,?,?,?,?)
+                   ON CONFLICT(chat_id, admin_message_id) DO UPDATE SET
+                       user_id=excluded.user_id,
+                       user_message_id=excluded.user_message_id,
+                       delivered_to_main=excluded.delivered_to_main,
+                       created_at=excluded.created_at""",
+            (
+                chat_id,
+                admin_message_id,
+                user_id,
+                user_message_id,
+                1 if delivered_to_main else 0,
+                now,
+            ),
+        )
+        if max_age:
+            cutoff = now - int(max_age)
+            cur.execute("DELETE FROM support_inbox WHERE created_at < ?", (cutoff,))
+        con.commit()
+
+
+def resolve_support_inbox_target(chat_id: int, admin_message_id: int) -> int | None:
+    """Return the user ID associated with an admin-side message."""
+
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            "SELECT user_id FROM support_inbox WHERE chat_id=? AND admin_message_id=?",
+            (chat_id, admin_message_id),
+        )
+        row = cur.fetchone()
+        return row[0] if row else None
+
+
+def clear_support_inbox_for_user(user_id: int) -> None:
+    """Remove stored mappings for a specific user."""
+
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute("DELETE FROM support_inbox WHERE user_id=?", (user_id,))
+        con.commit()
+
+
+def get_pending_support_messages(user_id: int) -> list[int]:
+    """Return user message IDs that still need to be mirrored to the main bot."""
+
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            """
+            SELECT DISTINCT user_message_id
+            FROM support_inbox
+            WHERE user_id=? AND user_message_id IS NOT NULL AND delivered_to_main=0
+            ORDER BY created_at ASC
+            """,
+            (user_id,),
+        )
+        rows = cur.fetchall() or []
+    return [int(row[0]) for row in rows if row and row[0] is not None]
+
+
+def mark_support_message_delivered(user_id: int, user_message_id: int) -> None:
+    """Mark a support message as copied to the main admin bot."""
+
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            """
+            UPDATE support_inbox
+            SET delivered_to_main=1
+            WHERE user_id=? AND user_message_id=?
+            """,
+            (user_id, user_message_id),
+        )
         con.commit()
 
 def set_referred_by(user_id, code):
@@ -950,6 +1063,18 @@ def _migrate_users_table():
         if "last_daily_reward" not in cols:
             cur.execute("ALTER TABLE users ADD COLUMN last_daily_reward INTEGER DEFAULT 0")
         con.commit()
+
+
+def _migrate_support_inbox_table() -> None:
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute("PRAGMA table_info(support_inbox)")
+        cols = {r[1] for r in cur.fetchall()}
+        if "delivered_to_main" not in cols:
+            cur.execute(
+                "ALTER TABLE support_inbox ADD COLUMN delivered_to_main INTEGER NOT NULL DEFAULT 0"
+            )
+            con.commit()
 
 def get_or_create_user(u):
     is_new = False

@@ -64,6 +64,62 @@ def _format_username_line(user) -> str:
         return f"🔗 @{escape(uname)}"
     return f"🔗 {t('support_no_username', 'fa')}"
 
+
+def start_support_reply_session(bot, admin_chat_id: int, target_uid: int) -> bool:
+    """Prepare the admin chat to reply to a specific user via deep-link."""
+
+    try:
+        if int(admin_chat_id) != int(BOT_OWNER_ID):
+            return False
+    except Exception:
+        return False
+
+    user = db.get_user(target_uid)
+    if not user:
+        return False
+
+    db.set_state(admin_chat_id, f"{STATE_MSG_TXT}:{target_uid}:support")
+
+    pending_ids = db.get_pending_support_messages(target_uid)
+    delivered = 0
+    for user_message_id in pending_ids:
+        success = False
+        try:
+            copied = bot.copy_message(admin_chat_id, target_uid, user_message_id)
+            message_id = getattr(copied, "message_id", None)
+            if message_id is not None:
+                db.remember_support_inbox_message(
+                    admin_chat_id,
+                    message_id,
+                    target_uid,
+                    user_message_id,
+                    delivered_to_main=True,
+                )
+                success = True
+        except Exception as exc:
+            print("Failed to mirror support message for reply:", exc, flush=True)
+        if success:
+            delivered += 1
+            db.mark_support_message_delivered(target_uid, user_message_id)
+
+    hint_lines = [
+        t("support_admin_reply_ready", "fa"),
+        "",
+        f"🆔 <code>{target_uid}</code>",
+        f"👤 {escape(user.get('first_name') or '-')}",
+        _format_username_line(user),
+        "",
+        t("support_admin_reply_hint", "fa"),
+    ]
+    if delivered:
+        hint_lines.insert(
+            1,
+            t("support_admin_reply_synced", "fa").format(count=delivered),
+        )
+
+    bot.send_message(admin_chat_id, "\n".join(hint_lines))
+    return True
+
 def _send_content_to_user(bot, uid: int, msg: types.Message, reply_markup=None):
     """
     Try to send the admin's message (text/photo/document/audio/voice/video/sticker/...) to `uid`.
@@ -245,16 +301,11 @@ def register(bot):
             bot.answer_callback_query(cq.id, "❌ کاربر یافت نشد."); return
 
         if action == "reply":
-            db.set_state(cq.from_user.id, f"{STATE_MSG_TXT}:{uid}:support")
-            bot.answer_callback_query(cq.id, t("support_admin_reply_ready", "fa"))
-            hint_lines = [
-                t("support_admin_reply_hint", "fa"),
-                "",
-                f"🆔 <code>{uid}</code>",
-                f"👤 {escape(user.get('first_name') or '-')}",
-                _format_username_line(user),
-            ]
-            bot.send_message(cq.message.chat.id, "\n".join(hint_lines))
+            ok = start_support_reply_session(bot, cq.message.chat.id, uid)
+            if ok:
+                bot.answer_callback_query(cq.id, t("support_admin_reply_ready", "fa"))
+            else:
+                bot.answer_callback_query(cq.id, "❌")
             return
 
         if action == "end":
@@ -268,6 +319,7 @@ def register(bot):
                 return
 
             db.clear_state(uid)
+            db.clear_support_inbox_for_user(uid)
             try:
                 from modules.home.texts import MAIN
                 from modules.home.keyboards import main_menu
@@ -866,8 +918,22 @@ def register(bot):
         if support_mode:
             from modules.support.keyboards import support_chat_kb
 
+            reply_to = msg.reply_to_message
+            if not reply_to:
+                bot.reply_to(msg, t("support_admin_reply_need_quote", "fa")); return
+            reply_chat_id = getattr(getattr(reply_to, "chat", None), "id", msg.chat.id)
+            reply_message_id = getattr(reply_to, "message_id", None)
+            if reply_message_id is None:
+                bot.reply_to(msg, t("support_admin_reply_not_found", "fa")); return
+            target_uid = db.resolve_support_inbox_target(reply_chat_id, reply_message_id)
+            if not target_uid:
+                bot.reply_to(msg, t("support_admin_reply_not_found", "fa")); return
+            uid = int(target_uid)
+            db.set_state(msg.from_user.id, f"{STATE_MSG_TXT}:{uid}:support")
             lang = db.get_user_lang(uid, "fa")
             reply_markup = support_chat_kb(lang)
+        else:
+            lang = db.get_user_lang(uid, "fa")
 
         success, err = _send_content_to_user(bot, uid, msg, reply_markup=reply_markup)
         if success:

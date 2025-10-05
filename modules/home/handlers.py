@@ -5,6 +5,7 @@ import db
 from telebot.types import CallbackQuery, Message
 
 from utils import edit_or_send, check_force_sub
+from config import BOT_OWNER_ID
 from modules.i18n import t
 from .texts import MAIN, HELP
 from .keyboards import main_menu, _back_to_home_kb
@@ -84,12 +85,30 @@ def register(bot):
         stored_lang = (user.get("lang") or "").strip()
         lang = stored_lang or "fa"
 
+        parts = (msg.text or "").split(maxsplit=1)
+        if (
+            msg.from_user.id == BOT_OWNER_ID
+            and len(parts) == 2
+            and parts[1].strip().startswith("support-")
+        ):
+            payload = parts[1].strip()
+            try:
+                target_raw = payload.split("-", 1)[1]
+                target_uid = int(target_raw)
+            except (IndexError, ValueError):
+                target_uid = None
+
+            if target_uid:
+                from modules.admin.handlers import start_support_reply_session
+
+                if start_support_reply_session(bot, msg.chat.id, target_uid):
+                    return
+
         if user.get("banned"):
             bot.reply_to(msg, t("error_banned", lang))
             return
 
         if not stored_lang:
-            parts = (msg.text or "").split(maxsplit=1)
             if len(parts) == 2 and parts[1].strip():
                 db.set_state(user["user_id"], f"ref:{parts[1].strip()}")
 
