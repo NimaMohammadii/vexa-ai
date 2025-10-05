@@ -8,6 +8,7 @@ from telebot.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 
 import db
 from config import BOT_OWNER_ID, BOT_TOKEN_2
+from modules.admin.texts import STATE_MSG_TXT
 from modules.i18n import t
 from utils import edit_or_send
 from .keyboards import support_entry_kb, support_chat_kb
@@ -17,22 +18,59 @@ from .texts import SUPPORT_INTRO, SUPPORT_PROMPT
 STATE_SUPPORT_CHAT = "support:await_message"
 STATE_SUPPORT_WAITING = f"{STATE_SUPPORT_CHAT}:waiting"
 
+MAIN_BOT_USERNAME: str = ""
 
-def _admin_keyboard(user_id: int, include_reply: bool = True) -> InlineKeyboardMarkup:
+
+def _deep_link(action: str, user_id: int) -> str | None:
+    username = (MAIN_BOT_USERNAME or "").strip()
+    if not username:
+        return None
+    return f"https://t.me/{username}?start={action}_{user_id}"
+
+
+def _admin_keyboard(
+    user_id: int,
+    include_reply: bool = True,
+    *,
+    use_callback: bool = True,
+) -> InlineKeyboardMarkup:
     kb = InlineKeyboardMarkup()
     if include_reply:
-        kb.add(
-            InlineKeyboardButton(
+        if use_callback:
+            button = InlineKeyboardButton(
                 t("support_admin_reply_button", "fa"),
                 callback_data=f"support:admin:reply:{user_id}",
             )
-        )
-    kb.add(
-        InlineKeyboardButton(
+        else:
+            link = _deep_link("support_reply", user_id)
+            button = None
+            if link:
+                button = InlineKeyboardButton(
+                    t("support_admin_reply_button", "fa"),
+                    url=link,
+                )
+        if button:
+            kb.add(button)
+
+    if use_callback:
+        close_button = InlineKeyboardButton(
             t("support_admin_close_button", "fa"),
             callback_data=f"support:admin:end:{user_id}",
         )
-    )
+    else:
+        link = _deep_link("support_close", user_id)
+        close_button = (
+            InlineKeyboardButton(
+                t("support_admin_close_button", "fa"),
+                url=link,
+            )
+            if link
+            else InlineKeyboardButton(
+                t("support_admin_close_button", "fa"),
+                callback_data=f"support:admin:end:{user_id}",
+            )
+        )
+    kb.add(close_button)
     return kb
 
 
@@ -95,7 +133,13 @@ def _send_to_admin(bot, user, msg: Message) -> tuple[bool, str]:
     ]
 
     message_text = "\n".join(info_lines)
-    markup = _admin_keyboard(user.get("user_id"), include_reply=True)
+    callback_markup = _admin_keyboard(user.get("user_id"), include_reply=True)
+    use_alt_controls = bool(BOT_TOKEN_2 and MAIN_BOT_USERNAME)
+    markup = _admin_keyboard(
+        user.get("user_id"),
+        include_reply=True,
+        use_callback=not use_alt_controls,
+    )
 
     error_details = ""
     info_sent = False
@@ -144,7 +188,7 @@ def _send_to_admin(bot, user, msg: Message) -> tuple[bool, str]:
             sent_message = bot.send_message(
                 BOT_OWNER_ID,
                 message_text,
-                reply_markup=markup,
+                reply_markup=callback_markup,
                 disable_web_page_preview=True,
             )
             info_sent = True
@@ -192,18 +236,19 @@ def _send_to_admin(bot, user, msg: Message) -> tuple[bool, str]:
 
     mirror_errors: list[Exception] = []
 
-    try:
-        forwarded = bot.copy_message(admin_chat_id, msg.chat.id, msg.message_id)
-        _remember_forwarded(forwarded)
-    except Exception as copy_exc:
-        mirror_errors.append(copy_exc)
+    if not BOT_TOKEN_2:
         try:
-            forwarded = bot.forward_message(admin_chat_id, msg.chat.id, msg.message_id)
+            forwarded = bot.copy_message(admin_chat_id, msg.chat.id, msg.message_id)
             _remember_forwarded(forwarded)
-        except Exception as forward_exc:
-            mirror_errors.append(forward_exc)
-            if mirror_errors:
-                print("Failed to mirror support message for admin:", mirror_errors, flush=True)
+        except Exception as copy_exc:
+            mirror_errors.append(copy_exc)
+            try:
+                forwarded = bot.forward_message(admin_chat_id, msg.chat.id, msg.message_id)
+                _remember_forwarded(forwarded)
+            except Exception as forward_exc:
+                mirror_errors.append(forward_exc)
+                if mirror_errors:
+                    print("Failed to mirror support message for admin:", mirror_errors, flush=True)
 
     return True, ""
 
@@ -228,7 +273,12 @@ def _notify_admin_chat_closed(bot, user: dict | None, closed_by: str) -> None:
         f"🔗 {username}",
     ]
 
-    markup = _admin_keyboard(user.get("user_id"), include_reply=(closed_by == "user"))
+    use_alt_controls = bool(BOT_TOKEN_2 and MAIN_BOT_USERNAME)
+    markup = _admin_keyboard(
+        user.get("user_id"),
+        include_reply=(closed_by == "user"),
+        use_callback=not use_alt_controls,
+    )
 
     if BOT_TOKEN_2:
         url = f"https://api.telegram.org/bot{BOT_TOKEN_2}/sendMessage"
@@ -253,7 +303,11 @@ def _notify_admin_chat_closed(bot, user: dict | None, closed_by: str) -> None:
             BOT_OWNER_ID,
             "\n".join(lines),
             disable_web_page_preview=True,
-            reply_markup=markup,
+            reply_markup=_admin_keyboard(
+                user.get("user_id"),
+                include_reply=(closed_by == "user"),
+                use_callback=True,
+            ),
         )
     except Exception:
         pass
@@ -272,7 +326,101 @@ def open_support(bot, cq: CallbackQuery) -> None:
     )
 
 
+def handle_admin_deeplink(bot, admin_user, payload: str) -> bool:
+    try:
+        if int(getattr(admin_user, "id", 0)) != int(BOT_OWNER_ID):
+            return False
+    except Exception:
+        return False
+
+    payload = (payload or "").strip()
+    if not payload:
+        return False
+
+    lowered = payload.lower()
+    if lowered.startswith("support_reply_"):
+        target_raw = payload.split("_", 2)[-1]
+        try:
+            target_uid = int(target_raw)
+        except (TypeError, ValueError):
+            bot.send_message(admin_user.id, t("support_admin_reply_not_found", "fa"))
+            return True
+
+        user = db.get_user(target_uid)
+        if not user:
+            bot.send_message(admin_user.id, t("support_admin_reply_not_found", "fa"))
+            return True
+
+        db.set_state(admin_user.id, f"{STATE_MSG_TXT}:{target_uid}:support:direct")
+
+        first_name = escape(user.get("first_name") or "-")
+        username = _format_username(user.get("username"))
+        hint_lines = [
+            t("support_admin_reply_hint", "fa"),
+            "",
+            f"🆔 <code>{target_uid}</code>",
+            f"👤 {first_name}",
+            f"🔗 {username}",
+        ]
+        bot.send_message(admin_user.id, "\n".join(hint_lines))
+        return True
+
+    if lowered.startswith("support_close_"):
+        target_raw = payload.split("_", 2)[-1]
+        try:
+            target_uid = int(target_raw)
+        except (TypeError, ValueError):
+            bot.send_message(admin_user.id, "⚠️")
+            return True
+
+        user = db.get_user(target_uid)
+        if not user:
+            bot.send_message(admin_user.id, "❌ کاربر یافت نشد.")
+            return True
+
+        lang = db.get_user_lang(target_uid, "fa")
+        closing_text = t("support_closed_by_admin", lang)
+        try:
+            bot.send_message(target_uid, closing_text)
+            db.log_message(target_uid, "out", closing_text)
+        except Exception:
+            pass
+
+        db.clear_state(target_uid)
+        db.clear_support_inbox_for_user(target_uid)
+        try:
+            from modules.home.texts import MAIN
+            from modules.home.keyboards import main_menu
+
+            bot.send_message(target_uid, MAIN(lang), reply_markup=main_menu(lang))
+        except Exception:
+            pass
+
+        db.clear_state(admin_user.id)
+
+        first_name = escape(user.get("first_name") or "-")
+        username = _format_username(user.get("username"))
+        summary_lines = [
+            t("support_admin_chat_closed_by_admin", "fa"),
+            "",
+            f"🆔 <code>{target_uid}</code>",
+            f"👤 {first_name}",
+            f"🔗 {username}",
+        ]
+        bot.send_message(admin_user.id, "\n".join(summary_lines))
+        return True
+
+    return False
+
+
 def register(bot):
+    global MAIN_BOT_USERNAME
+    if not MAIN_BOT_USERNAME:
+        try:
+            bot_info = bot.get_me()
+            MAIN_BOT_USERNAME = (getattr(bot_info, "username", "") or "").strip()
+        except Exception:
+            MAIN_BOT_USERNAME = ""
     @bot.callback_query_handler(func=lambda c: c.data in {"support:start", "support:cancel"})
     def support_callbacks(cq: CallbackQuery):
         user = db.get_or_create_user(cq.from_user)

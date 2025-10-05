@@ -862,25 +862,30 @@ def register(bot):
         if not uid:
             db.clear_state(msg.from_user.id); bot.reply_to(msg, "⚠️ وضعیت نامعتبر."); return
 
-        support_mode = state_raw.endswith(":support")
+        support_mode = ":support" in state_raw
+        direct_support = ":support:direct" in state_raw
         reply_markup = None
         if support_mode:
             from modules.support.keyboards import support_chat_kb
 
-            reply_to = msg.reply_to_message
-            if not reply_to:
-                bot.reply_to(msg, t("support_admin_reply_need_quote", "fa")); return
-            reply_chat_id = getattr(getattr(reply_to, "chat", None), "id", msg.chat.id)
-            reply_message_id = getattr(reply_to, "message_id", None)
-            if reply_message_id is None:
-                bot.reply_to(msg, t("support_admin_reply_not_found", "fa")); return
-            target_uid = db.resolve_support_inbox_target(reply_chat_id, reply_message_id)
-            if not target_uid:
-                bot.reply_to(msg, t("support_admin_reply_not_found", "fa")); return
-            uid = int(target_uid)
-            db.set_state(msg.from_user.id, f"{STATE_MSG_TXT}:{uid}:support")
-            lang = db.get_user_lang(uid, "fa")
-            reply_markup = support_chat_kb(lang)
+            if direct_support:
+                lang = db.get_user_lang(uid, "fa")
+                reply_markup = support_chat_kb(lang)
+            else:
+                reply_to = msg.reply_to_message
+                if not reply_to:
+                    bot.reply_to(msg, t("support_admin_reply_need_quote", "fa")); return
+                reply_chat_id = getattr(getattr(reply_to, "chat", None), "id", msg.chat.id)
+                reply_message_id = getattr(reply_to, "message_id", None)
+                if reply_message_id is None:
+                    bot.reply_to(msg, t("support_admin_reply_not_found", "fa")); return
+                target_uid = db.resolve_support_inbox_target(reply_chat_id, reply_message_id)
+                if not target_uid:
+                    bot.reply_to(msg, t("support_admin_reply_not_found", "fa")); return
+                uid = int(target_uid)
+                db.set_state(msg.from_user.id, f"{STATE_MSG_TXT}:{uid}:support")
+                lang = db.get_user_lang(uid, "fa")
+                reply_markup = support_chat_kb(lang)
         else:
             lang = db.get_user_lang(uid, "fa")
 
