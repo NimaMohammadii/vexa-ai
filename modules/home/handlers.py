@@ -5,9 +5,11 @@ import db
 from telebot.types import CallbackQuery, Message
 
 from utils import edit_or_send, check_force_sub
+from config import BOT_OWNER_ID
 from modules.i18n import t
 from .texts import MAIN, HELP
 from .keyboards import main_menu, _back_to_home_kb
+from modules.support.handlers import handle_admin_deeplink
 
 
 def _apply_referral(bot, user, ref_code: str, chat_id: int, user_lang: str) -> None:
@@ -84,14 +86,20 @@ def register(bot):
         stored_lang = (user.get("lang") or "").strip()
         lang = stored_lang or "fa"
 
+        parts = (msg.text or "").split(maxsplit=1)
+        start_param = parts[1].strip() if len(parts) == 2 else ""
+
+        if start_param and msg.from_user.id == BOT_OWNER_ID:
+            if handle_admin_deeplink(bot, msg.from_user, start_param):
+                return
+
         if user.get("banned"):
             bot.reply_to(msg, t("error_banned", lang))
             return
 
         if not stored_lang:
-            parts = (msg.text or "").split(maxsplit=1)
-            if len(parts) == 2 and parts[1].strip():
-                db.set_state(user["user_id"], f"ref:{parts[1].strip()}")
+            if start_param:
+                db.set_state(user["user_id"], f"ref:{start_param}")
 
             from modules.lang.handlers import send_language_menu
 
