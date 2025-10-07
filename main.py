@@ -21,6 +21,7 @@ from modules.anonymous_chat import handlers as anonymous_chat_handlers
 from modules.image import handlers as image_handlers
 from modules.video_gen4 import handlers as video_handlers
 from modules.api_token import handlers as api_token_handlers
+from modules.sora2 import handlers as sora2_handlers
 
 # ========================= Telegram Bot Wiring =========================
 def create_bot() -> telebot.TeleBot:
@@ -43,6 +44,7 @@ def register_modules(bot: telebot.TeleBot) -> None:
     image_handlers.register(bot)
     video_handlers.register(bot)
     api_token_handlers.register(bot)
+    sora2_handlers.register(bot)
 
 def main() -> None:
     db.init_db()

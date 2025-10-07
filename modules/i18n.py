@@ -37,6 +37,7 @@ LABELS = {
     "btn_image":  {"fa":"تولید تصویر 🖼️","en":"Generate Image 🖼️","ar":"توليد صورة 🖼️","tr":"Görsel Oluştur 🖼️","ru":"Создать изображение 🖼️","es":"Generar imagen 🖼️","de":"Bild erzeugen 🖼️","fr":"Générer une image 🖼️"},
     "btn_video":  {"fa":"تولید ویدیو 🎬","en":"Generate Video 🎬","ar":"توليد فيديو 🎬","tr":"Video Oluştur 🎬","ru":"Создать видео 🎬","es":"Generar video 🎬","de":"Video erstellen 🎬","fr":"Créer une vidéo 🎬"},
     "btn_tts":    {"fa":"تبدیل متن به صدا 🎧","en":"Text to Speech 🎧","ar":"تحويل النص إلى صوت 🎧","tr":"Metinden Sese 🎧","ru":"Текст в речь 🎧","es":"Texto a voz 🎧","de":"Text zu Sprache 🎧","fr":"Texte en voix 🎧"},
+    "btn_sora2":  {"fa":"SORA 2 🎬","en":"SORA 2 🎬","ar":"SORA 2 🎬","tr":"SORA 2 🎬","ru":"SORA 2 🎬","es":"SORA 2 🎬","de":"SORA 2 🎬","fr":"SORA 2 🎬"},
     "btn_profile":{"fa":"پروفایل 🙋🏼‍♂️","en":"Profile 🙋🏼‍♂️","ar":"الملف الشخصي 🙋🏼‍♂️","tr":"Profil 🙋🏼‍♂️","ru":"Профиль 🙋🏼‍♂️","es":"Perfil 🙋🏼‍♂️","de":"Profil 🙋🏼‍♂️","fr":"Profil 🙋🏼‍♂️"},
     "btn_credit": {"fa":"خرید کردیـت 🛒","en":"Buy Credit 🛒","ar":"شراء الرصيد 🛒","tr":"Kredi Satın Al 🛒","ru":"Купить кредит 🛒","es":"Comprar crédito 🛒","de":"Guthaben kaufen 🛒","fr":"Acheter du crédit 🛒"},
     "btn_invite": {"fa":"🎁","en":"Invite Friends 🎁","ar":"دعوة الأصدقاء 🎁","tr":"Arkadaş Davet Et 🎁","ru":"Пригласить друзей 🎁","es":"Invitar amigos 🎁","de":"Freunde einladen 🎁","fr":"Inviter des amis 🎁"},
@@ -44,6 +45,86 @@ LABELS = {
     "btn_clone":  {"fa":"ساخت صدای شخصی 🧬","en":"Voice Clone 🧬","ar":"إنشاء صوت شخصي 🧬","tr":"Kişisel Ses Oluştur 🧬","ru":"Личный голос 🧬","es":"Voz personal 🧬","de":"Eigene Stimme 🧬","fr":"Voix perso 🧬"},
     "btn_api_token": {"fa":"API Token 🔑","en":"API Token 🔑","ar":"رمز API 🔑","tr":"API Anahtarı 🔑","ru":"API токен 🔑","es":"Token API 🔑","de":"API-Token 🔑","fr":"Jeton API 🔑"},
     "home_back_to_menu": {"fa":"🏠 منوی اصلی","en":"🏠 Main menu","ar":"🏠 القائمة الرئيسية","tr":"🏠 Ana menü","ru":"🏠 Главное меню","es":"🏠 Menú principal","de":"🏠 Hauptmenü","fr":"🏠 Menu principal"},
+
+    # Sora 2
+    "sora2_btn_buy": {
+        "fa": "خرید کد دعوت 🎟️",
+        "en": "Buy invite code 🎟️",
+        "ar": "شراء رمز الدعوة 🎟️",
+        "tr": "Davet kodu satın al 🎟️",
+        "ru": "Купить код-приглашение 🎟️",
+        "es": "Comprar código de invitación 🎟️",
+        "de": "Einladungscode kaufen 🎟️",
+        "fr": "Acheter un code d'invitation 🎟️",
+    },
+    "sora2_intro": {
+        "fa": (
+            "<b>🎬 خوش اومدی به بخش SORA 2</b>\n\n"
+            "<b>✨ با SORA 2 می‌تونی فقط با نوشتن چند جمله، ویدیوهای واقعی و سینمایی بسازی!</b>\n"
+            "<b>🚀 ساخته شده با هوش مصنوعی پیشرفته OpenAI</b>\n\n"
+            "<b>🎞 هر ویدیو تا ۲۰ ثانیه و با کیفیت 1080p تولید میشه</b>\n\n"
+            "<b>💰 برای فعال‌سازی دسترسی، باید «کد دعوت SORA 2» تهیه کنی.</b>\n"
+            "<b>🔑 هزینه دریافت کد دعوت: {cost} کردیت</b>\n\n"
+            "<b>⚡ پس از پرداخت، کد اختصاصی برات ارسال میشه و می‌تونی وارد دنیای SORA بشی!</b>"
+        ),
+        "en": (
+            "<b>🎬 Welcome to the SORA 2 section</b>\n\n"
+            "<b>✨ With SORA 2 you can create cinematic, lifelike videos with just a few sentences.</b>\n"
+            "<b>🚀 Powered by OpenAI's advanced AI</b>\n\n"
+            "<b>🎞 Videos are up to 20 seconds long in 1080p quality</b>\n\n"
+            "<b>💰 To unlock access you need a “SORA 2 invite code”.</b>\n"
+            "<b>🔑 Invite code price: {cost} credits</b>\n\n"
+            "<b>⚡ After payment you'll receive your code and can enter the world of SORA!</b>"
+        ),
+    },
+    "sora2_purchase_success": {
+        "fa": (
+            "<b>✅ پرداخت موفق!</b>\n"
+            "<b>{cost} کردیت از حسابت کم شد 💳</b>\n"
+            "<b>⌛ تو صف انتظار هستی (نفر {position})</b>\n"
+            "<b>🎟 کد دعوت SORA 2 به‌زودی برات ارسال میشه.</b>"
+        ),
+        "en": (
+            "<b>✅ Payment received!</b>\n"
+            "<b>{cost} credits deducted from your balance 💳</b>\n"
+            "<b>⌛ You're in the queue (position {position})</b>\n"
+            "<b>🎟 Your SORA 2 invite code will arrive shortly.</b>"
+        ),
+    },
+    "sora2_no_credit": {
+        "fa": (
+            "⚠️ <b>کردیت کافی نیست!</b>\n"
+            "<b>هزینه خرید کد دعوت: {cost} کردیت</b>\n"
+            "<b>موجودی فعلی: {credits} کردیت</b>\n\n"
+            "<b>برای شارژ دکمه «خرید کردیت» رو بزن.</b>"
+        ),
+        "en": (
+            "⚠️ <b>Not enough credits!</b>\n"
+            "<b>Invite code price: {cost} credits</b>\n"
+            "<b>Current balance: {credits} credits</b>\n\n"
+            "<b>Tap “Buy Credit” to top up.</b>"
+        ),
+    },
+    "sora2_no_credit_alert": {
+        "fa": "⚠️ کردیت کافی نیست.",
+        "en": "⚠️ Not enough credits.",
+        "ar": "⚠️ لا يوجد رصيد كافٍ.",
+        "tr": "⚠️ Yeterli kredin yok.",
+        "ru": "⚠️ Недостаточно кредитов.",
+        "es": "⚠️ Créditos insuficientes.",
+        "de": "⚠️ Nicht genug Credits.",
+        "fr": "⚠️ Crédits insuffisants.",
+    },
+    "sora2_admin_notification": {
+        "fa": (
+            "<b>درخواست جدید کد دعوت SORA 2</b>\n"
+            "🆔 شناسه کاربر: <code>{user_id}</code>\n"
+            "👤 نام: <b>{first_name}</b>\n"
+            "🔗 نام کاربری: <b>{username}</b>\n"
+            "💳 موجودی فعلی: <b>{credits} کردیت</b>\n"
+            "📬 جایگاه در صف: <b>{position}</b>"
+        ),
+    },
 
 
     "vexa_assistant_open_paid": {
