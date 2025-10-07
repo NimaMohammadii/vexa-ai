@@ -153,6 +153,14 @@ def init_db():
         cur.execute(
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_api_tokens_token ON api_tokens(token)"
         )
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS sora2_requests(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                created_at INTEGER NOT NULL,
+                status TEXT NOT NULL DEFAULT 'pending'
+            )"""
+        )
         con.commit()
     _migrate_users_table()
     ensure_default_settings()
@@ -410,6 +418,25 @@ def count_invited(ref_code):
         cur = con.cursor()
         cur.execute("SELECT COUNT(*) FROM users WHERE referred_by=?", (ref_code,))
         return cur.fetchone()[0]
+
+
+def create_sora2_request(user_id: int) -> int:
+    """Create a Sora 2 invite request and return the 1-based queue index."""
+
+    now = int(time.time())
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute("SELECT COUNT(*) FROM sora2_requests")
+        row = cur.fetchone()
+        position = int(row[0]) + 1 if row and row[0] is not None else 1
+        cur.execute(
+            """INSERT INTO sora2_requests(user_id, created_at, status)
+                   VALUES(?,?,?)""",
+            (user_id, now, "pending"),
+        )
+        con.commit()
+        return position
+
 
 # آمار و خروجی‌ها
 def count_users():

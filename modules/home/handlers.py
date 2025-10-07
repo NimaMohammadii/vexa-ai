@@ -240,6 +240,13 @@ def register(bot):
             open_credit(bot, cq)
             return
 
+        if route == "sora2":
+            bot.answer_callback_query(cq.id)
+            from modules.sora2.handlers import open_sora2_menu
+
+            open_sora2_menu(bot, cq)
+            return
+
         if route == "invite":
             bot.answer_callback_query(cq.id)
             from modules.invite.handlers import open_invite
