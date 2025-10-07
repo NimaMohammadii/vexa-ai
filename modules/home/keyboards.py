@@ -16,8 +16,9 @@ def main_menu(lang: str) -> InlineKeyboardMarkup:
     )
     kb.row(
         InlineKeyboardButton(t("btn_tts", lang), callback_data="home:tts"),
-        InlineKeyboardButton(t("btn_sora2", lang), callback_data="home:sora2"),
     )
+    kb.row(
+        InlineKeyboardButton(t("btn_sora2", lang), callback_data="home:sora2"),
     kb.row(
         InlineKeyboardButton(t("btn_lang", lang), callback_data="home:lang"),
         InlineKeyboardButton(t("btn_invite", lang), callback_data="home:invite"),
