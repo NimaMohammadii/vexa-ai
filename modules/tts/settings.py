@@ -16,7 +16,6 @@ VOICES = {
     "Nazy":      "tnSpp4vdxKPjI9w0GnoV",
     "Alex":      "GFGuOkimbpNkTEOVDkqX",
     "Noushin":   "NZiuR1C6kVMSWHG27sIM",
-    
     "Paniz":       "BZgkqPqms7Kj9ulSkVzn",
     "Alexandra": "kdmDKE6EkgrWrrykO9Qt",
     "Laura":     "7piC4m7q8WrpEAnMj5xC",
