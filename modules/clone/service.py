@@ -1,8 +1,77 @@
 # modules/clone/service.py
-import os, requests
+import os
+from io import BytesIO
+from pathlib import Path
+
+import requests
+
 import db
 
-ELEVEN_API_KEY = os.getenv("ELEVEN_API_KEY","")
+PASS_THROUGH_MIME_TYPES = {
+    "audio/mpeg",
+    "audio/mp3",
+    "audio/wav",
+    "audio/x-wav",
+    "audio/wave",
+    "audio/aac",
+    "audio/mp4",
+    "audio/m4a",
+    "audio/x-m4a",
+}
+
+ELEVEN_API_KEY = os.getenv("ELEVEN_API_KEY", "")
+
+
+def _guess_audio_format(filename: str, mime: str | None) -> str | None:
+    """Infer the audio format for pydub based on file metadata."""
+
+    if mime:
+        lowered = mime.lower()
+        if "/" in lowered:
+            return lowered.split("/")[-1]
+
+    suffix = Path(filename or "").suffix.lower()
+    if suffix.startswith("."):
+        return suffix[1:]
+
+    return None
+
+
+def _prepare_audio_payload(audio_bytes: bytes, filename: str, mime: str) -> tuple[bytes, str, str]:
+    """Ensure the uploaded audio is in a format accepted by ElevenLabs.
+
+    Telegram voice messages are usually `audio/ogg` (Opus) which ElevenLabs
+    rejects. We convert unsupported formats to a 16-bit mono WAV to keep the
+    cloning endpoint happy.
+    """
+
+    filename = filename or "audio.wav"
+    mime = (mime or "audio/wav").lower()
+
+    if mime in PASS_THROUGH_MIME_TYPES:
+        return audio_bytes, filename, mime
+
+    try:
+        from pydub import AudioSegment  # type: ignore
+    except Exception as exc:  # pragma: no cover - defensive branch
+        raise RuntimeError(
+            "Audio conversion failed: unsupported format and pydub is not available."
+        ) from exc
+
+    format_hint = _guess_audio_format(filename, mime)
+
+    try:
+        audio = AudioSegment.from_file(BytesIO(audio_bytes), format=format_hint)
+    except Exception as exc:
+        raise RuntimeError("Audio conversion failed: the audio file is not supported or is corrupted.") from exc
+
+    audio = audio.set_channels(1).set_frame_rate(44100).set_sample_width(2)
+    buf = BytesIO()
+    audio.export(buf, format="wav")
+
+    safe_name = Path(filename).stem or "audio"
+    return buf.getvalue(), f"{safe_name}.wav", "audio/wav"
+
 
 def clone_voice(audio_bytes: bytes, name: str, filename: str = "audio.wav", mime: str = "audio/wav") -> str:
     if not ELEVEN_API_KEY:
@@ -10,7 +79,9 @@ def clone_voice(audio_bytes: bytes, name: str, filename: str = "audio.wav", mime
 
     url = "https://api.elevenlabs.io/v1/voices/add"
     headers = {"xi-api-key": ELEVEN_API_KEY}
-    
+
+    audio_bytes, filename, mime = _prepare_audio_payload(audio_bytes, filename, mime)
+
     # ElevenLabs API requires specific parameters
     files = {"files": (filename, audio_bytes, mime)}
     data = {
