@@ -1,17 +1,17 @@
 # پلن‌های نمونه به تومان (صرفاً برای نمایش؛ ملاک نهایی، رسید پرداخت است)
 PAYMENT_PLANS = [
-    {"title": " 25 → 55,000T", "amount_toman": 55_000, "credits": 25},
+    {"title": " 25 → 62,000T", "amount_toman": 62_000, "credits": 25},
     {"title": " 49 → 110,000T", "amount_toman": 110_000, "credits": 49},
     {"title": " 99 → 205,000T", "amount_toman": 205_000, "credits": 99},
     {"title": " 188 → 400,000T", "amount_toman": 400_000, "credits": 188},
-    {"title": " 345 → 733,000T", "amount_toman": 733_000, "credits": 345},
+    {"title": " 345 → 710,000T", "amount_toman": 710_000, "credits": 345},
 
     {"title": " 499 → 999,000T", "amount_toman": 999_000, "credits": 499},
     {"title": " 1,155 → 2,500,000T", "amount_toman": 2_500_000, "credits": 1155},
     {"title": " 1,800 → 3,999,000T", "amount_toman": 3_999_000, "credits": 1800},
 
     {"title": " 2,450 → 5,390,000T", "amount_toman": 5_390_000, "credits": 2450},
-    {"title": " 3,200 → 7,150,000T", "amount_toman": 7_150_000, "credits": 3200},
+    {"title": " 3,200 → 6,880,000T", "amount_toman": 6_880_000, "credits": 3200},
 ]
 
 # بسته‌های Telegram Stars
