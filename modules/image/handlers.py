@@ -129,12 +129,6 @@ def _download_file(bot: TeleBot, file_id: str) -> tuple[bytes, str | None]:
             content = None
 
     if content is None:
-        # ``download_file_by_id`` works for photos even when Telegram
-        # generates a temporary path without an extension. Some bot instances
-        # run on library versions that do not expose this helper, so guard the
-        # call and swallow transport errors. This prevents an AttributeError
-        # bubbling up and breaking the handler without giving feedback to the
-        # user.
         download_by_id = getattr(bot, "download_file_by_id", None)
         if callable(download_by_id):
             try:
@@ -149,9 +143,14 @@ def _download_file(bot: TeleBot, file_id: str) -> tuple[bytes, str | None]:
 
 
 def _get_reference_image(bot: TeleBot, message: Message, lang: str, *, _depth: int = 0) -> ReferenceImage | None:
-    if message is None or _depth > 2:
+    if _depth > 2:
         return None
 
+    # اول: پیام ریپلای‌شده
+    if message.reply_to_message:
+        return _get_reference_image(bot, message.reply_to_message, lang, _depth=_depth + 1)
+
+    # دوم: پیام فعلی
     try:
         if message.photo:
             photo = message.photo[-1]
@@ -175,9 +174,6 @@ def _get_reference_image(bot: TeleBot, message: Message, lang: str, *, _depth: i
         logger.exception("Failed to download reference image", exc_info=exc)
         raise ImageGenerationError(reference_download_error(lang)) from exc
 
-    if message.reply_to_message:
-        return _get_reference_image(bot, message.reply_to_message, lang, _depth=_depth + 1)
-
     return None
 
 
@@ -186,7 +182,6 @@ def _extract_image_url(data: Any, _visited: set[int] | None = None) -> str | Non
     if _visited is None:
         _visited = set()
 
-    # Guard against recursive cycles
     data_id = id(data)
     if data_id in _visited:
         return None
@@ -209,7 +204,6 @@ def _extract_image_url(data: Any, _visited: set[int] | None = None) -> str | Non
         return None
 
     if isinstance(data, dict):
-        # Common keys that may contain image URLs
         priority_keys = [
             "url",
             "image_url",
@@ -226,14 +220,12 @@ def _extract_image_url(data: Any, _visited: set[int] | None = None) -> str | Non
             "output",
         ]
 
-        # Check priority keys first
         for key in priority_keys:
             if key in data:
                 url = _extract_image_url(data[key], _visited)
                 if url:
                     return url
 
-        # Then check other keys
         lower_priority = {k.lower() for k in priority_keys}
         for key, value in data.items():
             if key.lower() not in lower_priority:
@@ -299,7 +291,6 @@ def _process_prompt(
             task_id = service.generate_image(prompt)
             logger.info("Image task created: %s", task_id)
 
-        # Poll for completion and get image URL
         result = service.get_image_status(
             task_id,
             poll_interval=POLL_INTERVAL,
