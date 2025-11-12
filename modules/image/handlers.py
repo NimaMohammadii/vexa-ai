@@ -1,38 +1,39 @@
+# Updated Code for Image Handling
+
 import logging
+from flask import Flask, request, jsonify
+from werkzeug.utils import secure_filename
+
+app = Flask(__name__)
 
 # Configure logging
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO)
 
-async def send_photo(photo, chat_id, **kwargs):
-    """ Send a photo with enhanced error handling and logging. """
-    try:
-        if photo is None or chat_id is None:
-            logging.error("Null check failed: photo or chat_id is None")
-            raise ValueError("Photo and chat_id cannot be None")
+# Allowed extensions for image files
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
-        # Assuming we use a library like aiogram for sending messages
-        await bot.send_photo(chat_id=chat_id, photo=photo, **kwargs)
-        logging.info(f"Photo sent to chat_id {chat_id} successfully.")
-    except Exception as e:
-        logging.error(f"Failed to send photo: {str(e)}")
-        raise  # Reraise the exception after logging
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-async def handle_images(update, context):
-    """ Handle incoming updates and process image sending. """
-    try:
-        # Get chat_id and photo from the context
-        chat_id = update.effective_chat.id
-        photo = context.args[0]  # Assume first argument is the photo
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    if 'file' not in request.files:
+        logging.error('No file part')
+        return jsonify({'error': 'No file part'}), 400
+    file = request.files['file']
+    if file.filename == '':
+        logging.error('No selected file')
+        return jsonify({'error': 'No selected file'}), 400
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        # Save the file or process it
+        file.save(f'uploads/{filename}')
+        logging.info(f'File uploaded successfully: {filename}')
+        return jsonify({'message': 'File uploaded successfully'}), 201
+    else:
+        logging.error('File type not allowed')
+        return jsonify({'error': 'File type not allowed'}), 400
 
-        logging.debug(f"Received photo request from chat_id {chat_id}.")
-
-        await send_photo(photo, chat_id)
-    except IndexError:
-        logging.error("No photo provided in the request.")
-        await context.bot.send_message(chat_id=chat_id, text="Please provide a photo.")
-    except TimeoutError:
-        logging.error("Network timeout occurred while sending photo.")
-        await context.bot.send_message(chat_id=chat_id, text="Network timeout. Please try again later.")
-    except Exception as e:
-        logging.error(f"An error occurred: {str(e)}")
-        await context.bot.send_message(chat_id=chat_id, text="An unexpected error occurred. Please try again later.")
+if __name__ == '__main__':
+    app.run(debug=True)
