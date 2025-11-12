@@ -4,9 +4,12 @@
 
 from __future__ import annotations
 
+import base64
 import html
+import io
 import logging
 import mimetypes
+import re
 from typing import Any, NamedTuple
 
 import db
@@ -296,21 +299,67 @@ def _process_prompt(
             poll_interval=POLL_INTERVAL,
             timeout=POLL_TIMEOUT,
         )
-        
-        image_url = result.get("url")
-        if not image_url:
-            logger.error(f"No image URL in result: {result}")
-            raise ImageGenerationError("خروجی تصویر دریافت نشد.")
-        
-        logger.info(f"Image URL received: {image_url[:100]}")
 
-        bot.send_photo(
-            message.chat.id,
-            photo=image_url,
-            caption=result_caption(lang),
-            reply_to_message_id=message.message_id,
-            parse_mode="HTML",
-        )
+        # Try to robustly extract an image URL or data URI from the returned result.
+        image_url = None
+        try:
+            # prefer explicit top-level 'url' but fall back to the extractor for nested structures
+            if isinstance(result, dict):
+                image_url = result.get("url") or _extract_image_url(result)
+            else:
+                image_url = _extract_image_url(result)
+        except Exception:
+            image_url = None
+
+        if not image_url:
+            logger.error("No image URL in result: %s", result)
+            raise ImageGenerationError("خروجی تصویر دریافت نشد.")
+
+        # Log a safe preview of the URL (don't assume it's always a str)
+        try:
+            preview = image_url if isinstance(image_url, str) else str(image_url)
+            logger.info("Image URL received: %s", preview[:100])
+        except Exception:
+            logger.info("Image URL received (non-string)")
+
+        # Handle data: URIs by decoding and sending bytes; otherwise pass the URL to send_photo
+        try:
+            if isinstance(image_url, str) and image_url.startswith("data:"):
+                m = re.match(r"data:(image/[^;]+);base64,(.*)$", image_url, re.I)
+                if not m:
+                    raise ImageGenerationError("خروجی تصویر نامعتبر است.")
+                mime = m.group(1)
+                b64 = m.group(2)
+                try:
+                    image_bytes = base64.b64decode(b64)
+                except Exception as exc:
+                    logger.exception("Failed to decode base64 image data", exc_info=exc)
+                    raise ImageGenerationError("خطا در پردازش تصویر دریافتی.")
+                bio = io.BytesIO(image_bytes)
+                # set a name so TeleBot can guess extension if needed
+                ext = mime.split("/")[-1].split("+")[0]
+                bio.name = f"image.{ext}"
+                bio.seek(0)
+                bot.send_photo(
+                    message.chat.id,
+                    photo=bio,
+                    caption=result_caption(lang),
+                    reply_to_message_id=message.message_id,
+                    parse_mode="HTML",
+                )
+            else:
+                # standard URL or file path
+                bot.send_photo(
+                    message.chat.id,
+                    photo=image_url,
+                    caption=result_caption(lang),
+                    reply_to_message_id=message.message_id,
+                    parse_mode="HTML",
+                )
+        except Exception as exc:
+            logger.exception("Failed to send generated image", exc_info=exc)
+            raise ImageGenerationError(error_text(lang))
+
         try:
             db.log_image_generation(user["user_id"], prompt, image_url)
         except Exception:
