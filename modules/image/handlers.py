@@ -4,9 +4,13 @@
 
 from __future__ import annotations
 
+import base64
 import html
+import io
 import logging
 import mimetypes
+import urllib.request
+import urllib.error
 from typing import Any, NamedTuple
 
 import db
@@ -305,21 +309,73 @@ def _process_prompt(
             poll_interval=POLL_INTERVAL,
             timeout=POLL_TIMEOUT,
         )
-        
-        image_url = result.get("url")
-        if not image_url:
-            logger.error(f"No image URL in result: {result}")
-            raise ImageGenerationError("خروجی تصویر دریافت نشد.")
-        
-        logger.info(f"Image URL received: {image_url[:100]}")
 
-        bot.send_photo(
-            message.chat.id,
-            photo=image_url,
-            caption=result_caption(lang),
-            reply_to_message_id=message.message_id,
-            parse_mode="HTML",
-        )
+        # Try to obtain a usable image URL from result (handles nested structures)
+        image_url = result.get("url") or _extract_image_url(result)
+        if not image_url:
+            logger.error("No image URL in result: %s", result)
+            raise ImageGenerationError("خروجی تصویر دریافت نشد.")
+
+        logger.info("Image URL received: %s", image_url if len(image_url) < 200 else image_url[:200])
+
+        # Handle data URLs (base64 inlined images) separately
+        if image_url.startswith("data:image"):
+            try:
+                header, b64 = image_url.split(",", 1)
+                data = base64.b64decode(b64)
+                bio = io.BytesIO(data)
+                bio.name = "image"
+                bio.seek(0)
+                bot.send_photo(
+                    message.chat.id,
+                    photo=bio,
+                    caption=result_caption(lang),
+                    reply_to_message_id=message.message_id,
+                    parse_mode="HTML",
+                )
+            except Exception as exc:
+                logger.exception("Failed to decode/send data URL image: %s", exc)
+                raise ImageGenerationError(reference_download_error(lang)) from exc
+        else:
+            # Protocol-relative URLs (//example.com/...) need a scheme
+            if image_url.startswith("//"):
+                image_url = "https:" + image_url
+
+            # Try sending URL directly; if it fails, attempt to fetch bytes and send
+            try:
+                bot.send_photo(
+                    message.chat.id,
+                    photo=image_url,
+                    caption=result_caption(lang),
+                    reply_to_message_id=message.message_id,
+                    parse_mode="HTML",
+                )
+            except Exception as exc:
+                logger.exception("send_photo with URL failed, trying to download and resend: %s", exc)
+                # Try to download the image and send bytes
+                try:
+                    resp = urllib.request.urlopen(image_url, timeout=15)
+                    content = resp.read()
+                    bio = io.BytesIO(content)
+                    bio.name = "image"
+                    bio.seek(0)
+                    bot.send_photo(
+                        message.chat.id,
+                        photo=bio,
+                        caption=result_caption(lang),
+                        reply_to_message_id=message.message_id,
+                        parse_mode="HTML",
+                    )
+                except urllib.error.URLError as e:
+                    logger.exception("Failed to fetch image from URL: %s", e)
+                    # As a last resort, send the URL as a message so the user can open it
+                    bot.send_message(
+                        message.chat.id,
+                        f"{result_caption(lang)}\n{html.escape(image_url)}",
+                        reply_to_message_id=message.message_id,
+                        parse_mode="HTML",
+                    )
+
         try:
             db.log_image_generation(user["user_id"], prompt, image_url)
         except Exception:
