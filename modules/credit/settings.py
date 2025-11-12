@@ -1,10 +1,10 @@
 # پلن‌های نمونه به تومان (صرفاً برای نمایش؛ ملاک نهایی، رسید پرداخت است)
 PAYMENT_PLANS = [
-    {"title": " 25 → 68,000T", "amount_toman": 68_000, "credits": 25},
-    {"title": " 49 → 110,000T", "amount_toman": 110_000, "credits": 49},
-    {"title": " 99 → 205,000T", "amount_toman": 205_000, "credits": 99},
-    {"title": " 188 → 400,000T", "amount_toman": 400_000, "credits": 188},
-    {"title": " 345 → 710,000T", "amount_toman": 710_000, "credits": 345},
+    {"title": " 25 → 71,000T", "amount_toman": 71_000, "credits": 25},
+    {"title": " 49 → 122,000T", "amount_toman": 122_000, "credits": 49},
+    {"title": " 99 → 230,000T", "amount_toman": 230_000, "credits": 99},
+    {"title": " 188 → 415,000T", "amount_toman": 415_000, "credits": 188},
+    {"title": " 345 → 720,000T", "amount_toman": 720_000, "credits": 345},
 
     {"title": " 499 → 999,000T", "amount_toman": 999_000, "credits": 499},
     {"title": " 1,155 → 2,500,000T", "amount_toman": 2_500_000, "credits": 1155},
@@ -16,8 +16,8 @@ PAYMENT_PLANS = [
 
 # بسته‌های Telegram Stars
 STAR_PACKAGES = [
-    {"stars": 21, "credits": 15, "title": "Pay ⭐️21 → 16"},
-    {"stars": 39, "credits": 590, "title": "Pay ⭐️39 → 29"},
+    {"stars": 25, "credits": 15, "title": "Pay ⭐️25 → 16"},
+    {"stars": 39, "credits": 29, "title": "Pay ⭐️39 → 29"},
     {"stars": 52, "credits": 69, "title": "Pay ⭐️52 → 69"},
     {"stars": 99, "credits": 138, "title": "Pay ⭐️99 → 138"},
     {"stars": 340, "credits": 249, "title": "Pay ⭐️340 → 249"},
