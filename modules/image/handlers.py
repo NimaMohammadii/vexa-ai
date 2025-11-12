@@ -4,12 +4,9 @@
 
 from __future__ import annotations
 
-import base64
 import html
-import io
 import logging
 import mimetypes
-import re
 from typing import Any, NamedTuple
 
 import db
@@ -113,10 +110,7 @@ def _guess_mime_type(file_path: str, fallback: str = "image/jpeg") -> str:
 
 
 def _download_file(bot: TeleBot, file_id: str) -> tuple[bytes, str | None]:
-    """Download a Telegram file and return its content and path."""
-
     file_path: str | None = None
-
     try:
         file_info = bot.get_file(file_id)
         file_path = getattr(file_info, "file_path", None)
@@ -124,7 +118,6 @@ def _download_file(bot: TeleBot, file_id: str) -> tuple[bytes, str | None]:
         file_info = None
 
     content: bytes | None = None
-
     if file_path:
         try:
             content = bot.download_file(file_path)
@@ -153,7 +146,7 @@ def _get_reference_image(bot: TeleBot, message: Message, lang: str, *, _depth: i
     if message.reply_to_message:
         return _get_reference_image(bot, message.reply_to_message, lang, _depth=_depth + 1)
 
-    # دوم: پیام فعلی
+    # دوم: پیام فعلی — فقط اگر photo یا document داشته باشه
     try:
         if message.photo:
             photo = message.photo[-1]
@@ -162,13 +155,9 @@ def _get_reference_image(bot: TeleBot, message: Message, lang: str, *, _depth: i
             return ReferenceImage(content, guessed)
 
         document = getattr(message, "document", None)
-        if document:
-            mime_type = (document.mime_type or "").lower()
-            if not mime_type.startswith("image/"):
-                raise ImageGenerationError(invalid_reference(lang))
+        if document and document.mime_type and document.mime_type.lower().startswith("image/"):
             content, file_path = _download_file(bot, document.file_id)
-            guessed_path = _guess_mime_type(file_path or "")
-            guessed = document.mime_type or guessed_path
+            guessed = document.mime_type or _guess_mime_type(file_path or "")
             return ReferenceImage(content, guessed)
 
     except ImageGenerationError:
@@ -176,73 +165,6 @@ def _get_reference_image(bot: TeleBot, message: Message, lang: str, *, _depth: i
     except Exception as exc:
         logger.exception("Failed to download reference image", exc_info=exc)
         raise ImageGenerationError(reference_download_error(lang)) from exc
-
-    return None
-
-
-def _extract_image_url(data: Any, _visited: set[int] | None = None) -> str | None:
-    """Extract a usable image URL from the Runway response structure."""
-    if _visited is None:
-        _visited = set()
-
-    data_id = id(data)
-    if data_id in _visited:
-        return None
-    _visited.add(data_id)
-
-    if isinstance(data, str):
-        candidate = data.strip()
-        if any(
-            candidate.startswith(prefix)
-            for prefix in [
-                "http://",
-                "https://",
-                "data:image",
-                "//",
-                "ftp://",
-                "file://",
-            ]
-        ):
-            return candidate
-        return None
-
-    if isinstance(data, dict):
-        priority_keys = [
-            "url",
-            "image_url",
-            "output_url",
-            "result_url",
-            "download_url",
-            "file_url",
-            "asset_url",
-            "src",
-            "href",
-            "link",
-            "path",
-            "uri",
-            "output",
-        ]
-
-        for key in priority_keys:
-            if key in data:
-                url = _extract_image_url(data[key], _visited)
-                if url:
-                    return url
-
-        lower_priority = {k.lower() for k in priority_keys}
-        for key, value in data.items():
-            if key.lower() not in lower_priority:
-                url = _extract_image_url(value, _visited)
-                if url:
-                    return url
-        return None
-
-    if isinstance(data, (list, tuple, set)):
-        for item in data:
-            url = _extract_image_url(item, _visited)
-            if url:
-                return url
-        return None
 
     return None
 
@@ -265,18 +187,14 @@ def _process_prompt(
         service = ImageService()
     except ImageGenerationError:
         bot.send_message(message.chat.id, not_configured(lang), parse_mode="HTML")
-        _start_prompt_flow(
-            bot, message.chat.id, user["user_id"], lang, show_intro=False
-        )
+        _start_prompt_flow(bot, message.chat.id, user["user_id"], lang, show_intro=False)
         return
 
     fresh = db.get_user(user["user_id"]) or user
     credits = db.normalize_credit_amount(fresh.get("credits", 0))
     if credits < CREDIT_COST:
         _send_no_credit(bot, message.chat.id, lang, credits)
-        _start_prompt_flow(
-            bot, message.chat.id, user["user_id"], lang, show_intro=False
-        )
+        _start_prompt_flow(bot, message.chat.id, user["user_id"], lang, show_intro=False)
         return
 
     db.set_state(user["user_id"], STATE_PROCESSING)
@@ -299,67 +217,21 @@ def _process_prompt(
             poll_interval=POLL_INTERVAL,
             timeout=POLL_TIMEOUT,
         )
-
-        # Try to robustly extract an image URL or data URI from the returned result.
-        image_url = None
-        try:
-            # prefer explicit top-level 'url' but fall back to the extractor for nested structures
-            if isinstance(result, dict):
-                image_url = result.get("url") or _extract_image_url(result)
-            else:
-                image_url = _extract_image_url(result)
-        except Exception:
-            image_url = None
-
+        
+        image_url = result.get("url")
         if not image_url:
-            logger.error("No image URL in result: %s", result)
+            logger.error(f"No image URL in result: {result}")
             raise ImageGenerationError("خروجی تصویر دریافت نشد.")
+        
+        logger.info(f"Image URL received: {image_url[:100]}")
 
-        # Log a safe preview of the URL (don't assume it's always a str)
-        try:
-            preview = image_url if isinstance(image_url, str) else str(image_url)
-            logger.info("Image URL received: %s", preview[:100])
-        except Exception:
-            logger.info("Image URL received (non-string)")
-
-        # Handle data: URIs by decoding and sending bytes; otherwise pass the URL to send_photo
-        try:
-            if isinstance(image_url, str) and image_url.startswith("data:"):
-                m = re.match(r"data:(image/[^;]+);base64,(.*)$", image_url, re.I)
-                if not m:
-                    raise ImageGenerationError("خروجی تصویر نامعتبر است.")
-                mime = m.group(1)
-                b64 = m.group(2)
-                try:
-                    image_bytes = base64.b64decode(b64)
-                except Exception as exc:
-                    logger.exception("Failed to decode base64 image data", exc_info=exc)
-                    raise ImageGenerationError("خطا در پردازش تصویر دریافتی.")
-                bio = io.BytesIO(image_bytes)
-                # set a name so TeleBot can guess extension if needed
-                ext = mime.split("/")[-1].split("+")[0]
-                bio.name = f"image.{ext}"
-                bio.seek(0)
-                bot.send_photo(
-                    message.chat.id,
-                    photo=bio,
-                    caption=result_caption(lang),
-                    reply_to_message_id=message.message_id,
-                    parse_mode="HTML",
-                )
-            else:
-                # standard URL or file path
-                bot.send_photo(
-                    message.chat.id,
-                    photo=image_url,
-                    caption=result_caption(lang),
-                    reply_to_message_id=message.message_id,
-                    parse_mode="HTML",
-                )
-        except Exception as exc:
-            logger.exception("Failed to send generated image", exc_info=exc)
-            raise ImageGenerationError(error_text(lang))
-
+        bot.send_photo(
+            message.chat.id,
+            photo=image_url,
+            caption=result_caption(lang),
+            reply_to_message_id=message.message_id,
+            parse_mode="HTML",
+        )
         try:
             db.log_image_generation(user["user_id"], prompt, image_url)
         except Exception:
@@ -484,7 +356,8 @@ def register(bot: TeleBot) -> None:
             )
             return
 
-        caption = message.caption or ""
+        # برای photo یا document: کپشن رو به عنوان پرامپت بگیر
+        caption = (message.caption or "").strip()
         if caption.startswith("/"):
             return
 
@@ -498,7 +371,7 @@ def register(bot: TeleBot) -> None:
             bot.reply_to(message, invalid_reference(lang), parse_mode="HTML")
             return
 
-        prompt = _extract_prompt(message)
+        prompt = caption or _extract_prompt(message)
         if not prompt:
             bot.reply_to(message, need_prompt(lang), parse_mode="HTML")
             return
