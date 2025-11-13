@@ -306,7 +306,7 @@ def register(bot: TeleBot):
             _set_wait(c.from_user.id, c.message.message_id, plan_index)
             
             text = (
-                f"💱 <b>پرداخت فـوری (کارت‌به‌کارت)</b>\n"
+                f"30% کردیت رایگان⚡️ 💱 <b>پرداخت فـوری (کارت‌به‌کارت)</b>\n"
                 f"<b>شماره کارت:</b><code>{CARD_NUMBER}</code>\n\n"
                 f"• دقیقاً مبلغ <b>{plan['amount_toman']:,} تومان</b> پرداخت کنید\n"
                 f"• سپس <b>تصویر رسید</b> را همین‌جا ارسال کنید\n\n"
