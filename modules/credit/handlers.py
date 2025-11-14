@@ -278,7 +278,7 @@ def register(bot: TeleBot):
 
         bot.answer_callback_query(c.id)
 
-        text = f"🧾 <b>{PAY_RIAL_TITLE}</b>\nبا خرید هر بسته 30% کردیت بیشتر دریافت میکنید\nیکی از بسته‌های زیر را انتخاب کنید:"
+        text = f"🧾 <b>{PAY_RIAL_TITLE}</b>\n\nبا خرید هر بسته 30% کردیت بیشتر دریافت میکنید\nیکی از بسته‌های زیر را انتخاب کنید:"
 
         try:
             bot.edit_message_text(text, c.message.chat.id, c.message.message_id,
