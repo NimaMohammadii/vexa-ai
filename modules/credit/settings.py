@@ -1,10 +1,10 @@
 # پلن‌های نمونه به تومان (صرفاً برای نمایش؛ ملاک نهایی، رسید پرداخت است)
 PAYMENT_PLANS = [
-    {"title": " 25 + 10 → 71,000T", "amount_toman": 71_000, "credits": 25},
-    {"title": " 49 + 15 → 122,000T", "amount_toman": 122_000, "credits": 49},
-    {"title": " 99 → 230,000T", "amount_toman": 230_000, "credits": 99},
-    {"title": " 188 → 420,000T ویژه🌟", "amount_toman": 420_000, "credits": 188},
-    {"title": " 345 → 720,000T", "amount_toman": 720_000, "credits": 345},
+    {"title": " 25 + 8 → 74,000T", "amount_toman": 74_000, "credits": 33},
+    {"title": " 49 + 15 → 138,000T", "amount_toman": 138_000, "credits": 64},
+    {"title": " 99 + 30 → 255,000T", "amount_toman": 230_000, "credits": 129},
+    {"title": " 188 + 56 → 420,000T", "amount_toman": 420_000, "credits": 244},
+    {"title": " 345 + 103 → 720,000T", "amount_toman": 720_000, "credits": 448},
 
     {"title": " 499 → 999,000T", "amount_toman": 999_000, "credits": 499},
     {"title": " 1,155 → 2,500,000T", "amount_toman": 2_500_000, "credits": 1155},
