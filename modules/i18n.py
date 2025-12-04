@@ -34,7 +34,7 @@ LABELS = {
         "de": "Anonymer Chat 🎭",
         "fr": "Chat anonyme 🎭",
     },
-    "btn_image":  {"fa":"تولید تصویر 🖼️","en":"Generate Image 🖼️","ar":"توليد صورة 🖼️","tr":"Görsel Oluştur 🖼️","ru":"Создать изображение 🖼️","es":"Generar imagen 🖼️","de":"Bild erzeugen 🖼️","fr":"Générer une image 🖼️"},
+    "btn_image":  {"fa":"تولید تصویر 🍌","en":"Generate Image 🖼️","ar":"توليد صورة 🖼️","tr":"Görsel Oluştur 🖼️","ru":"Создать изображение 🖼️","es":"Generar imagen 🖼️","de":"Bild erzeugen 🖼️","fr":"Générer une image 🖼️"},
     "btn_video":  {"fa":"تولید ویدیو 🎬","en":"Generate Video 🎬","ar":"توليد فيديو 🎬","tr":"Video Oluştur 🎬","ru":"Создать видео 🎬","es":"Generar video 🎬","de":"Video erstellen 🎬","fr":"Créer une vidéo 🎬"},
     "btn_tts":    {"fa":"تبدیل متن به صدا 🎧","en":"Text to Speech 🎧","ar":"تحويل النص إلى صوت 🎧","tr":"Metinden Sese 🎧","ru":"Текст в речь 🎧","es":"Texto a voz 🎧","de":"Text zu Sprache 🎧","fr":"Texte en voix 🎧"},
     "btn_sora2":  {"fa":"Sora 2 🎪","en":"Sora 2 🎪","ar":"Sora 2 🎪","tr":"Sora 2 🎪","ru":"Sora 2 🎪","es":"Sora 2 🎪","de":"Sora 2 🎪","fr":"Sora 2 🎪"},
