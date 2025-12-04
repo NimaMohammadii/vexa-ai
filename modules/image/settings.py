@@ -2,6 +2,6 @@
 
 STATE_WAIT_PROMPT = "image:wait_prompt"
 STATE_PROCESSING = "image:processing"
-CREDIT_COST = 3
+CREDIT_COST = 4
 POLL_INTERVAL = 3.0
 POLL_TIMEOUT = 300
