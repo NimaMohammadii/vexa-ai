@@ -681,7 +681,7 @@ LABELS.update({
     },
     "gpt_wait": {
         "fa": "🫧 <b>درحال فکر کردن...</b>",
-        "en": "🫧 <b>One sec, preparing a short answer...</b>",
+        "en": "🫧 <b>One sec, preparing a answer...</b>",
         "ar": "🫧 <b>لحظة، أجهّز إجابة قصيرة...</b>",
         "tr": "🫧 <b>Bir saniye, kısa bir cevap hazırlıyorum...</b>",
         "ru": "🫧 <b>Секундочку, готовлю короткий ответ...</b>",
