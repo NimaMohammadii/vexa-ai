@@ -13,7 +13,7 @@ from .texts import INVITE_TEXT
 from .keyboards import keyboard as invite_keyboard
 
 
-DAILY_REWARD_AMOUNT = 0.1
+DAILY_REWARD_AMOUNT = 1
 DAILY_REWARD_INTERVAL = 24 * 60 * 60
 
 
