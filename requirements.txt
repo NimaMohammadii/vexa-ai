@@ -16,3 +16,4 @@ pyTelegramBotAPI
 python-dotenv
 requests
 uvicorn
+ffmpeg-python
