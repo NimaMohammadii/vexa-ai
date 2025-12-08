@@ -27,12 +27,25 @@ def _guess_audio_format(filename: str, mime: str | None) -> str | None:
 
     if mime:
         lowered = mime.lower()
+        # Handle complex mime types like "audio/ogg; codecs=opus"
+        if ";" in lowered:
+            lowered = lowered.split(";")[0].strip()
+        
         if "/" in lowered:
-            return lowered.split("/")[-1]
+            format_hint = lowered.split("/")[-1]
+            # Map opus to ogg since ffmpeg doesn't recognize 'opus' as input format
+            # Opus audio is typically in OGG container
+            if format_hint == "opus":
+                return "ogg"
+            return format_hint
 
     suffix = Path(filename or "").suffix.lower()
     if suffix.startswith("."):
-        return suffix[1:]
+        ext = suffix[1:]
+        # Map opus extension to ogg format
+        if ext == "opus":
+            return "ogg"
+        return ext
 
     return None
 
