@@ -61,28 +61,35 @@ def _prepare_audio_payload(audio_bytes: bytes, filename: str, mime: str) -> tupl
     filename = filename or "audio.wav"
     mime = (mime or "audio/wav").lower()
 
-    if mime in PASS_THROUGH_MIME_TYPES:
+    # همیشه فایل‌های Opus و OGG رو تبدیل کن
+    if mime in PASS_THROUGH_MIME_TYPES and "ogg" not in mime and "opus" not in mime:
         return audio_bytes, filename, mime
 
     try:
         from pydub import AudioSegment  # type: ignore
-    except Exception as exc:  # pragma: no cover - defensive branch
+    except ImportError as exc:
         raise RuntimeError(
-            "Audio conversion failed: unsupported format and pydub is not available."
+            "برای تبدیل فرمت صوتی، لطفاً pydub را نصب کنید: pip install pydub"
         ) from exc
 
     format_hint = _guess_audio_format(filename, mime)
+    print(f"🎵 Converting audio: format={format_hint}, mime={mime}, size={len(audio_bytes)} bytes")
 
     try:
         audio = AudioSegment.from_file(BytesIO(audio_bytes), format=format_hint)
+        print(f"✅ Audio loaded: duration={len(audio)}ms, channels={audio.channels}")
     except Exception as exc:
-        raise RuntimeError("Audio conversion failed: the audio file is not supported or is corrupted.") from exc
+        print(f"❌ Audio conversion error: {exc}")
+        raise RuntimeError(f"فرمت صوتی پشتیبانی نمی‌شود یا فایل خراب است: {exc}") from exc
 
+    # تبدیل به 16-bit mono WAV با sample rate مناسب
     audio = audio.set_channels(1).set_frame_rate(44100).set_sample_width(2)
     buf = BytesIO()
     audio.export(buf, format="wav")
 
     safe_name = Path(filename).stem or "audio"
+    converted_size = len(buf.getvalue())
+    print(f"✅ Audio converted: {converted_size} bytes, format=wav")
     return buf.getvalue(), f"{safe_name}.wav", "audio/wav"
 
 
@@ -167,46 +174,58 @@ def cleanup_old_voices(max_voices=25):
     try:
         # دریافت تمام صداها از الون لبز
         voices = list_voices()
+        print(f"📋 Total voices in ElevenLabs: {len(voices)}")
         
-        # فیلتر کردن صداهای کاستوم (غیر از صداهای پیش‌فرض)
+        # فیلتر کردن صداهای کاستوم (فقط cloned)
         custom_voices = []
         for voice in voices:
-            # صداهای پیش‌فرض معمولاً category دارن یا برچسب خاصی
-            voice_category = voice.get("category", "")
-            is_custom = voice_category in ["cloned", "generated", "professional"] or not voice_category
+            voice_category = voice.get("category", "").lower()
             
-            if is_custom and voice.get("voice_id"):
+            # فقط صداهای cloned رو در نظر بگیر
+            # صداهای premade و generated رو نگه دار
+            if voice_category == "cloned" and voice.get("voice_id"):
                 custom_voices.append(voice)
+                print(f"  - Cloned voice: {voice.get('name')} (ID: {voice.get('voice_id')[:8]}...)")
         
-        print(f"Found {len(custom_voices)} custom voices")
+        print(f"🎤 Found {len(custom_voices)} cloned voices")
         
         # اگر بیش از حد مجاز صدا داریم، قدیمی‌ترین‌ها رو حذف کن
         if len(custom_voices) >= max_voices:
             # مرتب‌سازی بر اساس تاریخ ایجاد (قدیمی‌ترین‌ها اول)
             custom_voices.sort(key=lambda x: x.get("date_unix", 0))
             
-            # تعداد صداهایی که باید حذف بشن
-            voices_to_delete = len(custom_voices) - max_voices + 1
+            # تعداد صداهایی که باید حذف بشن (حداقل 3 صدا پاک کن تا فضا باز بشه)
+            voices_to_delete = max(3, len(custom_voices) - max_voices + 5)
             
-            for i in range(voices_to_delete):
+            print(f"🗑️ Deleting {voices_to_delete} old voices...")
+            deleted_count = 0
+            
+            for i in range(min(voices_to_delete, len(custom_voices))):
                 voice_to_delete = custom_voices[i]
                 voice_id = voice_to_delete.get("voice_id")
                 voice_name = voice_to_delete.get("name", "Unknown")
                 
                 try:
                     delete_voice(voice_id)
-                    print(f"Deleted old voice: {voice_name} ({voice_id})")
+                    deleted_count += 1
+                    print(f"  ✅ Deleted: {voice_name} ({voice_id[:8]}...)")
                     
                     # حذف از دیتابیس محلی هم
                     db.delete_user_voice_by_voice_id(voice_id)
                     
                 except Exception as e:
-                    print(f"Failed to delete voice {voice_name}: {e}")
+                    print(f"  ❌ Failed to delete {voice_name}: {e}")
+            
+            print(f"✅ Cleanup complete: {deleted_count}/{voices_to_delete} voices deleted")
+            return deleted_count > 0
                     
+        print("✅ No cleanup needed")
         return True
         
     except Exception as e:
-        print(f"Cleanup failed: {e}")
+        print(f"❌ Cleanup failed: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 def clone_voice_with_cleanup(audio_bytes: bytes, name: str, filename: str = "audio.wav", mime: str = "audio/wav") -> str:
