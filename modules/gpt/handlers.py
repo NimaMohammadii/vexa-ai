@@ -432,6 +432,9 @@ def register(bot):
 
     @bot.message_handler(func=_is_gpt_message, content_types=["photo", "document"])
     def handle_image(msg):
+        if DEBUG:
+            print(f"[GPT Image Handler] Received image from user {msg.from_user.id}, caption: {msg.caption}")
+        
         user = db.get_or_create_user(msg.from_user)
         if user.get("banned"):
             bot.reply_to(msg, "⛔️ دسترسی شما مسدود است.")
@@ -448,10 +451,16 @@ def register(bot):
 
         try:
             image_url, _ = _extract_image_data(bot, msg)
-        except ValueError:
+            if DEBUG:
+                print(f"[GPT Image Handler] Image extracted, URL length: {len(image_url)}")
+        except ValueError as e:
+            if DEBUG:
+                print(f"[GPT Image Handler] ValueError: {e}")
             bot.reply_to(msg, t("gpt_image_unsupported", lang), parse_mode="HTML")
             return
-        except Exception:
+        except Exception as e:
+            if DEBUG:
+                print(f"[GPT Image Handler] Exception: {e}")
             bot.reply_to(msg, t("gpt_image_download_error", lang), parse_mode="HTML")
             return
 
