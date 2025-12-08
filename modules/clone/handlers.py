@@ -79,11 +79,13 @@ def register(bot):
     def _on_voice(msg):
         try:
             lang = db.get_user_lang(msg.from_user.id, "fa")
+            user_id = msg.from_user.id
+            
             # بررسی محدودیت تعداد صداهای کاربر (حداکثر 2 صدا)
-            user_voices = db.list_user_voices(msg.from_user.id)
+            user_voices = db.list_user_voices(user_id)
             if len(user_voices) >= 2:
                 bot.reply_to(msg, t("clone_limit_reached", lang))
-                db.clear_state(msg.from_user.id)
+                db.clear_state(user_id)
                 return
 
             fn, mime, file_id = "audio.wav", "audio/wav", None
@@ -91,12 +93,14 @@ def register(bot):
             if msg.voice:  # ویس تلگرام (ogg/opus)
                 file_id = msg.voice.file_id
                 fn, mime = "voice.ogg", "audio/ogg"
+                print(f"📥 Received Telegram voice: file_id={file_id}, duration={msg.voice.duration}s")
 
             elif msg.audio:  # فایل صوتی (mp3/wav/…)
                 file_id = msg.audio.file_id
                 # اگر تلگرام filename/mime داد، استفاده کن
                 if getattr(msg.audio, "file_name", None): fn = msg.audio.file_name
                 if getattr(msg.audio, "mime_type", None): mime = msg.audio.mime_type or mime
+                print(f"📥 Received audio file: {fn}, mime={mime}")
 
             elif msg.document:  # فقط اگر audio/*
                 if not (msg.document.mime_type or "").startswith("audio/"):
@@ -105,9 +109,11 @@ def register(bot):
                 file_id = msg.document.file_id
                 fn = msg.document.file_name or fn
                 mime = msg.document.mime_type or mime
+                print(f"📥 Received audio document: {fn}, mime={mime}")
 
             fi = bot.get_file(file_id)
             audio = bot.download_file(fi.file_path)
+            print(f"✅ Audio downloaded: {len(audio)} bytes")
 
             # ذخیره موقت با متادیتا
             if not hasattr(bot, "temp_voice_bytes"):
@@ -243,19 +249,28 @@ def register(bot):
                 bot.send_message(msg.chat.id, SUCCESS(lang), parse_mode="HTML")
 
         except Exception as e:
-            if DEBUG: print("clone:on_name", e)
+            if DEBUG:
+                print(f"❌ Clone error for user {msg.from_user.id}: {e}")
+                import traceback
+                traceback.print_exc()
 
             # بررسی نوع خطا برای نمایش پیام مناسب
             lang = locals().get("lang", db.get_user_lang(msg.from_user.id, "fa"))
             error_msg = ERROR(lang)
             error_str = str(e).lower()
 
-            if "maximum amount of custom voices" in error_str or "voice limit" in error_str:
-                error_msg = t("clone_cleanup_retry", lang)
+            if "maximum amount" in error_str or "voice limit" in error_str:
+                error_msg = "❌ محدودیت تعداد صداها رسیده. لطفاً چند دقیقه صبر کنید و دوباره تلاش کنید."
+            elif "pydub" in error_str or "conversion" in error_str:
+                error_msg = "❌ مشکل در تبدیل فرمت صوتی. لطفاً فایل MP3 یا WAV ارسال کنید."
+            elif "corrupted" in error_str or "not supported" in error_str:
+                error_msg = "❌ فایل صوتی معتبر نیست یا خراب است. لطفاً فایل دیگری ارسال کنید."
             elif "api" in error_str and "400" in error_str:
-                error_msg = t("clone_audio_quality_error", lang)
+                error_msg = "❌ کیفیت صدا مناسب نیست. لطفاً یک فایل صوتی واضح‌تر ارسال کنید."
             elif "network" in error_str or "timeout" in error_str:
-                error_msg = t("clone_server_error", lang)
+                error_msg = "❌ مشکل در ارتباط با سرور. لطفاً دوباره تلاش کنید."
+            elif "not enough credit" in error_str:
+                error_msg = "❌ کردیت کافی ندارید."
 
             bot.send_message(msg.chat.id, error_msg, parse_mode="HTML")
             
