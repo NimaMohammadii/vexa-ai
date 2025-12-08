@@ -14,7 +14,7 @@ from urllib.parse import urlparse
 
 import requests
 
-DB_DIR = os.getenv("DB_DIR", "./data")
+DB_DIR = os.getenv("DB_DIR", "/data")
 os.makedirs(DB_DIR, exist_ok=True)
 DB_PATH = os.path.join(DB_DIR, "bot.db")
 
