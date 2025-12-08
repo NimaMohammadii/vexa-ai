@@ -467,6 +467,7 @@ def register(bot):
         if not _charge_for_message(bot, user["user_id"], msg.chat.id, lang, GPT_MESSAGE_COST):
             return
 
+        # استفاده از کپشن به‌عنوان prompt، در صورت عدم وجود از prompt پیش‌فرض استفاده می‌شود
         instructions = (msg.caption or "").strip() or t("gpt_image_default_prompt", lang)
 
         history = _load_history(user["user_id"])
