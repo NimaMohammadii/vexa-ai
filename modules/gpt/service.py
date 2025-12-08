@@ -377,15 +377,6 @@ def chat_completion(
 
     payload = _prepare_payload(messages, model=model, temperature=temperature, top_p=top_p, max_tokens=max_tokens)
 
-    if DEBUG:
-        print(f"[GPT Service] API URL: {GPT_API_URL}")
-        print(f"[GPT Service] Model: {payload.get('model')}")
-        api_key = resolve_gpt_api_key()
-        if api_key:
-            print(f"[GPT Service] API Key found: {api_key[:10]}...")
-        else:
-            print("[GPT Service] WARNING: No API Key found!")
-
     try:
         response = requests.post(
             GPT_API_URL,
@@ -394,8 +385,6 @@ def chat_completion(
             timeout=GPT_API_TIMEOUT,
         )
     except requests.RequestException as exc:  # pragma: no cover - network failure
-        if DEBUG:
-            print(f"[GPT Service] Network error: {exc}")
         raise GPTServiceError(f"Network error calling GPT API: {exc}") from exc
 
     text = response.text
@@ -407,8 +396,6 @@ def chat_completion(
         raise GPTServiceError("Invalid response from GPT API") from exc
 
     if response.status_code >= 400:
-        if DEBUG:
-            print(f"[GPT Service] Error response (status {response.status_code}): {text[:500]}")
         error_message = None
         if isinstance(data, dict):
             error_message = data.get("error") or data.get("message")
