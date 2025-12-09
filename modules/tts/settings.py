@@ -14,6 +14,7 @@ VOICES = {
     "Liam":      "TX3LPaxmHKxFdv7VOQHJ",
     "Amir":      "1SM7GgM6IMuvQlz2BwM3",
     "Nazy":      "tnSpp4vdxKPjI9w0GnoV",
+    "Sarah":     "BIvP0GN1cAtSRTxNHnWS",
     "Alex":      "GFGuOkimbpNkTEOVDkqX",
     "Noushin":   "NZiuR1C6kVMSWHG27sIM",
     "Paniz":       "BZgkqPqms7Kj9ulSkVzn",
