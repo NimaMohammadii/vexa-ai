@@ -121,8 +121,8 @@ GPT_HISTORY_LIMIT = max(1, _parse_int(os.getenv("GPT_HISTORY_LIMIT", "6"), 6))
 GPT_TEMPERATURE = min(2.0, max(0.0, _parse_float(os.getenv("GPT_TEMPERATURE"), 0.7)))
 GPT_TOP_P = min(1.0, max(0.0, _parse_float(os.getenv("GPT_TOP_P"), 1.0)))
 GPT_MAX_TOKENS = max(0, _parse_int(os.getenv("GPT_MAX_TOKENS"), 400))
-GPT_MESSAGE_COST = _parse_float(os.getenv("GPT_MESSAGE_COST", "0.1"), 0.1)
-GPT_SEARCH_MESSAGE_COST = _parse_float(os.getenv("GPT_SEARCH_MESSAGE_COST", "0.1"), 0.1)
+GPT_MESSAGE_COST = _parse_float(os.getenv("GPT_MESSAGE_COST", "1"), 1.0)
+GPT_SEARCH_MESSAGE_COST = _parse_float(os.getenv("GPT_SEARCH_MESSAGE_COST", "1"), 1.0)
 
 GPT_RESPONSE_CHAR_LIMIT = max(
     0,
@@ -140,4 +140,3 @@ VEXA_ASSISTANT_MESSAGE_COST = _parse_float(
     os.getenv("VEXA_ASSISTANT_MESSAGE_COST", str(GPT_MESSAGE_COST)),
     GPT_MESSAGE_COST,
 )
-
