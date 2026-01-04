@@ -37,6 +37,21 @@ def admin_menu():
     kb.add(InlineKeyboardButton("⬅️ بازگشت", callback_data="admin:back"))
     return kb
 
+def cast_lang_menu():
+    kb = InlineKeyboardMarkup()
+    row = [InlineKeyboardButton("🌍 همه زبان‌ها", callback_data="admin:cast_lang:all")]
+    kb.row(*row)
+    row = []
+    for label, code in LANGS:
+        row.append(InlineKeyboardButton(label, callback_data=f"admin:cast_lang:{code}"))
+        if len(row) == 2:
+            kb.row(*row)
+            row = []
+    if row:
+        kb.row(*row)
+    kb.add(InlineKeyboardButton("⬅️ بازگشت", callback_data="admin:menu"))
+    return kb
+
 # ————— منوی تنظیمات —————
 def settings_menu():
     s = db.get_settings()

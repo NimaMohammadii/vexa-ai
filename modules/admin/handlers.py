@@ -17,7 +17,7 @@ from .texts import (
     ASK_UID_SUB, ASK_AMT_SUB, STATE_SUB_UID, STATE_SUB_AMT,
     ASK_UID_RESET, STATE_RESET_UID,
     ASK_UID_MSG, ASK_TXT_MSG, STATE_MSG_UID, STATE_MSG_TXT,
-    ASK_TXT_CAST, STATE_CAST_TXT,
+    ASK_LANG_CAST, ASK_TXT_CAST, STATE_CAST_LANG, STATE_CAST_TXT,
     ASK_UID_LOOKUP, STATE_USER_LOOKUP,
     ASK_BONUS, STATE_SET_BONUS,
     ASK_FREE,  STATE_SET_FREE,
@@ -37,6 +37,7 @@ from .keyboards import (
     daily_reward_users_menu,
     force_sub_lang_list,
     force_sub_lang_menu,
+    cast_lang_menu,
 )
 from modules.lang.keyboards import LANGS
 from modules.i18n import t
@@ -469,8 +470,22 @@ def register(bot):
 
         if action == "cast":
             db.clear_state(cq.from_user.id)
-            db.set_state(cq.from_user.id, STATE_CAST_TXT)
-            edit_or_send(bot, cq.message.chat.id, cq.message.message_id, ASK_TXT_CAST, admin_menu())
+            db.set_state(cq.from_user.id, STATE_CAST_LANG)
+            edit_or_send(bot, cq.message.chat.id, cq.message.message_id, ASK_LANG_CAST, cast_lang_menu())
+            return
+
+        if action == "cast_lang":
+            lang_code = p[2] if len(p) >= 3 else "all"
+            db.clear_state(cq.from_user.id)
+            db.set_state(cq.from_user.id, f"{STATE_CAST_TXT}:{lang_code}")
+            label = "همه زبان‌ها" if lang_code == "all" else LANG_LABELS.get(lang_code, lang_code)
+            edit_or_send(
+                bot,
+                cq.message.chat.id,
+                cq.message.message_id,
+                f"{ASK_TXT_CAST}\n\nزبان انتخاب‌شده: {label}",
+                admin_menu(),
+            )
             return
 
         # تنظیمات و خروجی‌ها
@@ -850,11 +865,15 @@ def register(bot):
         db.clear_state(msg.from_user.id)
 
     # پیام همگانی
-    @bot.message_handler(func=lambda m: db.get_state(m.from_user.id) == STATE_CAST_TXT, content_types=['text', 'photo', 'document', 'audio', 'voice', 'video', 'sticker'])
+    @bot.message_handler(func=lambda m: (db.get_state(m.from_user.id) or "").startswith(STATE_CAST_TXT), content_types=['text', 'photo', 'document', 'audio', 'voice', 'video', 'sticker'])
     def s_cast(msg: types.Message):
         if not _is_owner(msg.from_user): return
         sent = 0
-        for uid in db.get_all_user_ids():
+        state_raw = db.get_state(msg.from_user.id) or ""
+        parts = state_raw.split(":")
+        lang_code = parts[-1] if len(parts) >= 3 else "all"
+        user_ids = db.get_all_user_ids() if lang_code == "all" else db.get_user_ids_by_lang(lang_code)
+        for uid in user_ids:
             try:
                 ok, err = _send_content_to_user(bot, uid, msg)
                 if ok:

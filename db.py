@@ -885,6 +885,16 @@ def get_all_user_ids():
         cur.execute("SELECT user_id FROM users")
         return [r[0] for r in cur.fetchall()]
 
+def get_user_ids_by_lang(lang: str):
+    lang_code = (lang or "fa").strip()
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            "SELECT user_id FROM users WHERE COALESCE(NULLIF(lang, ''), 'fa')=?",
+            (lang_code,),
+        )
+        return [r[0] for r in cur.fetchall()]
+
 def get_all_user_credits():
     with closing(sqlite3.connect(DB_PATH)) as con:
         cur = con.cursor()
