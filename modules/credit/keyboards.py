@@ -50,14 +50,21 @@ def credit_menu_kb(lang: str) -> InlineKeyboardMarkup:
     return kb
 
 def stars_packages_kb(lang: str) -> InlineKeyboardMarkup:
-    """منوی بسته‌های Telegram Stars — هر ردیف یک دکمه"""
-    kb = InlineKeyboardMarkup(row_width=1)
+    """منوی بسته‌های Telegram Stars — هر ردیف دو دکمه"""
+    kb = InlineKeyboardMarkup(row_width=2)
+    row: list[InlineKeyboardButton] = []
     for pkg in STAR_PACKAGES:
         btn = InlineKeyboardButton(
             pkg["title"],
             callback_data=f"credit:buy:{pkg['stars']}:{pkg['credits']}"
         )
-        kb.add(btn)
+        row.append(btn)
+        if len(row) == 2:
+            kb.row(*row)
+            row = []
+    # اگر تعداد دکمه‌ها فرد بود، ردیف آخر را اضافه کن
+    if row:
+        kb.row(*row)
 
     kb.add(InlineKeyboardButton(t("back", lang), callback_data="credit:menu"))
     return kb
