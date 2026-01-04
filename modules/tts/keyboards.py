@@ -59,7 +59,8 @@ def keyboard(
         if is_custom:
             kb.add(
                 InlineKeyboardButton(
-                    "🗑 حذف این صدا", callback_data=f"{prefix}:delete:{selected_voice}"
+                    t("tts_delete_voice", lang),
+                    callback_data=f"{prefix}:delete:{selected_voice}",
                 )
             )
 

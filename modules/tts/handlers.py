@@ -108,7 +108,8 @@ def register(bot):
             # بررسی وجود صدا در لیست پیش‌فرض یا کاستوم
             custom_voice_id = db.get_user_voice(user["user_id"], name)
             if name not in VOICES and not custom_voice_id:
-                bot.answer_callback_query(cq.id, "Voice not found"); return
+                bot.answer_callback_query(cq.id, t("tts_voice_not_found", lang))
+                return
 
             # منوی «متن را بفرست» با صدای انتخابی
             edit_or_send(
@@ -136,7 +137,10 @@ def register(bot):
                     # حذف از دیتابیس
                     db.delete_user_voice_by_voice_id(custom_voice_id)
                     
-                    bot.answer_callback_query(cq.id, f"✅ صدای '{voice_name}' حذف شد")
+                    bot.answer_callback_query(
+                        cq.id,
+                        t("tts_delete_success", lang).format(voice=voice_name),
+                    )
                     
                     # بازگشت به منوی انتخاب صدا
                     sel = DEFAULT_VOICE_NAME
@@ -149,10 +153,10 @@ def register(bot):
                     )
                     db.set_state(cq.from_user.id, _make_state(cq.message.message_id, sel))
                 except Exception as e:
-                    bot.answer_callback_query(cq.id, "❌ خطا در حذف صدا")
+                    bot.answer_callback_query(cq.id, t("tts_delete_error", lang))
                     if DEBUG: print(f"Delete voice error: {e}")
             else:
-                bot.answer_callback_query(cq.id, "صدا یافت نشد")
+                bot.answer_callback_query(cq.id, t("tts_voice_not_found", lang))
             return
 
     # دریافت متن برای تبدیل

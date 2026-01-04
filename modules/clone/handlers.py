@@ -274,17 +274,17 @@ def register(bot):
             error_str = str(e).lower()
 
             if "maximum amount" in error_str or "voice limit" in error_str:
-                error_msg = "❌ محدودیت تعداد صداها رسیده. لطفاً چند دقیقه صبر کنید و دوباره تلاش کنید."
+                error_msg = t("clone_voice_limit_reached", lang)
             elif "pydub" in error_str or "conversion" in error_str:
-                error_msg = "❌ مشکل در تبدیل فرمت صوتی. لطفاً فایل MP3 یا WAV ارسال کنید."
+                error_msg = t("clone_audio_conversion_error", lang)
             elif "corrupted" in error_str or "not supported" in error_str:
-                error_msg = "❌ فایل صوتی معتبر نیست یا خراب است. لطفاً فایل دیگری ارسال کنید."
+                error_msg = t("clone_audio_corrupted_error", lang)
             elif "api" in error_str and "400" in error_str:
-                error_msg = "❌ کیفیت صدا مناسب نیست. لطفاً یک فایل صوتی واضح‌تر ارسال کنید."
+                error_msg = t("clone_audio_quality_error", lang)
             elif "network" in error_str or "timeout" in error_str:
-                error_msg = "❌ مشکل در ارتباط با سرور. لطفاً دوباره تلاش کنید."
+                error_msg = t("clone_server_error", lang)
             elif "not enough credit" in error_str:
-                error_msg = "❌ کردیت کافی ندارید."
+                error_msg = t("clone_not_enough_credit", lang)
 
             bot.send_message(msg.chat.id, error_msg, parse_mode="HTML")
             
