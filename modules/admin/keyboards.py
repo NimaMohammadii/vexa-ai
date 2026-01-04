@@ -3,6 +3,7 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 import datetime
 from typing import Optional
 import db
+from modules.lang.keyboards import LANGS
 
 # ————— منوی اصلی ادمین —————
 def admin_menu():
@@ -52,7 +53,37 @@ def settings_menu():
         InlineKeyboardButton("📷 لینک اینستاگرام", callback_data="admin:set:ig"),
     )
     kb.add(InlineKeyboardButton(f"🔐 عضویت اجباری: {mode_label}", callback_data="admin:toggle:fs"))
+    kb.add(InlineKeyboardButton("🔐 عضویت اجباری بر اساس زبان", callback_data="admin:fs_lang:list"))
     kb.add(InlineKeyboardButton("⬅️ بازگشت", callback_data="admin:menu"))
+    return kb
+
+
+def force_sub_lang_list():
+    kb = InlineKeyboardMarkup(row_width=2)
+    row = []
+    for label, code in LANGS:
+        row.append(InlineKeyboardButton(label, callback_data=f"admin:fs_lang:open:{code}"))
+        if len(row) == 2:
+            kb.row(*row)
+            row = []
+    if row:
+        kb.row(*row)
+    kb.add(InlineKeyboardButton("⬅️ بازگشت", callback_data="admin:settings"))
+    return kb
+
+
+def force_sub_lang_menu(lang_code: str):
+    s = db.get_settings()
+    mode_key = f"FORCE_SUB_MODE_{lang_code}"
+    tg_key = f"TG_CHANNEL_{lang_code}"
+    mode = (s.get(mode_key) or "none").lower()
+    mode_label = {"none": "خاموش", "new": "فقط جدیدها", "all": "همه"}.get(mode, mode)
+    channel = (s.get(tg_key) or "").strip() or "—"
+
+    kb = InlineKeyboardMarkup()
+    kb.add(InlineKeyboardButton(f"🔐 عضویت اجباری: {mode_label}", callback_data=f"admin:fs_lang:toggle:{lang_code}"))
+    kb.add(InlineKeyboardButton(f"📢 کانال تلگرام: {channel}", callback_data=f"admin:fs_lang:set_tg:{lang_code}"))
+    kb.add(InlineKeyboardButton("⬅️ بازگشت", callback_data="admin:fs_lang:list"))
     return kb
 
 # ————— لیست کاربران با صفحه‌بندی —————
