@@ -89,7 +89,8 @@ def init_db():
             daily_bonus_prompted_at INTEGER DEFAULT 0,
             daily_bonus_unlocked_at INTEGER DEFAULT 0,
             daily_bonus_reminded_at INTEGER DEFAULT 0,
-            low_credit_prompted_at INTEGER DEFAULT 0
+            low_credit_prompted_at INTEGER DEFAULT 0,
+            tts_creator_prompted_at INTEGER DEFAULT 0
         )""")
         cur.execute("""CREATE TABLE IF NOT EXISTS kv_state(
             user_id INTEGER PRIMARY KEY,
@@ -994,6 +995,8 @@ def _migrate_users_table():
             cur.execute("ALTER TABLE users ADD COLUMN daily_bonus_reminded_at INTEGER DEFAULT 0")
         if "low_credit_prompted_at" not in cols:
             cur.execute("ALTER TABLE users ADD COLUMN low_credit_prompted_at INTEGER DEFAULT 0")
+        if "tts_creator_prompted_at" not in cols:
+            cur.execute("ALTER TABLE users ADD COLUMN tts_creator_prompted_at INTEGER DEFAULT 0")
         con.commit()
 
 def get_or_create_user(u):
@@ -1065,7 +1068,8 @@ def get_user(user_id):
                 daily_bonus_prompted_at,
                 daily_bonus_unlocked_at,
                 daily_bonus_reminded_at,
-                low_credit_prompted_at
+                low_credit_prompted_at,
+                tts_creator_prompted_at
             FROM users WHERE user_id=?
             """,
             (user_id,),
@@ -1091,6 +1095,7 @@ def get_user(user_id):
             "daily_bonus_unlocked_at",
             "daily_bonus_reminded_at",
             "low_credit_prompted_at",
+            "tts_creator_prompted_at",
         ]
         return _normalize_user_dict(keys, row)
 
@@ -1262,6 +1267,34 @@ def set_low_credit_prompted_at(user_id: int, timestamp: int | None = None) -> No
         con.commit()
 
 
+def get_tts_creator_prompted_at(user_id: int) -> int:
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            "SELECT tts_creator_prompted_at FROM users WHERE user_id=?",
+            (user_id,),
+        )
+        row = cur.fetchone()
+        if not row:
+            return 0
+        value = row[0]
+        try:
+            return int(value or 0)
+        except (TypeError, ValueError):
+            return 0
+
+
+def set_tts_creator_prompted_at(user_id: int, timestamp: int | None = None) -> None:
+    ts = int(time.time()) if timestamp is None else int(timestamp)
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            "UPDATE users SET tts_creator_prompted_at=? WHERE user_id=?",
+            (ts, user_id),
+        )
+        con.commit()
+
+
 def set_last_daily_reward(user_id: int, timestamp: int | None = None) -> None:
     ts = int(timestamp or time.time())
     with closing(sqlite3.connect(DB_PATH)) as con:
@@ -1384,6 +1417,20 @@ def log_tts_request(user_id: int, text: str):
                        VALUES(?,?,?,?,?)""",
                     (user_id, "in", text, int(time.time()), "tts_in"))
         con.commit()
+
+
+def count_tts_requests(user_id: int) -> int:
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            "SELECT COUNT(*) FROM messages WHERE user_id=? AND kind='tts_in'",
+            (user_id,),
+        )
+        row = cur.fetchone()
+        try:
+            return int(row[0] if row else 0)
+        except (TypeError, ValueError):
+            return 0
 
 def export_user_tts_csv(user_id: int, path=None):
     """خروجی فقط متن‌های TTS کاربر (چیزی که برای تبدیل فرستاده)"""
