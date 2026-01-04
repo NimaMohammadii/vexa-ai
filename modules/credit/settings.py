@@ -16,7 +16,7 @@ PAYMENT_PLANS = [
 
 # بسته‌های Telegram Stars
 STAR_PACKAGES = [
-    {"stars": 1, "credits": 10000, "title": "• Starter "},
+    {"stars": 250, "credits": 10000, "title": "• Starter "},
     {"stars": 1000, "credits": 40000, "title": "🎯 Creator "},
     {"stars": 3000, "credits": 120000, "title": "⚡️ Pro "},
     {"stars": 6999, "credits": 300000, "title": "👑 Studio"},
