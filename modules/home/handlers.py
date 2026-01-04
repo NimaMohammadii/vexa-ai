@@ -15,6 +15,8 @@ from .keyboards import main_menu, _back_to_home_kb
 
 ONBOARDING_DAILY_BONUS_DELAY = 15.0
 ONBOARDING_DAILY_BONUS_UNLOCK_DELAY = 10 * 60
+LOW_CREDIT_DELAY = 15.0
+LOW_CREDIT_THRESHOLD = 15
 
 
 def _daily_bonus_ready_keyboard(lang: str) -> InlineKeyboardMarkup:
@@ -27,6 +29,49 @@ def _daily_bonus_unlocked_keyboard(lang: str) -> InlineKeyboardMarkup:
     kb = InlineKeyboardMarkup()
     kb.add(InlineKeyboardButton(t("onboarding_bonus_button", lang), callback_data="onboarding:invite"))
     return kb
+
+
+def _low_credit_keyboard(lang: str) -> InlineKeyboardMarkup:
+    kb = InlineKeyboardMarkup()
+    kb.add(InlineKeyboardButton(t("low_credit_button", lang), callback_data="credit:menu"))
+    return kb
+
+
+def _send_low_credit_warning(bot, user_id: int, chat_id: int) -> None:
+    user = db.get_user(user_id)
+    if not user or user.get("banned"):
+        return
+    credits = db.normalize_credit_amount(user.get("credits", 0))
+    if credits >= LOW_CREDIT_THRESHOLD:
+        if db.get_low_credit_prompted_at(user_id) > 0:
+            db.set_low_credit_prompted_at(user_id, 0)
+        return
+    if db.get_low_credit_prompted_at(user_id) > 0:
+        return
+    lang = db.get_user_lang(user_id, "fa")
+    try:
+        bot.send_message(
+            chat_id,
+            t("low_credit_warning", lang),
+            reply_markup=_low_credit_keyboard(lang),
+        )
+    except Exception:
+        return
+    db.set_low_credit_prompted_at(user_id, int(time.time()))
+
+
+def _schedule_low_credit_warning(bot, user, chat_id: int, delay: float) -> None:
+    user_id = user["user_id"]
+    credits = db.normalize_credit_amount(user.get("credits", 0))
+    if credits >= LOW_CREDIT_THRESHOLD:
+        if db.get_low_credit_prompted_at(user_id) > 0:
+            db.set_low_credit_prompted_at(user_id, 0)
+        return
+    if db.get_low_credit_prompted_at(user_id) > 0:
+        return
+    timer = threading.Timer(delay, _send_low_credit_warning, args=(bot, user_id, chat_id))
+    timer.daemon = True
+    timer.start()
 
 
 def _send_daily_bonus_unlocked(bot, user_id: int, chat_id: int) -> None:
@@ -209,6 +254,7 @@ def register(bot):
         _consume_pending_referral(bot, user, msg.chat.id, lang)
         edit_or_send(bot, msg.chat.id, msg.message_id, MAIN(lang), main_menu(lang))
         _trigger_onboarding(bot, user, msg.chat.id)
+        _schedule_low_credit_warning(bot, user, msg.chat.id, LOW_CREDIT_DELAY)
 
     @bot.message_handler(commands=["help"])
     def help_cmd(msg: Message):
@@ -257,6 +303,7 @@ def register(bot):
             return
 
         edit_or_send(bot, msg.chat.id, msg.message_id, MAIN(lang), main_menu(lang))
+        _schedule_low_credit_warning(bot, user, msg.chat.id, LOW_CREDIT_DELAY)
 
     @bot.callback_query_handler(
         func=lambda c: (
@@ -296,6 +343,7 @@ def register(bot):
             return
 
         route = cq.data.split(":", 1)[1] if ":" in cq.data else ""
+        _schedule_low_credit_warning(bot, user, cq.message.chat.id, LOW_CREDIT_DELAY)
 
         if route in ("", "back"):
             edit_or_send(bot, cq.message.chat.id, cq.message.message_id, MAIN(lang), main_menu(lang))
