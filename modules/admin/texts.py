@@ -39,7 +39,9 @@ ASK_TXT_MSG   = "✍️ متن پیام تکی را بفرستید."
 STATE_MSG_TXT = "ADMIN:DM:TXT"
 
 # ——— پیام همگانی
+ASK_LANG_CAST = "🌐 زبان پیام همگانی را انتخاب کنید."
 ASK_TXT_CAST  = "📣 متن پیام همگانی را بفرستید."
+STATE_CAST_LANG = "ADMIN:CAST:LANG"
 STATE_CAST_TXT = "ADMIN:CAST:TXT"
 
 # ——— به‌روزرسانی همگانی کردیت با فرمول
