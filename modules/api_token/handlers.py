@@ -5,7 +5,7 @@ from telebot import TeleBot
 from telebot.types import CallbackQuery
 
 from modules.i18n import t
-from utils import edit_or_send
+from utils import edit_or_send, ensure_force_sub
 
 from .keyboards import token_menu
 from .texts import render_token_message
@@ -22,6 +22,9 @@ def register(bot: TeleBot) -> None:
             bot.answer_callback_query(cq.id, t("error_banned", lang), show_alert=True)
             return
         db.touch_last_seen(user["user_id"])
+        if not ensure_force_sub(bot, user["user_id"], cq.message.chat.id, cq.message.message_id, lang):
+            bot.answer_callback_query(cq.id)
+            return
         token = db.get_or_create_api_token(user["user_id"])
         body = render_token_message(lang, token)
         edit_or_send(bot, cq.message.chat.id, cq.message.message_id, body, token_menu(lang))
@@ -35,6 +38,9 @@ def register(bot: TeleBot) -> None:
             bot.answer_callback_query(cq.id, t("error_banned", lang), show_alert=True)
             return
         db.touch_last_seen(user["user_id"])
+        if not ensure_force_sub(bot, user["user_id"], cq.message.chat.id, cq.message.message_id, lang):
+            bot.answer_callback_query(cq.id)
+            return
         token = db.rotate_api_token(user["user_id"])
         body = render_token_message(lang, token)
         edit_or_send(bot, cq.message.chat.id, cq.message.message_id, body, token_menu(lang))

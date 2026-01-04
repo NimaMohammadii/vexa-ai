@@ -13,7 +13,7 @@ from telebot.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 import db
 from config import GPT_API_KEY
 from modules.gpt.service import GPTServiceError, chat_completion, extract_message_text, resolve_gpt_api_key
-from utils import check_force_sub, edit_or_send
+from utils import edit_or_send, ensure_force_sub
 
 from .characters import CHARACTERS
 
@@ -190,15 +190,7 @@ def _build_system_prompt(persona: Dict[str, Any]) -> str:
 
 
 def _handle_force_sub(bot, user_id: int, chat_id: int, message_id: int | None, lang: str) -> bool:
-    settings = db.get_settings()
-    mode = (settings.get("FORCE_SUB_MODE") or "none").lower()
-    if mode not in {"new", "all"}:
-        return True
-    ok, txt, kb = check_force_sub(bot, user_id, settings, lang)
-    if ok:
-        return True
-    edit_or_send(bot, chat_id, message_id, txt, kb)
-    return False
+    return ensure_force_sub(bot, user_id, chat_id, message_id, lang)
 
 
 def _start_search(bot, user_id: int, chat_id: int) -> None:
@@ -343,6 +335,10 @@ def register(bot) -> None:
         lang = db.get_user_lang(user["user_id"], "fa")
         db.touch_last_seen(user["user_id"])
 
+        if not _handle_force_sub(bot, user["user_id"], cq.message.chat.id, cq.message.message_id, lang):
+            bot.answer_callback_query(cq.id)
+            return
+
         session = _load_session(user["user_id"])
         if not session:
             bot.answer_callback_query(cq.id, "⏳")
@@ -361,6 +357,12 @@ def register(bot) -> None:
     def handle_end(cq: CallbackQuery) -> None:
         user = db.get_or_create_user(cq.from_user)
         db.touch_last_seen(user["user_id"])
+        lang = db.get_user_lang(user["user_id"], "fa")
+
+        if not _handle_force_sub(bot, user["user_id"], cq.message.chat.id, cq.message.message_id, lang):
+            bot.answer_callback_query(cq.id)
+            return
+
         db.clear_state(user["user_id"])
 
         bot.answer_callback_query(cq.id)
@@ -379,6 +381,10 @@ def register(bot) -> None:
         user = db.get_or_create_user(msg.from_user)
         if user.get("banned"):
             bot.reply_to(msg, "⛔️ دسترسی شما مسدود است.")
+            return
+
+        lang = db.get_user_lang(user["user_id"], "fa")
+        if not _handle_force_sub(bot, user["user_id"], msg.chat.id, msg.message_id, lang):
             return
 
         db.touch_last_seen(user["user_id"])

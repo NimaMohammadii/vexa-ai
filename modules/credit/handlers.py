@@ -10,6 +10,7 @@ from .texts import (
 from modules.i18n import t
 from .keyboards import credit_menu_kb, stars_packages_kb, payrial_plans_kb, instant_cancel_kb, augment_with_rial, admin_approve_kb
 from config import BOT_OWNER_ID as ADMIN_REVIEW_CHAT_ID, CARD_NUMBER
+from utils import ensure_force_sub
 from .settings import PAYMENT_PLANS
 from .settings import RECEIPT_WAIT_TTL
 
@@ -66,6 +67,10 @@ def _is_waiting(user_id: int) -> bool:
     exp = _RECEIPT_WAIT.get(user_id)
     return bool(exp and exp > time.time())
 
+
+def _ensure_force_sub(bot: TeleBot, user_id: int, chat_id: int, message_id: int | None, lang: str) -> bool:
+    return ensure_force_sub(bot, user_id, chat_id, message_id, lang)
+
 # === API اصلی برای منوی کردیت ===
 def open_credit(bot: TeleBot, cq):
     """باز کردن منوی اصلی خرید کردیت"""
@@ -88,6 +93,8 @@ def open_credit(bot: TeleBot, cq):
     
     user = db.get_or_create_user(cq.from_user)
     lang = db.get_user_lang(user["user_id"], "fa")
+    if not _ensure_force_sub(bot, user["user_id"], cq.message.chat.id, cq.message.message_id, lang):
+        return
     text = f"🛒 <b>{t('credit_title', lang)}</b>\n\n{t('credit_header', lang)}"
     
     # ادیت کردن همین پیام
@@ -140,6 +147,9 @@ def register(bot: TeleBot):
 
         user = db.get_or_create_user(c.from_user)
         lang = db.get_user_lang(user["user_id"], "fa")
+        if not _ensure_force_sub(bot, user["user_id"], c.message.chat.id, c.message.message_id, lang):
+            bot.answer_callback_query(c.id)
+            return
 
         bot.answer_callback_query(c.id)
         text = t("credit_stars_menu", lang)
@@ -157,6 +167,9 @@ def register(bot: TeleBot):
 
         user = db.get_or_create_user(c.from_user)
         lang = db.get_user_lang(user["user_id"], "fa")
+        if not _ensure_force_sub(bot, user["user_id"], c.message.chat.id, c.message.message_id, lang):
+            bot.answer_callback_query(c.id)
+            return
 
         bot.answer_callback_query(c.id)
         try:
@@ -271,6 +284,9 @@ def register(bot: TeleBot):
 
         user = db.get_or_create_user(c.from_user)
         lang = db.get_user_lang(user["user_id"], "fa")
+        if not _ensure_force_sub(bot, user["user_id"], c.message.chat.id, c.message.message_id, lang):
+            bot.answer_callback_query(c.id)
+            return
 
         if lang != "fa":
             bot.answer_callback_query(c.id, t("credit_unavailable", lang), show_alert=True)
@@ -294,6 +310,9 @@ def register(bot: TeleBot):
 
         user = db.get_or_create_user(c.from_user)
         lang = db.get_user_lang(user["user_id"], "fa")
+        if not _ensure_force_sub(bot, user["user_id"], c.message.chat.id, c.message.message_id, lang):
+            bot.answer_callback_query(c.id)
+            return
 
         bot.answer_callback_query(c.id)
         try:
@@ -330,6 +349,9 @@ def register(bot: TeleBot):
 
         user = db.get_or_create_user(c.from_user)
         lang = db.get_user_lang(user["user_id"], "fa")
+        if not _ensure_force_sub(bot, user["user_id"], c.message.chat.id, c.message.message_id, lang):
+            bot.answer_callback_query(c.id)
+            return
 
         bot.answer_callback_query(c.id)
         _set_wait(c.from_user.id, c.message.message_id)  # ذخیره message_id
@@ -352,6 +374,8 @@ def register(bot: TeleBot):
         import db
         user = db.get_or_create_user(c.from_user)
         lang = db.get_user_lang(user["user_id"], "fa")
+        if not _ensure_force_sub(bot, user["user_id"], c.message.chat.id, c.message.message_id, lang):
+            return
         try:
             bot.edit_message_text(MAIN(lang), c.message.chat.id, c.message.message_id,
                                   parse_mode="HTML", reply_markup=main_menu(lang))
@@ -364,6 +388,11 @@ def register(bot: TeleBot):
     def on_receipt(msg: Message):
         if not _is_waiting(msg.from_user.id):
             return  # دخالت نکن؛ این عکس ربطی به پرداخت ندارد
+        import db
+        user = db.get_or_create_user(msg.from_user)
+        lang = db.get_user_lang(user["user_id"], "fa")
+        if not _ensure_force_sub(bot, user["user_id"], msg.chat.id, msg.message_id, lang):
+            return
 
         # گرفتن اطلاعات قبل از پاک کردن
         payment_msg_id = _get_message_id(msg.from_user.id)

@@ -2,7 +2,7 @@
 from io import BytesIO
 import time
 import db
-from utils import edit_or_send
+from utils import edit_or_send, ensure_force_sub
 from config import DEBUG
 from modules.i18n import t
 from .texts import TITLE, ask_text, PROCESSING, NO_CREDIT, ERROR, BANNED
@@ -178,15 +178,8 @@ def register(bot):
         try:
             lang = db.get_user_lang(user_id, "fa")
 
-            # بررسی عضویت اجباری
-            from utils import check_force_sub, edit_or_send
-            settings = db.get_settings()
-            mode = (settings.get("FORCE_SUB_MODE") or "none").lower()
-            if mode in ("new","all"):
-                ok, txt, kb = check_force_sub(bot, user_id, settings, lang)
-                if not ok:
-                    edit_or_send(bot, msg.chat.id, msg.message_id, txt, kb)
-                    return
+            if not ensure_force_sub(bot, user_id, msg.chat.id, msg.message_id, lang):
+                return
 
             last_menu_id, voice_name = _parse_state(current_state)
             

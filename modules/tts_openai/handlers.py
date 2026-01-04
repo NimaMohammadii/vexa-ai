@@ -6,7 +6,7 @@ from io import BytesIO
 import time
 
 import db
-from utils import edit_or_send
+from utils import edit_or_send, ensure_force_sub
 from modules.i18n import t
 from modules.tts.texts import ask_text, PROCESSING, NO_CREDIT, ERROR, BANNED
 from modules.tts.keyboards import no_credit_keyboard
@@ -75,6 +75,10 @@ def register(bot):
     def tts_openai_router(cq):
         user = db.get_or_create_user(cq.from_user)
         lang = db.get_user_lang(user["user_id"], "fa")
+
+        if not ensure_force_sub(bot, user["user_id"], cq.message.chat.id, cq.message.message_id, lang):
+            bot.answer_callback_query(cq.id)
+            return
 
         route = cq.data.split(":", 1)[1]
 
@@ -149,15 +153,8 @@ def register(bot):
         try:
             lang = db.get_user_lang(user_id, "fa")
 
-            from utils import check_force_sub
-
-            settings = db.get_settings()
-            mode = (settings.get("FORCE_SUB_MODE") or "none").lower()
-            if mode in ("new", "all"):
-                ok, txt, kb = check_force_sub(bot, user_id, settings, lang)
-                if not ok:
-                    edit_or_send(bot, msg.chat.id, msg.message_id, txt, kb)
-                    return
+            if not ensure_force_sub(bot, user_id, msg.chat.id, msg.message_id, lang):
+                return
 
             last_menu_id, voice_name = _parse_state(current_state)
             voice_id = VOICES.get(voice_name)
@@ -268,4 +265,3 @@ def open_tts(bot, cq, voice_name: str | None = None):
         tts_keyboard(sel, lang, user["user_id"]),
     )
     db.set_state(cq.from_user.id, _make_state(cq.message.message_id, sel))
-

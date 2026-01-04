@@ -21,7 +21,7 @@ from config import (
     GPT_RESPONSE_CHAR_LIMIT,
 )
 from modules.i18n import t
-from utils import check_force_sub, edit_or_send
+from utils import edit_or_send, ensure_force_sub
 from modules.home.keyboards import main_menu
 from modules.home.texts import MAIN
 from .service import (
@@ -290,15 +290,7 @@ def _should_use_search(text: str) -> bool:
 
 
 def _handle_force_sub(bot, user_id: int, lang: str, chat_id: int, message_id: int) -> bool:
-    settings = db.get_settings()
-    mode = (settings.get("FORCE_SUB_MODE") or "none").lower()
-    if mode not in ("new", "all"):
-        return True
-    ok, txt, kb = check_force_sub(bot, user_id, settings, lang)
-    if ok:
-        return True
-    edit_or_send(bot, chat_id, message_id, txt, kb)
-    return False
+    return ensure_force_sub(bot, user_id, chat_id, message_id, lang)
 
 
 def _load_history(user_id: int) -> list[dict[str, str]]:
@@ -409,6 +401,9 @@ def register(bot):
         lang = db.get_user_lang(user["user_id"], "fa")
         db.touch_last_seen(user["user_id"])
 
+        if not _handle_force_sub(bot, user["user_id"], lang, msg.chat.id, msg.message_id):
+            return
+
         error = _ensure_gpt_ready(lang)
         if error:
             bot.reply_to(msg, error, parse_mode="HTML")
@@ -442,6 +437,9 @@ def register(bot):
 
         lang = db.get_user_lang(user["user_id"], "fa")
         db.touch_last_seen(user["user_id"])
+
+        if not _handle_force_sub(bot, user["user_id"], lang, msg.chat.id, msg.message_id):
+            return
 
         error = _ensure_gpt_ready(lang)
         if error:

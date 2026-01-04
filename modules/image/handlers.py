@@ -16,7 +16,7 @@ from telebot.types import CallbackQuery, Message
 from modules.home.keyboards import main_menu
 from modules.home.texts import MAIN
 from modules.i18n import t
-from utils import edit_or_send
+from utils import edit_or_send, ensure_force_sub
 from .keyboards import menu_keyboard, no_credit_keyboard
 from .service import ImageGenerationError, ImageService
 from .settings import (
@@ -369,6 +369,9 @@ def open_image(bot: TeleBot, call: CallbackQuery) -> None:
     if user.get("banned"):
         bot.answer_callback_query(call.id, t("error_banned", lang), show_alert=True)
         return
+    if not ensure_force_sub(bot, user["user_id"], call.message.chat.id, call.message.message_id, lang):
+        bot.answer_callback_query(call.id)
+        return
     _start_prompt_flow(
         bot, call.message.chat.id, user["user_id"], lang, message_id=call.message.message_id
     )
@@ -379,6 +382,8 @@ def handle_img(bot: TeleBot, message: Message) -> None:
     user, lang = _get_user_and_lang(message.from_user)
     if user.get("banned"):
         bot.reply_to(message, t("error_banned", lang))
+        return
+    if not ensure_force_sub(bot, user["user_id"], message.chat.id, message.message_id, lang):
         return
 
     prompt = _extract_prompt(message)
@@ -404,6 +409,9 @@ def register(bot: TeleBot) -> None:
     def on_back(cq: CallbackQuery):
         user, lang = _get_user_and_lang(cq.from_user)
         db.clear_state(user["user_id"])
+        if not ensure_force_sub(bot, user["user_id"], cq.message.chat.id, cq.message.message_id, lang):
+            bot.answer_callback_query(cq.id)
+            return
         edit_or_send(
             bot, cq.message.chat.id, cq.message.message_id, MAIN(lang), main_menu(lang)
         )
@@ -419,6 +427,8 @@ def register(bot: TeleBot) -> None:
     )
     def on_prompt(message: Message):
         user, lang = _get_user_and_lang(message.from_user)
+        if not ensure_force_sub(bot, user["user_id"], message.chat.id, message.message_id, lang):
+            return
 
         if message.content_type == "text":
             if message.text and message.text.startswith("/"):

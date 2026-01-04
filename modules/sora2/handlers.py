@@ -10,7 +10,7 @@ from modules.i18n import t
 from telebot import TeleBot
 from telebot.types import CallbackQuery
 
-from utils import edit_or_send
+from utils import edit_or_send, ensure_force_sub
 from .keyboards import main_keyboard, no_credit_keyboard
 from .settings import CREDIT_COST, QUEUE_START_POSITION
 from .texts import (
@@ -53,6 +53,9 @@ def open_sora2_menu(bot: TeleBot, cq: CallbackQuery) -> None:
     if user.get("banned"):
         bot.answer_callback_query(cq.id, t("error_banned", lang), show_alert=True)
         return
+    if not ensure_force_sub(bot, user["user_id"], cq.message.chat.id, cq.message.message_id, lang):
+        bot.answer_callback_query(cq.id)
+        return
 
     cost_text = db.format_credit_amount(CREDIT_COST)
     edit_or_send(
@@ -68,6 +71,9 @@ def _handle_purchase(bot: TeleBot, cq: CallbackQuery) -> None:
     user, lang = _get_user_and_lang(cq.from_user)
     if user.get("banned"):
         bot.answer_callback_query(cq.id, t("error_banned", lang), show_alert=True)
+        return
+    if not ensure_force_sub(bot, user["user_id"], cq.message.chat.id, cq.message.message_id, lang):
+        bot.answer_callback_query(cq.id)
         return
 
     fresh = db.get_user(user["user_id"]) or user
