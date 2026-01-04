@@ -4,7 +4,7 @@ from __future__ import annotations
 import db
 from telebot.types import CallbackQuery, Message
 
-from utils import edit_or_send, ensure_force_sub
+from utils import check_force_sub, edit_or_send, ensure_force_sub
 from modules.i18n import t
 from .texts import MAIN, HELP
 from .keyboards import main_menu, _back_to_home_kb
@@ -275,6 +275,7 @@ def register(bot):
                 _consume_pending_referral(bot, user, cq.message.chat.id, lang)
                 bot.answer_callback_query(cq.id, t("force_sub_confirmed", lang))
             else:
+                edit_or_send(bot, cq.message.chat.id, cq.message.message_id, txt, kb)
                 bot.answer_callback_query(cq.id, t("force_sub_not_joined", lang))
             return
 
