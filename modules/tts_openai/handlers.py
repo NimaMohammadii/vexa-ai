@@ -10,6 +10,7 @@ from utils import edit_or_send, ensure_force_sub
 from modules.i18n import t
 from modules.tts.texts import ask_text, PROCESSING, NO_CREDIT, ERROR, BANNED
 from modules.tts.keyboards import no_credit_keyboard
+from modules.tts.upsell import schedule_creator_upsell
 from .keyboards import keyboard as tts_keyboard
 from .settings import (
     STATE_WAIT_TEXT,
@@ -225,6 +226,7 @@ def register(bot):
                 reply_markup=tts_keyboard(voice_name, lang, user_id),
             )
             db.set_state(user_id, _make_state(new_menu.message_id, voice_name))
+            schedule_creator_upsell(bot, user_id, msg.chat.id)
 
         except Exception as e:
             try:

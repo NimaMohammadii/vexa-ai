@@ -7,6 +7,7 @@ from config import DEBUG
 from modules.i18n import t
 from .texts import TITLE, ask_text, PROCESSING, NO_CREDIT, ERROR, BANNED
 from .keyboards import keyboard as tts_keyboard
+from .upsell import schedule_creator_upsell
 from .settings import (
     STATE_WAIT_TEXT,
     VOICES,
@@ -262,6 +263,7 @@ def register(bot):
                 reply_markup=tts_keyboard(voice_name, lang, user_id, quality="pro")
             )
             db.set_state(user_id, _make_state(new_menu.message_id, voice_name))
+            schedule_creator_upsell(bot, user_id, msg.chat.id)
 
         except Exception as e:
             # برگردان کردیت در صورت خطا

@@ -316,6 +316,26 @@ LABELS = {
         "de": "❌ Dieser Text enthält gesperrte Wörter. Bitte formuliere ihn anders.",
         "fr": "❌ Ce texte contient des mots interdits. Merci d'utiliser un autre texte.",
     },
+    "tts_creator_upsell": {
+        "fa": "از این نتیجه خوشت اومد؟\nبا پلن Creator دقیقه‌های بیشتری بساز ⭐",
+        "en": "Like this result?\nGenerate more minutes with the Creator plan ⭐",
+        "ar": "هل أعجبك هذا الناتج؟\nأنشئ دقائق إضافية مع خطة Creator ⭐",
+        "tr": "Bu sonucu beğendin mi?\nCreator planıyla daha fazla dakika üret ⭐",
+        "ru": "Нравится результат?\nСоздавайте больше минут с планом Creator ⭐",
+        "es": "¿Te gusta este resultado?\nGenera más minutos con el plan Creator ⭐",
+        "de": "Gefällt dir dieses Ergebnis?\nErstelle mehr Minuten mit dem Creator-Plan ⭐",
+        "fr": "Ce résultat te plaît ?\nGénère plus de minutes avec le forfait Creator ⭐",
+    },
+    "tts_creator_upgrade_button": {
+        "fa": "⭐ ارتقا به Creator",
+        "en": "⭐ Upgrade to Creator",
+        "ar": "⭐ الترقية إلى Creator",
+        "tr": "⭐ Creator'a yükselt",
+        "ru": "⭐ Перейти на Creator",
+        "es": "⭐ Mejorar a Creator",
+        "de": "⭐ Auf Creator upgraden",
+        "fr": "⭐ Passer à Creator",
+    },
 
     # Profile
     "profile_title":  {"fa":"پروفایل","en":"Profile","ar":"الملف الشخصي","tr":"Profil","ru":"Профиль","es":"Perfil","de":"Profil","fr":"Profil"},
