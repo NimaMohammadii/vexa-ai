@@ -16,10 +16,10 @@ PAYMENT_PLANS = [
 
 # بسته‌های Telegram Stars
 STAR_PACKAGES = [
-    {"stars": 250, "credits": 10000, "title": "10,000 Credit = 10 minutes Pay ⭐️250"},
-    {"stars": 55, "credits": 1800, "title": "Pay ⭐️42 → 1.8K"},
-    {"stars": 58, "credits": 70, "title": "Pay ⭐️58 → 70"},
-    {"stars": 99, "credits": 140, "title": "Pay ⭐️99 → 140"},
+    {"stars": 250, "credits": 10000, "title": "10,000 Credit = 10 minutes  Pay ⭐️250"},
+    {"stars": 1000, "credits": 40000, "title": "40,000 Credit = 40 minutes  Pay ⭐️1000"},
+    {"stars": 3000, "credits": 120000, "title": "120,000 Credit = 120 minutes Pay ⭐️3000"},
+    {"stars": 6999, "credits": 300000, "title": "300,000 Credit = 300 minutes Pay ⭐️6999"},
 ]
 
 # زمان انتظار برای ارسال رسید (ثانیه)
