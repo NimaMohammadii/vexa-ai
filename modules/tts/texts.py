@@ -32,10 +32,7 @@ def NO_CREDIT(lang: str, credits: float | None = None, required_credits: float |
     current_credits = db.format_credit_amount(credits if credits is not None else 0)
     required = db.format_credit_amount(required_credits if required_credits is not None else 0)
 
-    return f"""⚠️ <b>کردیت کافی نیست</b>
-موجـودی شما : <b>{current_credits} Credit</b>
-➕ کردیـت لازم : <b>{required}</b>
-میتونـی کردیت بخری یا متن رو کوتاه‌تر کنی<b> /help</b>"""
+    return t("tts_no_credit", lang).format(credits=current_credits, required=required)
 
 def ERROR(lang: str) -> str:
     return t('tts_error', lang)
