@@ -82,5 +82,5 @@ def keyboard(
 def no_credit_keyboard(lang: str = "fa"):
     """کیبورد برای پیام کردیت کافی نیست"""
     kb = InlineKeyboardMarkup(row_width=1)
-    kb.add(InlineKeyboardButton("💳 خرید کردیت", callback_data="credit:menu"))
+    kb.add(InlineKeyboardButton(t("btn_credit", lang), callback_data="credit:menu"))
     return kb

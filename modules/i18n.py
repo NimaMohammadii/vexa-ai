@@ -104,6 +104,42 @@ LABELS = {
             "<b>Current balance: {credits} credits</b>\n\n"
             "<b>Tap “Buy Credit” to top up.</b>"
         ),
+        "ar": (
+            "⚠️ <b>الرصيد غير كافٍ!</b>\n"
+            "<b>سعر كود الدعوة: {cost} رصيداً</b>\n"
+            "<b>الرصيد الحالي: {credits} رصيد</b>\n\n"
+            "<b>اضغط «شراء الرصيد» لإعادة الشحن.</b>"
+        ),
+        "tr": (
+            "⚠️ <b>Yetersiz kredi!</b>\n"
+            "<b>Davet kodu ücreti: {cost} kredi</b>\n"
+            "<b>Mevcut bakiye: {credits} kredi</b>\n\n"
+            "<b>Yüklemek için “Kredi Satın Al”a dokun.</b>"
+        ),
+        "ru": (
+            "⚠️ <b>Недостаточно кредитов!</b>\n"
+            "<b>Стоимость кода приглашения: {cost} кредитов</b>\n"
+            "<b>Текущий баланс: {credits} кредитов</b>\n\n"
+            "<b>Нажми «Купить кредит», чтобы пополнить.</b>"
+        ),
+        "es": (
+            "⚠️ <b>¡Créditos insuficientes!</b>\n"
+            "<b>Precio del código de invitación: {cost} créditos</b>\n"
+            "<b>Saldo actual: {credits} créditos</b>\n\n"
+            "<b>Toca «Comprar crédito» para recargar.</b>"
+        ),
+        "de": (
+            "⚠️ <b>Nicht genug Credits!</b>\n"
+            "<b>Preis des Einladungscodes: {cost} Credits</b>\n"
+            "<b>Aktueller Kontostand: {credits} Credits</b>\n\n"
+            "<b>Tippe auf „Credits kaufen“, um aufzuladen.</b>"
+        ),
+        "fr": (
+            "⚠️ <b>Crédits insuffisants !</b>\n"
+            "<b>Prix du code d'invitation : {cost} crédits</b>\n"
+            "<b>Solde actuel : {credits} crédits</b>\n\n"
+            "<b>Appuie sur « Acheter des crédits » pour recharger.</b>"
+        ),
     },
     "sora2_no_credit_alert": {
         "fa": "⚠️ کردیت کافی نیست.",
