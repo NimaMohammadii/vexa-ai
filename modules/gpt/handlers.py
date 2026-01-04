@@ -8,7 +8,13 @@ import html
 import base64
 import mimetypes
 
-from telebot.types import InlineKeyboardButton, InlineKeyboardMarkup
+from telebot.types import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    KeyboardButton,
+    ReplyKeyboardMarkup,
+    ReplyKeyboardRemove,
+)
 
 import db
 from config import (
@@ -86,9 +92,9 @@ def _back_keyboard(lang: str) -> InlineKeyboardMarkup:
     return kb
 
 
-def _chat_keyboard(lang: str) -> InlineKeyboardMarkup:
-    kb = InlineKeyboardMarkup()
-    kb.add(InlineKeyboardButton(t("back", lang), callback_data="home:back"))
+def _chat_keyboard(lang: str) -> ReplyKeyboardMarkup:
+    kb = ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.add(KeyboardButton(t("gpt_end_button", lang)))
     return kb
 
 
@@ -162,8 +168,9 @@ def _trim_answer(answer: str) -> str:
 def _finish_chat(bot, chat_id: int, message_id: int, user_id: int, lang: str) -> None:
     db.clear_state(user_id)
     db.clear_gpt_history(user_id)
-    text = f"{t('gpt_end', lang)}\n\n{MAIN(lang)}"
-    edit_or_send(bot, chat_id, message_id, text, main_menu(lang))
+    end_text = t("gpt_end", lang)
+    bot.send_message(chat_id, end_text, reply_markup=ReplyKeyboardRemove(), parse_mode="HTML")
+    bot.send_message(chat_id, MAIN(lang), reply_markup=main_menu(lang), parse_mode="HTML")
 
 
 def _guess_mime_type(file_path: str, fallback: str = "image/jpeg") -> str:
@@ -402,6 +409,10 @@ def register(bot):
         db.touch_last_seen(user["user_id"])
 
         if not _handle_force_sub(bot, user["user_id"], lang, msg.chat.id, msg.message_id):
+            return
+
+        if text == t("gpt_end_button", lang):
+            _finish_chat(bot, msg.chat.id, msg.message_id, user["user_id"], lang)
             return
 
         error = _ensure_gpt_ready(lang)
