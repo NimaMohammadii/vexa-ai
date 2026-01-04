@@ -4,7 +4,7 @@ from __future__ import annotations
 import db
 from telebot.types import CallbackQuery, Message
 
-from utils import edit_or_send, check_force_sub
+from utils import edit_or_send, ensure_force_sub
 from modules.i18n import t
 from .texts import MAIN, HELP
 from .keyboards import main_menu, _back_to_home_kb
@@ -66,14 +66,7 @@ def _consume_pending_referral(bot, user, chat_id: int, lang: str) -> None:
 
 
 def _ensure_force_sub(bot, user_id: int, chat_id: int, message_id: int | None, lang: str) -> bool:
-    settings = db.get_settings()
-    mode = (settings.get("FORCE_SUB_MODE") or "none").lower()
-    if mode in ("new", "all"):
-        ok, txt, kb = check_force_sub(bot, user_id, settings, lang)
-        if not ok:
-            edit_or_send(bot, chat_id, message_id, txt, kb)
-            return False
-    return True
+    return ensure_force_sub(bot, user_id, chat_id, message_id, lang)
 
 
 def register(bot):

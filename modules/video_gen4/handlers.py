@@ -13,7 +13,7 @@ from telebot.types import CallbackQuery, Message
 from modules.home.keyboards import main_menu
 from modules.home.texts import MAIN
 from modules.i18n import t
-from utils import edit_or_send
+from utils import edit_or_send, ensure_force_sub
 from .keyboards import menu_keyboard, no_credit_keyboard
 from .service import VideoGen4Error, VideoGen4Service
 from .settings import (
@@ -223,6 +223,9 @@ def open_video(bot: TeleBot, call: CallbackQuery) -> None:
     if user.get("banned"):
         bot.answer_callback_query(call.id, t("error_banned", lang), show_alert=True)
         return
+    if not ensure_force_sub(bot, user["user_id"], call.message.chat.id, call.message.message_id, lang):
+        bot.answer_callback_query(call.id)
+        return
     _start_flow(
         bot,
         call.message.chat.id,
@@ -238,6 +241,9 @@ def register(bot: TeleBot) -> None:
     def on_back(cq: CallbackQuery):
         user, lang = _get_user_and_lang(cq.from_user)
         db.clear_state(user["user_id"])
+        if not ensure_force_sub(bot, user["user_id"], cq.message.chat.id, cq.message.message_id, lang):
+            bot.answer_callback_query(cq.id)
+            return
         edit_or_send(
             bot, cq.message.chat.id, cq.message.message_id, MAIN(lang), main_menu(lang)
         )
@@ -248,6 +254,8 @@ def register(bot: TeleBot) -> None:
         user, lang = _get_user_and_lang(message.from_user)
         if user.get("banned"):
             bot.reply_to(message, t("error_banned", lang))
+            return
+        if not ensure_force_sub(bot, user["user_id"], message.chat.id, message.message_id, lang):
             return
         _start_flow(bot, message.chat.id, user["user_id"], lang)
 
@@ -266,6 +274,8 @@ def register(bot: TeleBot) -> None:
         if user.get("banned"):
             bot.reply_to(message, t("error_banned", lang))
             return
+        if not ensure_force_sub(bot, user["user_id"], message.chat.id, message.message_id, lang):
+            return
 
         if has_command:
             parts = caption.split(maxsplit=1)
@@ -281,4 +291,6 @@ def register(bot: TeleBot) -> None:
         if message.text and message.text.startswith("/"):
             return
         user, lang = _get_user_and_lang(message.from_user)
+        if not ensure_force_sub(bot, user["user_id"], message.chat.id, message.message_id, lang):
+            return
         bot.reply_to(message, need_image(lang), parse_mode="HTML")

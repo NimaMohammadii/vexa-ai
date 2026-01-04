@@ -8,7 +8,7 @@ from telebot.types import CallbackQuery
 
 import db
 from modules.i18n import t
-from utils import edit_or_send
+from utils import edit_or_send, ensure_force_sub
 from .texts import INVITE_TEXT
 from .keyboards import keyboard as invite_keyboard
 
@@ -29,6 +29,9 @@ def register(bot: TeleBot) -> None:
             return
 
         db.touch_last_seen(user_id)
+        if not ensure_force_sub(bot, user_id, cq.message.chat.id, cq.message.message_id, lang):
+            bot.answer_callback_query(cq.id)
+            return
 
         now = int(time.time())
         last_claim = db.get_last_daily_reward(user_id)
@@ -54,6 +57,8 @@ def register(bot: TeleBot) -> None:
 def open_invite(bot, cq):
     user = db.get_or_create_user(cq.from_user)
     lang = db.get_user_lang(user["user_id"], "fa")
+    if not ensure_force_sub(bot, user["user_id"], cq.message.chat.id, cq.message.message_id, lang):
+        return
     bonus = int(db.get_setting("BONUS_REFERRAL", "30") or 30)
     me = bot.get_me()
     ref_url = f"https://t.me/{me.username}?start={user['ref_code']}"

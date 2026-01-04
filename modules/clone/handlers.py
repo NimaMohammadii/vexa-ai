@@ -1,7 +1,7 @@
 # modules/clone/handlers.py
 import db
 from config import DEBUG
-from utils import edit_or_send
+from utils import edit_or_send, ensure_force_sub
 from modules.i18n import t
 from .service import clone_voice_with_cleanup
 from .settings import STATE_WAIT_VOICE, STATE_WAIT_PAYMENT, STATE_WAIT_NAME, VOICE_CLONE_COST
@@ -11,6 +11,8 @@ from .keyboards import payment_keyboard, no_credit_keyboard, menu_keyboard
 def open_clone(bot, cq):
     user = db.get_or_create_user(cq.from_user)
     lang = db.get_user_lang(user["user_id"], "fa")
+    if not ensure_force_sub(bot, user["user_id"], cq.message.chat.id, cq.message.message_id, lang):
+        return
 
     db.set_state(cq.from_user.id, STATE_WAIT_VOICE)
 
@@ -29,6 +31,11 @@ def register(bot):
     @bot.callback_query_handler(func=lambda c: c.data == "home:clone")
     def _open_clone_cb(cq):
         try:
+            user = db.get_or_create_user(cq.from_user)
+            lang = db.get_user_lang(user["user_id"], "fa")
+            if not ensure_force_sub(bot, user["user_id"], cq.message.chat.id, cq.message.message_id, lang):
+                bot.answer_callback_query(cq.id)
+                return
             open_clone(bot, cq)
             bot.answer_callback_query(cq.id)
         except Exception as e:
@@ -40,6 +47,9 @@ def register(bot):
             user = db.get_or_create_user(cq.from_user)
             user_id = user["user_id"]
             lang = db.get_user_lang(user_id, "fa")
+            if not ensure_force_sub(bot, user_id, cq.message.chat.id, cq.message.message_id, lang):
+                bot.answer_callback_query(cq.id)
+                return
 
             # بررسی وجود state و voice data
             current_state = db.get_state(user_id)
@@ -80,6 +90,8 @@ def register(bot):
         try:
             lang = db.get_user_lang(msg.from_user.id, "fa")
             user_id = msg.from_user.id
+            if not ensure_force_sub(bot, user_id, msg.chat.id, msg.message_id, lang):
+                return
             
             # بررسی محدودیت تعداد صداهای کاربر (حداکثر 2 صدا)
             user_voices = db.list_user_voices(user_id)
@@ -146,6 +158,8 @@ def register(bot):
             user_id = msg.from_user.id
             voice_name = msg.text.strip()
             lang = db.get_user_lang(user_id, "fa")
+            if not ensure_force_sub(bot, user_id, msg.chat.id, msg.message_id, lang):
+                return
 
             if not voice_name:
                 bot.reply_to(msg, t("clone_name_empty", lang))

@@ -130,3 +130,17 @@ def check_force_sub(bot, user_id, settings, lang: str | None = None):
     lines.append(t("force_sub_hint", lang))
     txt = "\n".join(lines)
     return False, txt, kb
+
+
+def ensure_force_sub(bot, user_id, chat_id, message_id, lang: str | None = None) -> bool:
+    import db
+
+    settings = db.get_settings()
+    ok, txt, kb = check_force_sub(bot, user_id, settings, lang)
+    if ok:
+        return True
+    if message_id is None:
+        bot.send_message(chat_id, txt, reply_markup=kb, parse_mode="HTML")
+    else:
+        edit_or_send(bot, chat_id, message_id, txt, kb)
+    return False
