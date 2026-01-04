@@ -103,7 +103,9 @@ def check_force_sub(bot, user_id, settings, lang: str | None = None):
     if channel_ref:
         try:
             mem = bot.get_chat_member(channel_ref, user_id)
-            ok_tg = mem.status in ("creator", "administrator", "member")
+            ok_tg = mem.status in ("creator", "administrator", "member") or (
+                mem.status == "restricted" and getattr(mem, "is_member", False)
+            )
             print(
                 "DEBUG: Force sub check for user"
                 f" {user_id} in channel {channel_ref}: status={mem.status}, ok={ok_tg}"
