@@ -110,6 +110,24 @@ def check_force_sub(bot, user_id, settings, lang: str | None = None):
                 "DEBUG: Force sub check for user"
                 f" {user_id} in channel {channel_ref}: status={mem.status}, ok={ok_tg}"
             )
+        except ApiTelegramException as e:
+            err = str(e).lower()
+            perm_blocked = any(
+                hint in err
+                for hint in (
+                    "chat not found",
+                    "bot is not a member",
+                    "not enough rights",
+                    "not enough rights to get chat members",
+                    "chat_admin_required",
+                    "have no rights",
+                )
+            )
+            print(
+                "DEBUG: Force sub check failed for user"
+                f" {user_id} in channel {channel_ref}: {e}"
+            )
+            ok_tg = perm_blocked
         except Exception as e:
             print(
                 "DEBUG: Force sub check failed for user"
