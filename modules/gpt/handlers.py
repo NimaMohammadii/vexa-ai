@@ -131,7 +131,7 @@ def _format_credits(value: float) -> str:
         num = float(value)
     except (TypeError, ValueError):
         return "0"
-    if abs(num - round(num)) < 0.01:
+    if abs(num - round(num)) < 1:
         return str(int(round(num)))
     return f"{num:.1f}".rstrip("0").rstrip(".")
 
