@@ -74,12 +74,21 @@ def parse_int(text: str) -> int:
     if t.startswith("-"): return -int(t[1:] or "0")
     return int(t or "0")
 
+def _lang_setting(settings: dict, key: str, lang: str | None):
+    if not lang:
+        return settings.get(key)
+    lang_key = f"{key}_{lang}"
+    if lang_key in settings:
+        return settings.get(lang_key)
+    return settings.get(key)
+
+
 def check_force_sub(bot, user_id, settings, lang: str | None = None):
     """
     returns: (ok, text, markup)
     """
-    mode = (settings.get("FORCE_SUB_MODE") or "none").strip()
-    tg_channel = (settings.get("TG_CHANNEL") or "").strip()
+    mode = (_lang_setting(settings, "FORCE_SUB_MODE", lang) or "none").strip()
+    tg_channel = (_lang_setting(settings, "TG_CHANNEL", lang) or "").strip()
     ig_url = (settings.get("IG_URL") or "").strip()
 
     lang = (lang or "fa")

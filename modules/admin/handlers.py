@@ -24,6 +24,7 @@ from .texts import (
     ASK_TG,    STATE_SET_TG,
     ASK_IG,    STATE_SET_IG,
     ASK_FORMULA, STATE_FORMULA,
+    ASK_TG_LANG, STATE_SET_TG_LANG,
 )
 from .keyboards import (
     admin_menu,
@@ -34,6 +35,8 @@ from .keyboards import (
     image_users_menu,
     gpt_users_menu,
     daily_reward_users_menu,
+    force_sub_lang_list,
+    force_sub_lang_menu,
 )
 from modules.lang.keyboards import LANGS
 from modules.i18n import t
@@ -475,6 +478,49 @@ def register(bot):
             edit_or_send(bot, cq.message.chat.id, cq.message.message_id, "⚙️ تنظیمات ربات:", settings_menu())
             return
 
+        if action == "fs_lang":
+            subaction = p[2] if len(p) > 2 else "list"
+            if subaction == "list":
+                edit_or_send(bot, cq.message.chat.id, cq.message.message_id, "🔐 تنظیم عضویت اجباری بر اساس زبان:", force_sub_lang_list())
+                return
+            if subaction == "open" and len(p) >= 4:
+                lang_code = p[3]
+                edit_or_send(
+                    bot,
+                    cq.message.chat.id,
+                    cq.message.message_id,
+                    f"🔐 عضویت اجباری ({lang_code})",
+                    force_sub_lang_menu(lang_code),
+                )
+                return
+            if subaction == "toggle" and len(p) >= 4:
+                lang_code = p[3]
+                key = f"FORCE_SUB_MODE_{lang_code}"
+                cur = (db.get_setting(key, "none") or "none").lower()
+                order = ["none", "new", "all"]
+                nxt = order[(order.index(cur) + 1) % len(order)] if cur in order else "none"
+                db.set_setting(key, nxt)
+                edit_or_send(
+                    bot,
+                    cq.message.chat.id,
+                    cq.message.message_id,
+                    f"✅ اعمال شد.\n\n🔐 عضویت اجباری ({lang_code})",
+                    force_sub_lang_menu(lang_code),
+                )
+                return
+            if subaction == "set_tg" and len(p) >= 4:
+                lang_code = p[3]
+                db.clear_state(cq.from_user.id)
+                db.set_state(cq.from_user.id, f"{STATE_SET_TG_LANG}:{lang_code}")
+                edit_or_send(
+                    bot,
+                    cq.message.chat.id,
+                    cq.message.message_id,
+                    ASK_TG_LANG,
+                    force_sub_lang_menu(lang_code),
+                )
+                return
+
         if action == "exports":
             edit_or_send(bot, cq.message.chat.id, cq.message.message_id, "📤 خروجی‌ها:", exports_menu())
             return
@@ -847,6 +893,20 @@ def register(bot):
     def s_set_tg(msg: types.Message):
         if not _is_owner(msg.from_user): return
         db.set_setting("TG_CHANNEL", (msg.text or "").strip())
+        db.clear_state(msg.from_user.id)
+        bot.reply_to(msg, DONE)
+
+    @bot.message_handler(func=lambda m: (db.get_state(m.from_user.id) or "").startswith(STATE_SET_TG_LANG), content_types=['text'])
+    def s_set_tg_lang(msg: types.Message):
+        if not _is_owner(msg.from_user): return
+        raw_state = db.get_state(msg.from_user.id) or ""
+        parts = raw_state.split(":")
+        lang_code = parts[-1] if parts else ""
+        if not lang_code:
+            db.clear_state(msg.from_user.id)
+            bot.reply_to(msg, "⚠️ وضعیت نامعتبر.")
+            return
+        db.set_setting(f"TG_CHANNEL_{lang_code}", (msg.text or "").strip())
         db.clear_state(msg.from_user.id)
         bot.reply_to(msg, DONE)
 
