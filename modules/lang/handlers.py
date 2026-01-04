@@ -77,6 +77,12 @@ def register(bot):
                 _consume_pending_referral(bot, user, cq.message.chat.id, lang)
 
             edit_or_send(bot, cq.message.chat.id, cq.message.message_id, MAIN(lang), main_menu(lang))
+            try:
+                from modules.home.handlers import _trigger_onboarding
+            except ImportError:
+                _trigger_onboarding = None
+            if _trigger_onboarding:
+                _trigger_onboarding(bot, user, cq.message.chat.id)
             return
 
 

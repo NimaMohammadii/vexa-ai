@@ -83,7 +83,11 @@ def init_db():
             joined_at INTEGER,
             credits INTEGER DEFAULT 0,
             ref_code TEXT,
-            referred_by TEXT
+            referred_by TEXT,
+            onboarding_pending INTEGER DEFAULT 0,
+            welcome_sent_at INTEGER DEFAULT 0,
+            daily_bonus_prompted_at INTEGER DEFAULT 0,
+            daily_bonus_unlocked_at INTEGER DEFAULT 0
         )""")
         cur.execute("""CREATE TABLE IF NOT EXISTS kv_state(
             user_id INTEGER PRIMARY KEY,
@@ -976,6 +980,14 @@ def _migrate_users_table():
             cur.execute("ALTER TABLE users ADD COLUMN lang TEXT DEFAULT 'fa'")
         if "last_daily_reward" not in cols:
             cur.execute("ALTER TABLE users ADD COLUMN last_daily_reward INTEGER DEFAULT 0")
+        if "onboarding_pending" not in cols:
+            cur.execute("ALTER TABLE users ADD COLUMN onboarding_pending INTEGER DEFAULT 0")
+        if "welcome_sent_at" not in cols:
+            cur.execute("ALTER TABLE users ADD COLUMN welcome_sent_at INTEGER DEFAULT 0")
+        if "daily_bonus_prompted_at" not in cols:
+            cur.execute("ALTER TABLE users ADD COLUMN daily_bonus_prompted_at INTEGER DEFAULT 0")
+        if "daily_bonus_unlocked_at" not in cols:
+            cur.execute("ALTER TABLE users ADD COLUMN daily_bonus_unlocked_at INTEGER DEFAULT 0")
         con.commit()
 
 def get_or_create_user(u):
@@ -988,8 +1000,18 @@ def get_or_create_user(u):
             free_credit = int(get_setting("FREE_CREDIT", "80") or 80)
             ref_code = str(u.id)
             cur.execute(
-                """INSERT INTO users(user_id,username,first_name,joined_at,credits,ref_code,last_seen,lang)
-                           VALUES(?,?,?,?,?,?,?,?)""",
+                """INSERT INTO users(
+                    user_id,
+                    username,
+                    first_name,
+                    joined_at,
+                    credits,
+                    ref_code,
+                    last_seen,
+                    lang,
+                    onboarding_pending
+                )
+                VALUES(?,?,?,?,?,?,?,?,?)""",
                 (
                     u.id,
                     (u.username or ""),
@@ -999,6 +1021,7 @@ def get_or_create_user(u):
                     ref_code,
                     int(time.time()),
                     "",
+                    1,
                 ),
             )
             con.commit()
@@ -1030,7 +1053,11 @@ def get_user(user_id):
                 banned,
                 last_seen,
                 lang,
-                last_daily_reward
+                last_daily_reward,
+                onboarding_pending,
+                welcome_sent_at,
+                daily_bonus_prompted_at,
+                daily_bonus_unlocked_at
             FROM users WHERE user_id=?
             """,
             (user_id,),
@@ -1050,6 +1077,10 @@ def get_user(user_id):
             "last_seen",
             "lang",
             "last_daily_reward",
+            "onboarding_pending",
+            "welcome_sent_at",
+            "daily_bonus_prompted_at",
+            "daily_bonus_unlocked_at",
         ]
         return _normalize_user_dict(keys, row)
 
@@ -1069,6 +1100,101 @@ def get_last_daily_reward(user_id: int) -> int:
             return int(value or 0)
         except (TypeError, ValueError):
             return 0
+
+
+def get_welcome_sent_at(user_id: int) -> int:
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            "SELECT welcome_sent_at FROM users WHERE user_id=?",
+            (user_id,),
+        )
+        row = cur.fetchone()
+        if not row:
+            return 0
+        value = row[0]
+        try:
+            return int(value or 0)
+        except (TypeError, ValueError):
+            return 0
+
+
+def set_welcome_sent_at(user_id: int, timestamp: int | None = None) -> None:
+    ts = int(timestamp or time.time())
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            "UPDATE users SET welcome_sent_at=? WHERE user_id=?",
+            (ts, user_id),
+        )
+        con.commit()
+
+
+def set_onboarding_pending(user_id: int, pending: bool) -> None:
+    value = 1 if pending else 0
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            "UPDATE users SET onboarding_pending=? WHERE user_id=?",
+            (value, user_id),
+        )
+        con.commit()
+
+
+def get_daily_bonus_prompted_at(user_id: int) -> int:
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            "SELECT daily_bonus_prompted_at FROM users WHERE user_id=?",
+            (user_id,),
+        )
+        row = cur.fetchone()
+        if not row:
+            return 0
+        value = row[0]
+        try:
+            return int(value or 0)
+        except (TypeError, ValueError):
+            return 0
+
+
+def set_daily_bonus_prompted_at(user_id: int, timestamp: int | None = None) -> None:
+    ts = int(timestamp or time.time())
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            "UPDATE users SET daily_bonus_prompted_at=? WHERE user_id=?",
+            (ts, user_id),
+        )
+        con.commit()
+
+
+def get_daily_bonus_unlocked_at(user_id: int) -> int:
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            "SELECT daily_bonus_unlocked_at FROM users WHERE user_id=?",
+            (user_id,),
+        )
+        row = cur.fetchone()
+        if not row:
+            return 0
+        value = row[0]
+        try:
+            return int(value or 0)
+        except (TypeError, ValueError):
+            return 0
+
+
+def set_daily_bonus_unlocked_at(user_id: int, timestamp: int | None = None) -> None:
+    ts = int(timestamp or time.time())
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            "UPDATE users SET daily_bonus_unlocked_at=? WHERE user_id=?",
+            (ts, user_id),
+        )
+        con.commit()
 
 
 def set_last_daily_reward(user_id: int, timestamp: int | None = None) -> None:

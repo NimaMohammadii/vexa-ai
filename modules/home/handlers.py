@@ -1,13 +1,115 @@
 # modules/home/handlers.py
 from __future__ import annotations
 
+import threading
+import time
+
 import db
-from telebot.types import CallbackQuery, Message
+from telebot.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 from utils import check_force_sub, edit_or_send, ensure_force_sub
 from modules.i18n import t
 from .texts import MAIN, HELP
 from .keyboards import main_menu, _back_to_home_kb
+
+
+ONBOARDING_DAILY_BONUS_DELAY = 15.0
+ONBOARDING_DAILY_BONUS_UNLOCK_DELAY = 10 * 60
+
+
+def _daily_bonus_ready_keyboard(lang: str) -> InlineKeyboardMarkup:
+    kb = InlineKeyboardMarkup()
+    kb.add(InlineKeyboardButton(t("onboarding_bonus_button", lang), callback_data="onboarding:daily_reward"))
+    return kb
+
+
+def _daily_bonus_unlocked_keyboard(lang: str) -> InlineKeyboardMarkup:
+    kb = InlineKeyboardMarkup()
+    kb.add(InlineKeyboardButton(t("onboarding_bonus_button", lang), callback_data="onboarding:invite"))
+    return kb
+
+
+def _send_daily_bonus_unlocked(bot, user_id: int, chat_id: int) -> None:
+    user = db.get_user(user_id)
+    if not user or user.get("banned"):
+        return
+    if db.get_daily_bonus_unlocked_at(user_id) > 0:
+        return
+    lang = db.get_user_lang(user_id, "fa")
+    try:
+        bot.send_message(
+            chat_id,
+            t("onboarding_daily_bonus_unlocked", lang),
+            reply_markup=_daily_bonus_unlocked_keyboard(lang),
+        )
+    except Exception:
+        return
+    db.set_daily_bonus_unlocked_at(user_id, int(time.time()))
+
+
+def _schedule_daily_bonus_unlocked(bot, user_id: int, chat_id: int, delay: float) -> None:
+    timer = threading.Timer(delay, _send_daily_bonus_unlocked, args=(bot, user_id, chat_id))
+    timer.daemon = True
+    timer.start()
+
+
+def _send_daily_bonus_ready(bot, user_id: int, chat_id: int) -> None:
+    user = db.get_user(user_id)
+    if not user or user.get("banned"):
+        return
+    if db.get_daily_bonus_prompted_at(user_id) > 0:
+        return
+    lang = db.get_user_lang(user_id, "fa")
+    try:
+        bot.send_message(
+            chat_id,
+            t("onboarding_daily_bonus_ready", lang),
+            reply_markup=_daily_bonus_ready_keyboard(lang),
+        )
+    except Exception:
+        return
+    prompted_at = int(time.time())
+    db.set_daily_bonus_prompted_at(user_id, prompted_at)
+    _schedule_daily_bonus_unlocked(
+        bot,
+        user_id,
+        chat_id,
+        ONBOARDING_DAILY_BONUS_UNLOCK_DELAY,
+    )
+
+
+def _maybe_send_pending_daily_bonus_unlock(bot, user_id: int, chat_id: int) -> None:
+    prompted_at = db.get_daily_bonus_prompted_at(user_id)
+    if not prompted_at:
+        return
+    if db.get_daily_bonus_unlocked_at(user_id) > 0:
+        return
+    elapsed = int(time.time()) - int(prompted_at)
+    if elapsed >= ONBOARDING_DAILY_BONUS_UNLOCK_DELAY:
+        _send_daily_bonus_unlocked(bot, user_id, chat_id)
+
+
+def _trigger_onboarding(bot, user, chat_id: int) -> None:
+    user_id = user["user_id"]
+    if user.get("banned"):
+        return
+    if not user.get("onboarding_pending"):
+        _maybe_send_pending_daily_bonus_unlock(bot, user_id, chat_id)
+        return
+    if db.get_welcome_sent_at(user_id) > 0:
+        db.set_onboarding_pending(user_id, False)
+        _maybe_send_pending_daily_bonus_unlock(bot, user_id, chat_id)
+        return
+    lang = db.get_user_lang(user_id, "fa")
+    try:
+        bot.send_message(chat_id, t("onboarding_welcome", lang))
+    except Exception:
+        return
+    db.set_welcome_sent_at(user_id, int(time.time()))
+    db.set_onboarding_pending(user_id, False)
+    timer = threading.Timer(ONBOARDING_DAILY_BONUS_DELAY, _send_daily_bonus_ready, args=(bot, user_id, chat_id))
+    timer.daemon = True
+    timer.start()
 
 
 def _apply_referral(bot, user, ref_code: str, chat_id: int, user_lang: str) -> None:
@@ -106,6 +208,7 @@ def register(bot):
         _handle_referral(bot, msg, user, lang)
         _consume_pending_referral(bot, user, msg.chat.id, lang)
         edit_or_send(bot, msg.chat.id, msg.message_id, MAIN(lang), main_menu(lang))
+        _trigger_onboarding(bot, user, msg.chat.id)
 
     @bot.message_handler(commands=["help"])
     def help_cmd(msg: Message):
