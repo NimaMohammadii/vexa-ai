@@ -15,6 +15,7 @@ from .keyboards import main_menu, _back_to_home_kb
 
 ONBOARDING_DAILY_BONUS_DELAY = 15.0
 ONBOARDING_DAILY_BONUS_UNLOCK_DELAY = 10 * 60
+ONBOARDING_DAILY_BONUS_REMINDER_DELAY = 10 * 60
 LOW_CREDIT_DELAY = 15.0
 LOW_CREDIT_THRESHOLD = 15
 
@@ -90,10 +91,42 @@ def _send_daily_bonus_unlocked(bot, user_id: int, chat_id: int) -> None:
     except Exception:
         return
     db.set_daily_bonus_unlocked_at(user_id, int(time.time()))
+    _schedule_daily_bonus_reminder(
+        bot,
+        user_id,
+        chat_id,
+        ONBOARDING_DAILY_BONUS_REMINDER_DELAY,
+    )
 
 
 def _schedule_daily_bonus_unlocked(bot, user_id: int, chat_id: int, delay: float) -> None:
     timer = threading.Timer(delay, _send_daily_bonus_unlocked, args=(bot, user_id, chat_id))
+    timer.daemon = True
+    timer.start()
+
+
+def _send_daily_bonus_reminder(bot, user_id: int, chat_id: int) -> None:
+    user = db.get_user(user_id)
+    if not user or user.get("banned"):
+        return
+    if db.get_daily_bonus_reminded_at(user_id) > 0:
+        return
+    if db.get_last_daily_reward(user_id) > 0:
+        return
+    lang = db.get_user_lang(user_id, "fa")
+    try:
+        bot.send_message(
+            chat_id,
+            t("onboarding_daily_bonus_reminder", lang),
+            reply_markup=_daily_bonus_ready_keyboard(lang),
+        )
+    except Exception:
+        return
+    db.set_daily_bonus_reminded_at(user_id, int(time.time()))
+
+
+def _schedule_daily_bonus_reminder(bot, user_id: int, chat_id: int, delay: float) -> None:
+    timer = threading.Timer(delay, _send_daily_bonus_reminder, args=(bot, user_id, chat_id))
     timer.daemon = True
     timer.start()
 
@@ -128,10 +161,24 @@ def _maybe_send_pending_daily_bonus_unlock(bot, user_id: int, chat_id: int) -> N
     if not prompted_at:
         return
     if db.get_daily_bonus_unlocked_at(user_id) > 0:
+        _maybe_send_pending_daily_bonus_reminder(bot, user_id, chat_id)
         return
     elapsed = int(time.time()) - int(prompted_at)
     if elapsed >= ONBOARDING_DAILY_BONUS_UNLOCK_DELAY:
         _send_daily_bonus_unlocked(bot, user_id, chat_id)
+
+
+def _maybe_send_pending_daily_bonus_reminder(bot, user_id: int, chat_id: int) -> None:
+    unlocked_at = db.get_daily_bonus_unlocked_at(user_id)
+    if not unlocked_at:
+        return
+    if db.get_daily_bonus_reminded_at(user_id) > 0:
+        return
+    if db.get_last_daily_reward(user_id) > 0:
+        return
+    elapsed = int(time.time()) - int(unlocked_at)
+    if elapsed >= ONBOARDING_DAILY_BONUS_REMINDER_DELAY:
+        _send_daily_bonus_reminder(bot, user_id, chat_id)
 
 
 def _trigger_onboarding(bot, user, chat_id: int) -> None:
