@@ -114,7 +114,7 @@ def register(bot):
         if route.startswith("voice:"):
             name = route.split(":", 1)[1]
             if name not in VOICES:
-                bot.answer_callback_query(cq.id, "Voice not found")
+                bot.answer_callback_query(cq.id, t("tts_voice_not_found", lang))
                 return
 
             edit_or_send(
