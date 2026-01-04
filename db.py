@@ -88,6 +88,7 @@ def init_db():
             welcome_sent_at INTEGER DEFAULT 0,
             daily_bonus_prompted_at INTEGER DEFAULT 0,
             daily_bonus_unlocked_at INTEGER DEFAULT 0,
+            daily_bonus_reminded_at INTEGER DEFAULT 0,
             low_credit_prompted_at INTEGER DEFAULT 0
         )""")
         cur.execute("""CREATE TABLE IF NOT EXISTS kv_state(
@@ -989,6 +990,8 @@ def _migrate_users_table():
             cur.execute("ALTER TABLE users ADD COLUMN daily_bonus_prompted_at INTEGER DEFAULT 0")
         if "daily_bonus_unlocked_at" not in cols:
             cur.execute("ALTER TABLE users ADD COLUMN daily_bonus_unlocked_at INTEGER DEFAULT 0")
+        if "daily_bonus_reminded_at" not in cols:
+            cur.execute("ALTER TABLE users ADD COLUMN daily_bonus_reminded_at INTEGER DEFAULT 0")
         if "low_credit_prompted_at" not in cols:
             cur.execute("ALTER TABLE users ADD COLUMN low_credit_prompted_at INTEGER DEFAULT 0")
         con.commit()
@@ -1061,6 +1064,7 @@ def get_user(user_id):
                 welcome_sent_at,
                 daily_bonus_prompted_at,
                 daily_bonus_unlocked_at,
+                daily_bonus_reminded_at,
                 low_credit_prompted_at
             FROM users WHERE user_id=?
             """,
@@ -1085,6 +1089,7 @@ def get_user(user_id):
             "welcome_sent_at",
             "daily_bonus_prompted_at",
             "daily_bonus_unlocked_at",
+            "daily_bonus_reminded_at",
             "low_credit_prompted_at",
         ]
         return _normalize_user_dict(keys, row)
@@ -1197,6 +1202,34 @@ def set_daily_bonus_unlocked_at(user_id: int, timestamp: int | None = None) -> N
         cur = con.cursor()
         cur.execute(
             "UPDATE users SET daily_bonus_unlocked_at=? WHERE user_id=?",
+            (ts, user_id),
+        )
+        con.commit()
+
+
+def get_daily_bonus_reminded_at(user_id: int) -> int:
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            "SELECT daily_bonus_reminded_at FROM users WHERE user_id=?",
+            (user_id,),
+        )
+        row = cur.fetchone()
+        if not row:
+            return 0
+        value = row[0]
+        try:
+            return int(value or 0)
+        except (TypeError, ValueError):
+            return 0
+
+
+def set_daily_bonus_reminded_at(user_id: int, timestamp: int | None = None) -> None:
+    ts = int(timestamp or time.time())
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            "UPDATE users SET daily_bonus_reminded_at=? WHERE user_id=?",
             (ts, user_id),
         )
         con.commit()
