@@ -670,14 +670,14 @@ def t(key: str, lang: str) -> str:
 
 LABELS.update({
     "gpt_open": {
-        "fa": "<b>😊 سلام٫ چه کمکی از دستم برمیاد ؟</b>",
-        "en": "💳 <b>Each message costs {cost} credits.</b>\n✍️ <b>Type your question right here.</b>\n🔍 <b>I automatically look up live prices or news.</b>",
-        "ar": "💳 <b>تكلفة كل رسالة: {cost} رصيداً.</b>\n✍️ <b>اكتب سؤالك هنا مباشرة.</b>\n🔍 <b>أبحث تلقائياً عن الأسعار أو الأخبار اللحظية.</b>",
-        "tr": "💳 <b>Her mesaj: {cost} kredi.</b>\n✍️ <b>Sorunu buraya yaz.</b>\n🔍 <b>Fiyat ya da güncel haber gerekiyorsa otomatik ararım.</b>",
-        "ru": "💳 <b>Каждое сообщение стоит {cost} кредитов.</b>\n✍️ <b>Просто напиши свой вопрос здесь.</b>\n🔍 <b>Актуальные цены и новости я найду автоматически.</b>",
-        "es": "💳 <b>Cada mensaje cuesta {cost} créditos.</b>\n✍️ <b>Escribe tu pregunta aquí mismo.</b>\n🔍 <b>Busco automáticamente precios o noticias en vivo.</b>",
-        "de": "💳 <b>Jede Nachricht kostet {cost} Guthaben.</b>\n✍️ <b>Schreib deine Frage direkt hier.</b>\n🔍 <b>Aktuelle Preise oder News suche ich automatisch.</b>",
-        "fr": "💳 <b>Chaque message coûte {cost} crédits.</b>\n✍️ <b>Écris ta question juste ici.</b>\n🔍 <b>Je cherche automatiquement les prix ou actus en direct.</b>",
+        "fa": "<b>GPT-5.2 آماده است 🙂</b>\n<b>پیامت رو پایین بنویس</b>",
+        "en": "<b>GPT-5.2 is ready 🙂</b>\n<b>Type your message below</b>",
+        "ar": "<b>GPT-5.2 جاهز 🙂</b>\n<b>اكتب رسالتك أدناه</b>",
+        "tr": "<b>GPT-5.2 hazır 🙂</b>\n<b>Mesajını aşağıya yaz</b>",
+        "ru": "<b>GPT-5.2 готов 🙂</b>\n<b>Напишите сообщение ниже</b>",
+        "es": "<b>GPT-5.2 está listo 🙂</b>\n<b>Escribe tu mensaje abajo</b>",
+        "de": "<b>GPT-5.2 ist bereit 🙂</b>\n<b>Gib deine Nachricht unten ein</b>",
+        "fr": "<b>GPT-5.2 est prêt 🙂</b>\n<b>Écris ton message ci-dessous</b>",
     },
     "gpt_wait": {
         "fa": "🫧 <b>درحال فکر کردن...</b>",
@@ -708,6 +708,16 @@ LABELS.update({
         "es": "♻️ Nuevo chat",
         "de": "♻️ Neuer Chat",
         "fr": "♻️ Nouveau chat",
+    },
+    "gpt_end_button": {
+        "fa": "✅ اتمام چت",
+        "en": "✅ End chat",
+        "ar": "✅ إنهاء الدردشة",
+        "tr": "✅ Sohbeti bitir",
+        "ru": "✅ Завершить чат",
+        "es": "✅ Terminar chat",
+        "de": "✅ Chat beenden",
+        "fr": "✅ Terminer le chat",
     },
     "gpt_end": {
         "fa": "✅ <b>فعلاً تا همین‌جا؛ هر وقت حسش بود برگرد تا دوباره شلوغش کنیم.</b>",
