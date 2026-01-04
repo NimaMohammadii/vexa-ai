@@ -3,6 +3,8 @@ from telebot.apihelper import ApiTelegramException
 
 from modules.i18n import t
 
+import re
+
 def edit_or_send(bot, chat_id, message_id, text, reply_markup=None, parse_mode="HTML"):
     try:
         bot.edit_message_text(chat_id=chat_id, message_id=message_id,
@@ -45,7 +47,6 @@ def smart_edit_or_send(bot, obj, text, reply_markup=None, parse_mode="HTML"):
             parse_mode = text if isinstance(text, str) and text in ["HTML", "Markdown"] else "HTML"
     
     # پاک کردن HTML tags برای مقایسه بهتر
-    import re
     clean_current = re.sub(r'<[^>]+>', '', current_text.strip())
     clean_new = re.sub(r'<[^>]+>', '', text.strip())
     
@@ -97,24 +98,32 @@ def check_force_sub(bot, user_id, settings, lang: str | None = None):
         return True, "", None
 
     ok_tg = True
-    if tg_channel:
+    channel_ref = _normalize_tg_channel_ref(tg_channel)
+    join_url = _build_tg_join_url(tg_channel)
+    if channel_ref:
         try:
-            mem = bot.get_chat_member(tg_channel, user_id)
+            mem = bot.get_chat_member(channel_ref, user_id)
             ok_tg = mem.status in ("creator", "administrator", "member")
-            print(f"DEBUG: Force sub check for user {user_id} in channel {tg_channel}: status={mem.status}, ok={ok_tg}")
+            print(
+                "DEBUG: Force sub check for user"
+                f" {user_id} in channel {channel_ref}: status={mem.status}, ok={ok_tg}"
+            )
         except Exception as e:
-            print(f"DEBUG: Force sub check failed for user {user_id} in channel {tg_channel}: {e}")
+            print(
+                "DEBUG: Force sub check failed for user"
+                f" {user_id} in channel {channel_ref}: {e}"
+            )
             ok_tg = False
 
     if ok_tg:
         return True, "", None
 
     kb = InlineKeyboardMarkup()
-    if tg_channel:
+    if join_url:
         kb.add(
             InlineKeyboardButton(
                 t("force_sub_btn_join_channel", lang),
-                url=f"https://t.me/{tg_channel.lstrip('@')}",
+                url=join_url,
             )
         )
     if ig_url:
@@ -122,7 +131,7 @@ def check_force_sub(bot, user_id, settings, lang: str | None = None):
     kb.add(InlineKeyboardButton(t("force_sub_btn_joined", lang), callback_data="fs:recheck"))
 
     lines = [t("force_sub_title", lang)]
-    if tg_channel:
+    if join_url:
         lines.append(t("force_sub_join_channel", lang))
     if ig_url:
         lines.append(t("force_sub_join_instagram", lang))
@@ -130,6 +139,39 @@ def check_force_sub(bot, user_id, settings, lang: str | None = None):
     lines.append(t("force_sub_hint", lang))
     txt = "\n".join(lines)
     return False, txt, kb
+
+
+def _normalize_tg_channel_ref(raw_channel: str | None) -> str | None:
+    if not raw_channel:
+        return None
+    channel = raw_channel.strip()
+    if not channel:
+        return None
+    if channel.startswith("@"):
+        return channel
+    match = re.search(r"t\.me/(?P<name>[A-Za-z0-9_]{4,})", channel)
+    if match:
+        return f"@{match.group('name')}"
+    if re.fullmatch(r"[A-Za-z0-9_]{4,}", channel):
+        return f"@{channel}"
+    return None
+
+
+def _build_tg_join_url(raw_channel: str | None) -> str | None:
+    if not raw_channel:
+        return None
+    channel = raw_channel.strip()
+    if not channel:
+        return None
+    if channel.startswith("http://") or channel.startswith("https://"):
+        return channel
+    if channel.startswith("t.me/"):
+        return f"https://{channel}"
+    if channel.startswith("@"):
+        return f"https://t.me/{channel[1:]}"
+    if re.fullmatch(r"[A-Za-z0-9_]{4,}", channel):
+        return f"https://t.me/{channel}"
+    return None
 
 
 def ensure_force_sub(bot, user_id, chat_id, message_id, lang: str | None = None) -> bool:
