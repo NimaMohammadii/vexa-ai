@@ -7,8 +7,9 @@ from modules.tts.settings import BANNED_WORDS as BASE_BANNED_WORDS
 
 STATE_WAIT_TEXT = "tts_openai:wait_text"
 
-# هر کاراکتر = 0.01 کردیت برای TTS اوپن‌اِی‌آی
-CREDIT_PER_CHAR = 0.01
+# هر ۱۰ کاراکتر = ۱ کردیت برای TTS اوپن‌اِی‌آی
+CHARS_PER_CREDIT = 10
+CREDIT_PER_10_CHARS = 1
 
 # صدای پیش‌فرض (وقتی هنوز انتخابی انجام نشده)
 DEFAULT_VOICE_NAME = "Echo"
@@ -30,4 +31,3 @@ OUTPUTS = [
 
 # همان فهرست کلمات غیرمجاز TTS اصلی
 BANNED_WORDS = list(BASE_BANNED_WORDS)
-
