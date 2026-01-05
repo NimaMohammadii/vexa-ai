@@ -90,7 +90,8 @@ def init_db():
             daily_bonus_unlocked_at INTEGER DEFAULT 0,
             daily_bonus_reminded_at INTEGER DEFAULT 0,
             low_credit_prompted_at INTEGER DEFAULT 0,
-            tts_creator_prompted_at INTEGER DEFAULT 0
+            tts_creator_prompted_at INTEGER DEFAULT 0,
+            last_main_menu_id INTEGER DEFAULT 0
         )""")
         cur.execute("""CREATE TABLE IF NOT EXISTS kv_state(
             user_id INTEGER PRIMARY KEY,
@@ -1007,6 +1008,8 @@ def _migrate_users_table():
             cur.execute("ALTER TABLE users ADD COLUMN low_credit_prompted_at INTEGER DEFAULT 0")
         if "tts_creator_prompted_at" not in cols:
             cur.execute("ALTER TABLE users ADD COLUMN tts_creator_prompted_at INTEGER DEFAULT 0")
+        if "last_main_menu_id" not in cols:
+            cur.execute("ALTER TABLE users ADD COLUMN last_main_menu_id INTEGER DEFAULT 0")
         con.commit()
 
 def get_or_create_user(u):
@@ -1079,7 +1082,8 @@ def get_user(user_id):
                 daily_bonus_unlocked_at,
                 daily_bonus_reminded_at,
                 low_credit_prompted_at,
-                tts_creator_prompted_at
+                tts_creator_prompted_at,
+                last_main_menu_id
             FROM users WHERE user_id=?
             """,
             (user_id,),
@@ -1106,6 +1110,7 @@ def get_user(user_id):
             "daily_bonus_reminded_at",
             "low_credit_prompted_at",
             "tts_creator_prompted_at",
+            "last_main_menu_id",
         ]
         return _normalize_user_dict(keys, row)
 
@@ -1301,6 +1306,34 @@ def set_tts_creator_prompted_at(user_id: int, timestamp: int | None = None) -> N
         cur.execute(
             "UPDATE users SET tts_creator_prompted_at=? WHERE user_id=?",
             (ts, user_id),
+        )
+        con.commit()
+
+
+def get_last_main_menu_id(user_id: int) -> int:
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            "SELECT last_main_menu_id FROM users WHERE user_id=?",
+            (user_id,),
+        )
+        row = cur.fetchone()
+        if not row:
+            return 0
+        value = row[0]
+        try:
+            return int(value or 0)
+        except (TypeError, ValueError):
+            return 0
+
+
+def set_last_main_menu_id(user_id: int, message_id: int | None) -> None:
+    value = int(message_id or 0)
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            "UPDATE users SET last_main_menu_id=? WHERE user_id=?",
+            (value, user_id),
         )
         con.commit()
 

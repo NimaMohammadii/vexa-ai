@@ -2,7 +2,7 @@
 from typing import Optional
 
 import db
-from utils import edit_or_send, check_force_sub
+from utils import edit_or_send, check_force_sub, send_main_menu
 from .texts import TITLE
 from .keyboards import lang_menu
 from modules.home.texts import MAIN
@@ -52,7 +52,14 @@ def register(bot):
         action = parts[1]
 
         if action == "back":
-            edit_or_send(bot, cq.message.chat.id, cq.message.message_id, MAIN(lang), main_menu(lang))
+            send_main_menu(
+                bot,
+                user["user_id"],
+                cq.message.chat.id,
+                MAIN(lang),
+                main_menu(lang),
+                message_id=cq.message.message_id,
+            )
             return
 
         if action == "set":
@@ -76,7 +83,14 @@ def register(bot):
             if _consume_pending_referral:
                 _consume_pending_referral(bot, user, cq.message.chat.id, lang)
 
-            edit_or_send(bot, cq.message.chat.id, cq.message.message_id, MAIN(lang), main_menu(lang))
+            send_main_menu(
+                bot,
+                user["user_id"],
+                cq.message.chat.id,
+                MAIN(lang),
+                main_menu(lang),
+                message_id=cq.message.message_id,
+            )
             try:
                 from modules.home.handlers import _trigger_onboarding
             except ImportError:

@@ -27,7 +27,7 @@ from config import (
     GPT_RESPONSE_CHAR_LIMIT,
 )
 from modules.i18n import t
-from utils import edit_or_send, ensure_force_sub
+from utils import edit_or_send, ensure_force_sub, send_main_menu
 from modules.home.keyboards import main_menu
 from modules.home.texts import MAIN
 from .service import (
@@ -170,7 +170,7 @@ def _finish_chat(bot, chat_id: int, message_id: int, user_id: int, lang: str) ->
     db.clear_gpt_history(user_id)
     end_text = t("gpt_end", lang)
     bot.send_message(chat_id, end_text, reply_markup=ReplyKeyboardRemove(), parse_mode="HTML")
-    bot.send_message(chat_id, MAIN(lang), reply_markup=main_menu(lang), parse_mode="HTML")
+    send_main_menu(bot, user_id, chat_id, MAIN(lang), main_menu(lang))
 
 
 def _guess_mime_type(file_path: str, fallback: str = "image/jpeg") -> str:

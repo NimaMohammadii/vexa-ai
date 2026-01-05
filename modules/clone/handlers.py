@@ -1,7 +1,7 @@
 # modules/clone/handlers.py
 import db
 from config import DEBUG
-from utils import edit_or_send, ensure_force_sub
+from utils import edit_or_send, ensure_force_sub, send_main_menu
 from modules.i18n import t
 from .service import clone_voice_with_cleanup
 from .settings import STATE_WAIT_VOICE, STATE_WAIT_PAYMENT, STATE_WAIT_NAME, VOICE_CLONE_COST
@@ -244,7 +244,7 @@ def register(bot):
                     pass
                 
                 # ارسال منوی اصلی جدید
-                bot.send_message(msg.chat.id, MAIN(lang), parse_mode="HTML", reply_markup=main_menu(lang))
+                send_main_menu(bot, user["user_id"], msg.chat.id, MAIN(lang), main_menu(lang))
                 
                 # پاک کردن پیام موفقیت بعد از ۵ دقیقه (۳۰۰ ثانیه)
                 import threading

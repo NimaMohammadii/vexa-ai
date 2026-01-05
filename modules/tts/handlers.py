@@ -2,7 +2,7 @@
 from io import BytesIO
 import time
 import db
-from utils import edit_or_send, ensure_force_sub
+from utils import edit_or_send, ensure_force_sub, send_main_menu
 from config import DEBUG
 from modules.i18n import t
 from .texts import TITLE, ask_text, PROCESSING, NO_CREDIT, ERROR, BANNED
@@ -76,7 +76,14 @@ def register(bot):
             from modules.home.texts import MAIN
             from modules.home.keyboards import main_menu
             db.clear_state(cq.from_user.id)
-            edit_or_send(bot, cq.message.chat.id, cq.message.message_id, MAIN(lang), main_menu(lang))
+            send_main_menu(
+                bot,
+                user["user_id"],
+                cq.message.chat.id,
+                MAIN(lang),
+                main_menu(lang),
+                message_id=cq.message.message_id,
+            )
             return
 
         if route == "quality:pro":

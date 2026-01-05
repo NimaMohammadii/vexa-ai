@@ -4,6 +4,7 @@ from telebot.apihelper import ApiTelegramException
 from modules.i18n import t
 
 import re
+import db
 
 def edit_or_send(bot, chat_id, message_id, text, reply_markup=None, parse_mode="HTML"):
     try:
@@ -62,6 +63,50 @@ def smart_edit_or_send(bot, obj, text, reply_markup=None, parse_mode="HTML"):
     except Exception:
         # اگر ویرایش نشد (مثلاً محتوا یکسان بود)، هیچ کاری نکن
         pass
+
+
+def send_main_menu(
+    bot,
+    user_id: int,
+    chat_id: int,
+    text: str,
+    reply_markup=None,
+    message_id: int | None = None,
+    parse_mode: str = "HTML",
+):
+    last_menu_id = db.get_last_main_menu_id(user_id)
+    if last_menu_id and last_menu_id != message_id:
+        try:
+            bot.delete_message(chat_id, last_menu_id)
+        except Exception:
+            pass
+
+    if message_id is None:
+        msg = bot.send_message(chat_id, text, reply_markup=reply_markup, parse_mode=parse_mode)
+        db.set_last_main_menu_id(user_id, msg.message_id)
+        return msg
+
+    try:
+        bot.edit_message_text(
+            chat_id=chat_id,
+            message_id=message_id,
+            text=text,
+            reply_markup=reply_markup,
+            parse_mode=parse_mode,
+        )
+        db.set_last_main_menu_id(user_id, message_id)
+        return None
+    except ApiTelegramException as exc:
+        if "message is not modified" in str(exc).lower():
+            db.set_last_main_menu_id(user_id, message_id)
+            return None
+        msg = bot.send_message(chat_id, text, reply_markup=reply_markup, parse_mode=parse_mode)
+        db.set_last_main_menu_id(user_id, msg.message_id)
+        return msg
+    except Exception:
+        msg = bot.send_message(chat_id, text, reply_markup=reply_markup, parse_mode=parse_mode)
+        db.set_last_main_menu_id(user_id, msg.message_id)
+        return msg
 
 # --- عددخوان (فارسی/عربی/کاما/فاصله) ---
 _DIGIT_MAP = str.maketrans({

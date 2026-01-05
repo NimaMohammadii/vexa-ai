@@ -7,7 +7,7 @@ import time
 import db
 from telebot.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
-from utils import check_force_sub, edit_or_send, ensure_force_sub
+from utils import check_force_sub, edit_or_send, ensure_force_sub, send_main_menu
 from modules.i18n import t
 from .texts import MAIN, HELP
 from .keyboards import main_menu, _back_to_home_kb
@@ -307,7 +307,14 @@ def register(bot):
 
         _handle_referral(bot, msg, user, lang)
         _consume_pending_referral(bot, user, msg.chat.id, lang)
-        edit_or_send(bot, msg.chat.id, msg.message_id, MAIN(lang), main_menu(lang))
+        send_main_menu(
+            bot,
+            user["user_id"],
+            msg.chat.id,
+            MAIN(lang),
+            main_menu(lang),
+            message_id=msg.message_id,
+        )
         _trigger_onboarding(bot, user, msg.chat.id)
         _schedule_low_credit_warning(bot, user, msg.chat.id, LOW_CREDIT_DELAY)
 
@@ -357,7 +364,14 @@ def register(bot):
         if not _ensure_force_sub(bot, user["user_id"], msg.chat.id, msg.message_id, lang):
             return
 
-        edit_or_send(bot, msg.chat.id, msg.message_id, MAIN(lang), main_menu(lang))
+        send_main_menu(
+            bot,
+            user["user_id"],
+            msg.chat.id,
+            MAIN(lang),
+            main_menu(lang),
+            message_id=msg.message_id,
+        )
         _schedule_low_credit_warning(bot, user, msg.chat.id, LOW_CREDIT_DELAY)
 
     @bot.callback_query_handler(
@@ -401,7 +415,14 @@ def register(bot):
         _schedule_low_credit_warning(bot, user, cq.message.chat.id, LOW_CREDIT_DELAY)
 
         if route in ("", "back"):
-            edit_or_send(bot, cq.message.chat.id, cq.message.message_id, MAIN(lang), main_menu(lang))
+            send_main_menu(
+                bot,
+                user["user_id"],
+                cq.message.chat.id,
+                MAIN(lang),
+                main_menu(lang),
+                message_id=cq.message.message_id,
+            )
             bot.answer_callback_query(cq.id)
             return
 
@@ -477,7 +498,14 @@ def register(bot):
             settings = db.get_settings()
             ok, txt, kb = check_force_sub(bot, user["user_id"], settings, lang)
             if ok:
-                edit_or_send(bot, cq.message.chat.id, cq.message.message_id, MAIN(lang), main_menu(lang))
+                send_main_menu(
+                    bot,
+                    user["user_id"],
+                    cq.message.chat.id,
+                    MAIN(lang),
+                    main_menu(lang),
+                    message_id=cq.message.message_id,
+                )
                 _consume_pending_referral(bot, user, cq.message.chat.id, lang)
                 bot.answer_callback_query(cq.id, t("force_sub_confirmed", lang))
             else:

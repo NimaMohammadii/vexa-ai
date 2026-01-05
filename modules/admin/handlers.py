@@ -3,7 +3,7 @@ from html import escape
 
 from telebot import types
 
-from utils import edit_or_send, parse_int
+from utils import edit_or_send, parse_int, send_main_menu
 from config import BOT_OWNER_ID
 import db
 import traceback
@@ -243,7 +243,14 @@ def register(bot):
             from modules.home.keyboards import main_menu
             db.clear_state(cq.from_user.id)
             lang = db.get_user_lang(cq.from_user.id, "fa")
-            edit_or_send(bot, cq.message.chat.id, cq.message.message_id, MAIN(lang), main_menu(lang))
+            send_main_menu(
+                bot,
+                cq.from_user.id,
+                cq.message.chat.id,
+                MAIN(lang),
+                main_menu(lang),
+                message_id=cq.message.message_id,
+            )
             return
 
         # منوی ادمین

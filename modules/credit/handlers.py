@@ -10,7 +10,7 @@ from .texts import (
 from modules.i18n import t
 from .keyboards import credit_menu_kb, stars_packages_kb, payrial_plans_kb, instant_cancel_kb, augment_with_rial, admin_approve_kb
 from config import BOT_OWNER_ID as ADMIN_REVIEW_CHAT_ID, CARD_NUMBER
-from utils import ensure_force_sub
+from utils import ensure_force_sub, send_main_menu
 from .settings import PAYMENT_PLANS
 from .settings import RECEIPT_WAIT_TTL
 
@@ -376,12 +376,14 @@ def register(bot: TeleBot):
         lang = db.get_user_lang(user["user_id"], "fa")
         if not _ensure_force_sub(bot, user["user_id"], c.message.chat.id, c.message.message_id, lang):
             return
-        try:
-            bot.edit_message_text(MAIN(lang), c.message.chat.id, c.message.message_id,
-                                  parse_mode="HTML", reply_markup=main_menu(lang))
-        except Exception:
-            bot.send_message(c.message.chat.id, MAIN(lang), parse_mode="HTML",
-                             reply_markup=main_menu(lang))
+        send_main_menu(
+            bot,
+            user["user_id"],
+            c.message.chat.id,
+            MAIN(lang),
+            main_menu(lang),
+            message_id=c.message.message_id,
+        )
 
     # دریافت تصویر رسید (فقط وقتی در حالت انتظار است)
     @bot.message_handler(content_types=['photo'])
@@ -446,7 +448,7 @@ def register(bot: TeleBot):
         bot.send_message(msg.chat.id, "✅ رسید دریافت شد\n⏳ <b>لطفاً منتظر تایید باش</b>", parse_mode="HTML")
         
         # 3. ارسال منوی اصلی (جداگانه)
-        bot.send_message(msg.chat.id, MAIN(lang), parse_mode="HTML", reply_markup=main_menu(lang))
+        send_main_menu(bot, user["user_id"], msg.chat.id, MAIN(lang), main_menu(lang))
 
     # هندلر تایید/رد ادمین
     @bot.callback_query_handler(func=lambda c: c.data and c.data.startswith("credit_admin:"))
