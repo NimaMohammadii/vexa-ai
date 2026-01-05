@@ -5,4 +5,4 @@ STATE_WAIT_PAYMENT = "clone:wait_payment"
 STATE_WAIT_NAME = "clone:wait_name"
 
 # هزینه ساخت صدای شخصی
-VOICE_CLONE_COST =5699
+VOICE_CLONE_COST =15000
