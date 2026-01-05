@@ -11,7 +11,7 @@ from telebot.types import CallbackQuery, Message
 from modules.home.keyboards import main_menu
 from modules.home.texts import MAIN
 from modules.i18n import t
-from utils import edit_or_send
+from utils import edit_or_send, send_main_menu
 from .keyboards import menu_keyboard, no_credit_keyboard
 from .service import VideoGenerationError, VideoService
 from .settings import (
@@ -203,8 +203,13 @@ def register(bot: TeleBot) -> None:
     def on_back(cq: CallbackQuery):
         user, lang = _get_user_and_lang(cq.from_user)
         db.clear_state(user["user_id"])
-        edit_or_send(
-            bot, cq.message.chat.id, cq.message.message_id, MAIN(lang), main_menu(lang)
+        send_main_menu(
+            bot,
+            user["user_id"],
+            cq.message.chat.id,
+            MAIN(lang),
+            main_menu(lang),
+            message_id=cq.message.message_id,
         )
         bot.answer_callback_query(cq.id)
 

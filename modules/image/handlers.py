@@ -16,7 +16,7 @@ from telebot.types import CallbackQuery, Message
 from modules.home.keyboards import main_menu
 from modules.home.texts import MAIN
 from modules.i18n import t
-from utils import edit_or_send, ensure_force_sub
+from utils import edit_or_send, ensure_force_sub, send_main_menu
 from .keyboards import menu_keyboard, no_credit_keyboard
 from .service import ImageGenerationError, ImageService
 from .settings import (
@@ -412,8 +412,13 @@ def register(bot: TeleBot) -> None:
         if not ensure_force_sub(bot, user["user_id"], cq.message.chat.id, cq.message.message_id, lang):
             bot.answer_callback_query(cq.id)
             return
-        edit_or_send(
-            bot, cq.message.chat.id, cq.message.message_id, MAIN(lang), main_menu(lang)
+        send_main_menu(
+            bot,
+            user["user_id"],
+            cq.message.chat.id,
+            MAIN(lang),
+            main_menu(lang),
+            message_id=cq.message.message_id,
         )
         bot.answer_callback_query(cq.id)
 
