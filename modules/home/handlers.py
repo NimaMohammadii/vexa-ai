@@ -116,7 +116,6 @@ def _send_daily_bonus_reminder(bot, user_id: int, chat_id: int) -> None:
         return
     remaining = _seconds_until_daily_reward(user_id)
     if remaining > 0:
-        _schedule_daily_bonus_reminder(bot, user_id, chat_id, remaining)
         return
     lang = db.get_user_lang(user_id, "fa")
     try:
@@ -187,7 +186,7 @@ def _maybe_send_pending_daily_bonus_reminder(bot, user_id: int, chat_id: int) ->
     unlocked_at = db.get_daily_bonus_unlocked_at(user_id)
     if not unlocked_at:
         return
-    _send_daily_bonus_reminder(bot, user_id, chat_id)
+    _schedule_daily_bonus_reminder(bot, user_id, chat_id)
 
 
 def _trigger_onboarding(bot, user, chat_id: int) -> None:
