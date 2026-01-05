@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from io import BytesIO
+import math
 import time
 
 import db
@@ -16,7 +17,8 @@ from .settings import (
     STATE_WAIT_TEXT,
     VOICES,
     DEFAULT_VOICE_NAME,
-    CREDIT_PER_CHAR,
+    CHARS_PER_CREDIT,
+    CREDIT_PER_10_CHARS,
     OUTPUTS,
     BANNED_WORDS,
 )
@@ -96,7 +98,8 @@ def register(bot):
                 ask_text(
                     lang,
                     voice_name,
-                    credit_per_char=CREDIT_PER_CHAR,
+                    credit_per_char=CREDIT_PER_10_CHARS,
+                    prompt_key="tts_prompt_medium",
                     show_demo_link=False,
                 ),
                 tts_keyboard(voice_name, lang, user["user_id"]),
@@ -125,7 +128,8 @@ def register(bot):
                 ask_text(
                     lang,
                     name,
-                    credit_per_char=CREDIT_PER_CHAR,
+                    credit_per_char=CREDIT_PER_10_CHARS,
+                    prompt_key="tts_prompt_medium",
                     show_demo_link=False,
                 ),
                 tts_keyboard(name, lang, user["user_id"]),
@@ -177,7 +181,8 @@ def register(bot):
             except Exception:
                 pass
 
-            cost = db.normalize_credit_amount(len(text) * CREDIT_PER_CHAR)
+            chunks = math.ceil(len(text) / CHARS_PER_CREDIT)
+            cost = db.normalize_credit_amount(chunks * CREDIT_PER_10_CHARS)
             balance = db.normalize_credit_amount(user.get("credits", 0))
             if balance < cost:
                 bot.send_message(
@@ -220,7 +225,8 @@ def register(bot):
                 ask_text(
                     lang,
                     voice_name,
-                    credit_per_char=CREDIT_PER_CHAR,
+                    credit_per_char=CREDIT_PER_10_CHARS,
+                    prompt_key="tts_prompt_medium",
                     show_demo_link=False,
                 ),
                 reply_markup=tts_keyboard(voice_name, lang, user_id),
@@ -261,7 +267,8 @@ def open_tts(bot, cq, voice_name: str | None = None):
         ask_text(
             lang,
             sel,
-            credit_per_char=CREDIT_PER_CHAR,
+            credit_per_char=CREDIT_PER_10_CHARS,
+            prompt_key="tts_prompt_medium",
             show_demo_link=False,
         ),
         tts_keyboard(sel, lang, user["user_id"]),

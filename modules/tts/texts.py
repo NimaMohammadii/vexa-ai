@@ -10,11 +10,12 @@ def ask_text(
     voice_name: str,
     *,
     credit_per_char: float | int | str | None = None,
+    prompt_key: str = "tts_prompt",
     show_demo_link: bool = True,
 ) -> str:
     credit_value = credit_per_char if credit_per_char is not None else PRO_CREDIT_PER_CHAR
     credit_text = db.format_credit_amount(credit_value)
-    prompt = t("tts_prompt", lang).format(credit=credit_text)
+    prompt = t(prompt_key, lang).format(credit=credit_text)
 
     if not show_demo_link and lang == "fa":
         prompt = prompt.replace("\n<b><a href='https://t.me/VexaOrder/6'>دموی صداها</a></b>", "")
