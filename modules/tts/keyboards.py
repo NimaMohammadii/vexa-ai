@@ -4,7 +4,7 @@ from __future__ import annotations
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 from modules.i18n import t
-from .settings import VOICES
+from .settings import get_voices
 import db
 
 
@@ -25,7 +25,7 @@ def keyboard(
 ):
     kb = InlineKeyboardMarkup(row_width=3)
 
-    voice_source = voices or VOICES
+    voice_source = voices or get_voices(lang)
     if isinstance(voice_source, dict):
         default_names = list(voice_source.keys())
     else:

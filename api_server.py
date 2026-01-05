@@ -26,7 +26,13 @@ from modules.image.settings import (
     get_ratio_for_size,
 )
 from modules.tts.service import synthesize
-from modules.tts.settings import BANNED_WORDS, CREDIT_PER_CHAR, DEFAULT_VOICE_NAME, VOICES
+from modules.tts.settings import (
+    BANNED_WORDS,
+    CREDIT_PER_CHAR,
+    DEFAULT_LANGUAGE,
+    get_default_voice_name,
+    get_voices,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -107,7 +113,8 @@ def _normalize_text(text: str) -> str:
 
 
 _BANNED_LOOKUP = tuple(_normalize_text(word) for word in BANNED_WORDS if word)
-_VOICE_NAME_MAP = {name.lower(): name for name in VOICES.keys()}
+_DEFAULT_VOICES = get_voices(DEFAULT_LANGUAGE)
+_VOICE_NAME_MAP = {name.lower(): name for name in _DEFAULT_VOICES.keys()}
 
 
 def _contains_banned_word(text: str) -> bool:
@@ -284,11 +291,12 @@ async def text_to_speech(payload: TTSRequest, current_user=Depends(_get_current_
     if _contains_banned_word(text):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Text contains blocked words")
 
-    voice_key = (payload.voice_id or DEFAULT_VOICE_NAME).strip()
+    default_voice_name = get_default_voice_name(DEFAULT_LANGUAGE)
+    voice_key = (payload.voice_id or default_voice_name).strip()
     normalized_voice = _VOICE_NAME_MAP.get(voice_key.lower())
     if not normalized_voice:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Voice not found")
-    voice_id = VOICES[normalized_voice]
+    voice_id = _DEFAULT_VOICES[normalized_voice]
 
     cost = round(len(text) * CREDIT_PER_CHAR, 2)
     if cost <= 0:
@@ -330,5 +338,5 @@ async def text_to_speech(payload: TTSRequest, current_user=Depends(_get_current_
 @app.get("/v1/voices")
 async def list_voices(current_user=Depends(_get_current_user)):
     """Return the list of available voice identifiers."""
-    voices = [{"id": name, "voice_id": voice_id} for name, voice_id in VOICES.items()]
+    voices = [{"id": name, "voice_id": voice_id} for name, voice_id in _DEFAULT_VOICES.items()]
     return JSONResponse({"voices": voices})

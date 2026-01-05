@@ -10,11 +10,11 @@ from .keyboards import keyboard as tts_keyboard
 from .upsell import schedule_creator_upsell
 from .settings import (
     STATE_WAIT_TEXT,
-    VOICES,
-    DEFAULT_VOICE_NAME,
     CREDIT_PER_CHAR,
     OUTPUTS,  # [{'mime':'audio/mpeg'}, {'mime':'audio/mpeg'}] → دو خروجی MP3
     BANNED_WORDS,
+    get_default_voice_name,
+    get_voices,
 )
 from .service import synthesize
 
@@ -44,13 +44,13 @@ def _has_banned_word(text: str) -> bool:
     return any(word and word in normalized for word in _BANNED_WORDS)
 
 # ----------------- helpers -----------------
-def _parse_state(raw: str):
+def _parse_state(raw: str, default_voice_name: str):
     """
     state format: 'tts:wait_text:<menu_msg_id>:<voice_name>'
     """
     parts = (raw or "").split(":")
     menu_id = int(parts[2]) if len(parts) >= 3 and parts[2].isdigit() else None
-    voice_name = parts[3] if len(parts) >= 4 else DEFAULT_VOICE_NAME
+    voice_name = parts[3] if len(parts) >= 4 else default_voice_name
     return menu_id, voice_name
 
 def _make_state(menu_id: int, voice_name: str) -> str:
@@ -87,17 +87,19 @@ def register(bot):
             return
 
         if route == "quality:pro":
+            voices = get_voices(lang)
+            default_voice_name = get_default_voice_name(lang)
             state = db.get_state(cq.from_user.id) or ""
-            _, voice_name = _parse_state(state)
-            if not voice_name:
-                voice_name = DEFAULT_VOICE_NAME
+            _, voice_name = _parse_state(state, default_voice_name)
+            if voice_name not in voices:
+                voice_name = default_voice_name
 
             edit_or_send(
                 bot,
                 cq.message.chat.id,
                 cq.message.message_id,
                 ask_text(lang, voice_name),
-                tts_keyboard(voice_name, lang, user["user_id"], quality="pro"),
+                tts_keyboard(voice_name, lang, user["user_id"], quality="pro", voices=voices),
             )
             db.set_state(cq.from_user.id, _make_state(cq.message.message_id, voice_name))
             bot.answer_callback_query(cq.id, t("tts_quality_pro", lang))
@@ -112,10 +114,11 @@ def register(bot):
 
         if route.startswith("voice:"):
             name = route.split(":", 1)[1]
+            voices = get_voices(lang)
 
             # بررسی وجود صدا در لیست پیش‌فرض یا کاستوم
             custom_voice_id = db.get_user_voice(user["user_id"], name)
-            if name not in VOICES and not custom_voice_id:
+            if name not in voices and not custom_voice_id:
                 bot.answer_callback_query(cq.id, t("tts_voice_not_found", lang))
                 return
 
@@ -125,7 +128,7 @@ def register(bot):
                 cq.message.chat.id,
                 cq.message.message_id,
                 ask_text(lang, name),
-                tts_keyboard(name, lang, user["user_id"], quality="pro"),
+                tts_keyboard(name, lang, user["user_id"], quality="pro", voices=voices),
             )
             db.set_state(cq.from_user.id, _make_state(cq.message.message_id, name))
             bot.answer_callback_query(cq.id, name)
@@ -151,13 +154,14 @@ def register(bot):
                     )
                     
                     # بازگشت به منوی انتخاب صدا
-                    sel = DEFAULT_VOICE_NAME
+                    voices = get_voices(lang)
+                    sel = get_default_voice_name(lang)
                     edit_or_send(
                         bot,
                         cq.message.chat.id,
                         cq.message.message_id,
                         ask_text(lang, sel),
-                        tts_keyboard(sel, lang, user["user_id"], quality="pro")
+                        tts_keyboard(sel, lang, user["user_id"], quality="pro", voices=voices)
                     )
                     db.set_state(cq.from_user.id, _make_state(cq.message.message_id, sel))
                 except Exception as e:
@@ -193,16 +197,18 @@ def register(bot):
             if not ensure_force_sub(bot, user_id, msg.chat.id, msg.message_id, lang):
                 return
 
-            last_menu_id, voice_name = _parse_state(current_state)
+            voices = get_voices(lang)
+            default_voice_name = get_default_voice_name(lang)
+            last_menu_id, voice_name = _parse_state(current_state, default_voice_name)
             
             # بررسی صدای پیش‌فرض یا کاستوم
-            voice_id = VOICES.get(voice_name)
+            voice_id = voices.get(voice_name)
             if not voice_id:
                 # اگر صدای پیش‌فرض نبود، از صداهای کاستوم کاربر بگیر
                 voice_id = db.get_user_voice(user_id, voice_name)
                 if not voice_id:
-                    voice_id = VOICES[DEFAULT_VOICE_NAME]
-                    voice_name = DEFAULT_VOICE_NAME
+                    voice_id = voices[default_voice_name]
+                    voice_name = default_voice_name
 
             text = (msg.text or "").strip()
             if not text:
@@ -267,7 +273,7 @@ def register(bot):
             new_menu = bot.send_message(
                 msg.chat.id,
                 ask_text(lang, voice_name),
-                reply_markup=tts_keyboard(voice_name, lang, user_id, quality="pro")
+                reply_markup=tts_keyboard(voice_name, lang, user_id, quality="pro", voices=voices)
             )
             db.set_state(user_id, _make_state(new_menu.message_id, voice_name))
             schedule_creator_upsell(bot, user_id, msg.chat.id)
@@ -293,12 +299,13 @@ def register(bot):
 def open_tts(bot, cq):
     user = db.get_or_create_user(cq.from_user)
     lang = db.get_user_lang(user["user_id"], "fa")
-    sel = DEFAULT_VOICE_NAME
+    voices = get_voices(lang)
+    sel = get_default_voice_name(lang)
     edit_or_send(
         bot,
         cq.message.chat.id,
         cq.message.message_id,
         ask_text(lang, sel),
-        tts_keyboard(sel, lang, user["user_id"], quality="pro"),
+        tts_keyboard(sel, lang, user["user_id"], quality="pro", voices=voices),
     )
     db.set_state(cq.from_user.id, _make_state(cq.message.message_id, sel))
