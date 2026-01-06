@@ -1,4 +1,5 @@
 # modules/tts/settings.py
+import db
 
 # نام State برای انتظار متن
 STATE_WAIT_TEXT = "tts:wait_text"
@@ -134,14 +135,30 @@ DEMO_AUDIO_BY_VOICE = {
     # "Liam": "<TELEGRAM_FILE_ID_OR_URL>",
 }
 
+def _demo_setting_key(voice_name: str) -> str:
+    return f"TTS_DEMO_{voice_name}"
+
 def get_default_voice_name(lang: str) -> str:
     return DEFAULT_VOICE_NAME_BY_LANG.get(lang, DEFAULT_VOICE_NAME_BY_LANG[DEFAULT_LANGUAGE])
 
 def get_voices(lang: str) -> dict[str, str]:
     return VOICES_BY_LANG.get(lang, VOICES_BY_LANG[DEFAULT_LANGUAGE])
 
-def get_demo_audio(voice_name: str) -> str | None:
-    return DEMO_AUDIO_BY_VOICE.get(voice_name)
+def get_demo_audio(voice_name: str) -> dict[str, str] | None:
+    stored = db.get_setting(_demo_setting_key(voice_name))
+    if stored:
+        if ":" in stored:
+            kind, file_id = stored.split(":", 1)
+        else:
+            kind, file_id = "audio", stored
+        return {"file_id": file_id, "kind": kind or "audio"}
+    fallback = DEMO_AUDIO_BY_VOICE.get(voice_name)
+    if not fallback:
+        return None
+    return {"file_id": fallback, "kind": "audio"}
+
+def set_demo_audio(voice_name: str, file_id: str, *, kind: str = "audio") -> None:
+    db.set_setting(_demo_setting_key(voice_name), f"{kind}:{file_id}")
 
 # خروجی‌ها (هر کدوم یک فایل MP3)
 OUTPUTS = [
