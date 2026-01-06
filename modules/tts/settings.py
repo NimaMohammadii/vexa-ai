@@ -130,11 +130,18 @@ VOICES_BY_LANG = {
     },
 }
 
+DEMO_AUDIO_BY_VOICE = {
+    # "Liam": "<TELEGRAM_FILE_ID_OR_URL>",
+}
+
 def get_default_voice_name(lang: str) -> str:
     return DEFAULT_VOICE_NAME_BY_LANG.get(lang, DEFAULT_VOICE_NAME_BY_LANG[DEFAULT_LANGUAGE])
 
 def get_voices(lang: str) -> dict[str, str]:
     return VOICES_BY_LANG.get(lang, VOICES_BY_LANG[DEFAULT_LANGUAGE])
+
+def get_demo_audio(voice_name: str) -> str | None:
+    return DEMO_AUDIO_BY_VOICE.get(voice_name)
 
 # خروجی‌ها (هر کدوم یک فایل MP3)
 OUTPUTS = [
