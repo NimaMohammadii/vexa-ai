@@ -4,6 +4,7 @@ import datetime
 from typing import Optional
 import db
 from modules.lang.keyboards import LANGS
+from modules.tts.settings import VOICES_BY_LANG
 
 FEATURE_TOGGLES = [
     ("GPT", "FEATURE_GPT"),
@@ -79,7 +80,35 @@ def settings_menu():
     kb.add(InlineKeyboardButton(f"🔐 عضویت اجباری: {mode_label}", callback_data="admin:toggle:fs"))
     kb.add(InlineKeyboardButton("🧩 دسترسی بخش‌ها", callback_data="admin:features"))
     kb.add(InlineKeyboardButton("🔐 عضویت اجباری بر اساس زبان", callback_data="admin:fs_lang:list"))
+    kb.add(InlineKeyboardButton("🎧 دموهای صدا", callback_data="admin:demo"))
     kb.add(InlineKeyboardButton("⬅️ بازگشت", callback_data="admin:menu"))
+    return kb
+
+
+def _chunk(seq, n):
+    for i in range(0, len(seq), n):
+        yield seq[i : i + n]
+
+
+def demo_voices_menu():
+    seen = set()
+    names = []
+    for voices in VOICES_BY_LANG.values():
+        for name in voices.keys():
+            if name not in seen:
+                seen.add(name)
+                names.append(name)
+    names.sort()
+
+    kb = InlineKeyboardMarkup(row_width=3)
+    for row in _chunk(names, 3):
+        buttons = []
+        for name in row:
+            has_demo = bool(db.get_setting(f"TTS_DEMO_{name}"))
+            label = f"{'✅ ' if has_demo else ''}{name}"
+            buttons.append(InlineKeyboardButton(label, callback_data=f"admin:demo:voice:{name}"))
+        kb.row(*buttons)
+    kb.add(InlineKeyboardButton("⬅️ بازگشت", callback_data="admin:settings"))
     return kb
 
 
