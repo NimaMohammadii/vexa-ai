@@ -181,7 +181,13 @@ def ensure_default_settings():
         "FREE_CREDIT": "80",
         "FORCE_SUB_MODE": "none",
         "TG_CHANNEL": "",
-        "IG_URL": ""
+        "IG_URL": "",
+        "FEATURE_GPT": "1",
+        "FEATURE_TTS": "1",
+        "FEATURE_CLONE": "1",
+        "FEATURE_IMAGE": "1",
+        "FEATURE_VIDEO": "1",
+        "FEATURE_SORA2": "1",
     }
     for k,v in defaults.items():
         if get_setting(k) is None:

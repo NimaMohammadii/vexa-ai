@@ -27,7 +27,7 @@ from config import (
     GPT_RESPONSE_CHAR_LIMIT,
 )
 from modules.i18n import t
-from utils import edit_or_send, ensure_force_sub, send_main_menu
+from utils import edit_or_send, ensure_force_sub, feature_disabled_text, is_feature_enabled, send_main_menu
 from modules.home.keyboards import main_menu
 from modules.home.texts import MAIN
 from .service import (
@@ -360,6 +360,9 @@ def register(bot):
 
         lang = db.get_user_lang(user["user_id"], "fa")
         db.touch_last_seen(user["user_id"])
+        if not is_feature_enabled("FEATURE_GPT"):
+            bot.reply_to(msg, feature_disabled_text("FEATURE_GPT", lang))
+            return
         if not _handle_force_sub(bot, user["user_id"], lang, msg.chat.id, msg.message_id):
             return
 
@@ -381,6 +384,16 @@ def register(bot):
 
         lang = db.get_user_lang(user["user_id"], "fa")
         db.touch_last_seen(user["user_id"])
+        if not is_feature_enabled("FEATURE_GPT"):
+            edit_or_send(
+                bot,
+                cq.message.chat.id,
+                cq.message.message_id,
+                feature_disabled_text("FEATURE_GPT", lang),
+                main_menu(lang),
+            )
+            bot.answer_callback_query(cq.id)
+            return
         if not _handle_force_sub(bot, user["user_id"], lang, cq.message.chat.id, cq.message.message_id):
             bot.answer_callback_query(cq.id)
             return

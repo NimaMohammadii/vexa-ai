@@ -7,7 +7,14 @@ import time
 import db
 from telebot.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
-from utils import check_force_sub, edit_or_send, ensure_force_sub, send_main_menu
+from utils import (
+    check_force_sub,
+    edit_or_send,
+    ensure_force_sub,
+    feature_disabled_text,
+    is_feature_enabled,
+    send_main_menu,
+)
 from modules.i18n import t
 from .texts import MAIN, HELP
 from .keyboards import main_menu, _back_to_home_kb
@@ -73,6 +80,17 @@ def _schedule_low_credit_warning(bot, user, chat_id: int, delay: float) -> None:
     timer = threading.Timer(delay, _send_low_credit_warning, args=(bot, user_id, chat_id))
     timer.daemon = True
     timer.start()
+
+
+def _handle_feature_disabled(bot, cq: CallbackQuery, lang: str, feature_key: str) -> None:
+    edit_or_send(
+        bot,
+        cq.message.chat.id,
+        cq.message.message_id,
+        feature_disabled_text(feature_key, lang),
+        _back_to_home_kb(lang),
+    )
+    bot.answer_callback_query(cq.id)
 
 
 def _send_daily_bonus_unlocked(bot, user_id: int, chat_id: int) -> None:
@@ -427,6 +445,9 @@ def register(bot):
             return
 
         if route == "image":
+            if not is_feature_enabled("FEATURE_IMAGE"):
+                _handle_feature_disabled(bot, cq, lang, "FEATURE_IMAGE")
+                return
             bot.answer_callback_query(cq.id)
             from modules.image.handlers import open_image
 
@@ -434,6 +455,9 @@ def register(bot):
             return
 
         if route == "video":
+            if not is_feature_enabled("FEATURE_VIDEO"):
+                _handle_feature_disabled(bot, cq, lang, "FEATURE_VIDEO")
+                return
             bot.answer_callback_query(cq.id)
             from modules.video_gen4.handlers import open_video
 
@@ -441,6 +465,9 @@ def register(bot):
             return
 
         if route == "tts":
+            if not is_feature_enabled("FEATURE_TTS"):
+                _handle_feature_disabled(bot, cq, lang, "FEATURE_TTS")
+                return
             bot.answer_callback_query(cq.id)
             from modules.tts.handlers import open_tts
 
@@ -461,6 +488,9 @@ def register(bot):
             return
 
         if route == "sora2":
+            if not is_feature_enabled("FEATURE_SORA2"):
+                _handle_feature_disabled(bot, cq, lang, "FEATURE_SORA2")
+                return
             bot.answer_callback_query(cq.id)
             from modules.sora2.handlers import open_sora2_menu
 
@@ -482,6 +512,9 @@ def register(bot):
             return
 
         if route == "clone":
+            if not is_feature_enabled("FEATURE_CLONE"):
+                _handle_feature_disabled(bot, cq, lang, "FEATURE_CLONE")
+                return
             bot.answer_callback_query(cq.id)
             from modules.clone.handlers import open_clone
 

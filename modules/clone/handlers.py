@@ -1,8 +1,9 @@
 # modules/clone/handlers.py
 import db
 from config import DEBUG
-from utils import edit_or_send, ensure_force_sub, send_main_menu
+from utils import edit_or_send, ensure_force_sub, feature_disabled_text, is_feature_enabled, send_main_menu
 from modules.i18n import t
+from modules.home.keyboards import _back_to_home_kb
 from .service import clone_voice_with_cleanup
 from .settings import STATE_WAIT_VOICE, STATE_WAIT_PAYMENT, STATE_WAIT_NAME, VOICE_CLONE_COST
 from .texts import MENU, PAYMENT_CONFIRM, NO_CREDIT_CLONE, ASK_NAME, SUCCESS, PAYMENT_SUCCESS, ERROR
@@ -11,6 +12,15 @@ from .keyboards import payment_keyboard, no_credit_keyboard, menu_keyboard
 def open_clone(bot, cq):
     user = db.get_or_create_user(cq.from_user)
     lang = db.get_user_lang(user["user_id"], "fa")
+    if not is_feature_enabled("FEATURE_CLONE"):
+        edit_or_send(
+            bot,
+            cq.message.chat.id,
+            cq.message.message_id,
+            feature_disabled_text("FEATURE_CLONE", lang),
+            _back_to_home_kb(lang),
+        )
+        return
     if not ensure_force_sub(bot, user["user_id"], cq.message.chat.id, cq.message.message_id, lang):
         return
 

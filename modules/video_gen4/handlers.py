@@ -13,7 +13,7 @@ from telebot.types import CallbackQuery, Message
 from modules.home.keyboards import main_menu
 from modules.home.texts import MAIN
 from modules.i18n import t
-from utils import edit_or_send, ensure_force_sub, send_main_menu
+from utils import edit_or_send, ensure_force_sub, feature_disabled_text, is_feature_enabled, send_main_menu
 from .keyboards import menu_keyboard, no_credit_keyboard
 from .service import VideoGen4Error, VideoGen4Service
 from .settings import (
@@ -223,6 +223,16 @@ def open_video(bot: TeleBot, call: CallbackQuery) -> None:
     if user.get("banned"):
         bot.answer_callback_query(call.id, t("error_banned", lang), show_alert=True)
         return
+    if not is_feature_enabled("FEATURE_VIDEO"):
+        edit_or_send(
+            bot,
+            call.message.chat.id,
+            call.message.message_id,
+            feature_disabled_text("FEATURE_VIDEO", lang),
+            main_menu(lang),
+        )
+        bot.answer_callback_query(call.id)
+        return
     if not ensure_force_sub(bot, user["user_id"], call.message.chat.id, call.message.message_id, lang):
         bot.answer_callback_query(call.id)
         return
@@ -260,6 +270,9 @@ def register(bot: TeleBot) -> None:
         if user.get("banned"):
             bot.reply_to(message, t("error_banned", lang))
             return
+        if not is_feature_enabled("FEATURE_VIDEO"):
+            bot.reply_to(message, feature_disabled_text("FEATURE_VIDEO", lang))
+            return
         if not ensure_force_sub(bot, user["user_id"], message.chat.id, message.message_id, lang):
             return
         _start_flow(bot, message.chat.id, user["user_id"], lang)
@@ -278,6 +291,9 @@ def register(bot: TeleBot) -> None:
         user, lang = _get_user_and_lang(message.from_user)
         if user.get("banned"):
             bot.reply_to(message, t("error_banned", lang))
+            return
+        if not is_feature_enabled("FEATURE_VIDEO"):
+            bot.reply_to(message, feature_disabled_text("FEATURE_VIDEO", lang))
             return
         if not ensure_force_sub(bot, user["user_id"], message.chat.id, message.message_id, lang):
             return

@@ -29,6 +29,7 @@ from .texts import (
 from .keyboards import (
     admin_menu,
     settings_menu,
+    feature_access_menu,
     users_menu,
     user_actions,
     exports_menu,
@@ -498,6 +499,18 @@ def register(bot):
         # تنظیمات و خروجی‌ها
         if action == "settings":
             edit_or_send(bot, cq.message.chat.id, cq.message.message_id, "⚙️ تنظیمات ربات:", settings_menu())
+            return
+
+        if action == "features":
+            edit_or_send(bot, cq.message.chat.id, cq.message.message_id, "🧩 مدیریت دسترسی بخش‌ها:", feature_access_menu())
+            return
+
+        if action == "feature" and len(p) >= 4 and p[2] == "toggle":
+            key = p[3]
+            cur = (db.get_setting(key, "1") or "1").strip().lower()
+            enabled = cur in ("1", "true", "yes", "on", "enabled")
+            db.set_setting(key, "0" if enabled else "1")
+            edit_or_send(bot, cq.message.chat.id, cq.message.message_id, "✅ اعمال شد.", feature_access_menu())
             return
 
         if action == "fs_lang":
