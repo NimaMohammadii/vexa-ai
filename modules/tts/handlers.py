@@ -14,6 +14,7 @@ from .settings import (
     OUTPUTS,  # [{'mime':'audio/mpeg'}, {'mime':'audio/mpeg'}] → دو خروجی MP3
     BANNED_WORDS,
     get_default_voice_name,
+    get_demo_audio,
     get_voices,
 )
 from .service import synthesize
@@ -61,6 +62,17 @@ def safe_del(bot, chat_id, message_id):
         bot.delete_message(chat_id, message_id)
     except Exception:
         pass
+
+def _send_demo_audio(bot, chat_id: int, voice_name: str, lang: str):
+    demo_audio = get_demo_audio(voice_name)
+    if not demo_audio:
+        bot.send_message(chat_id, t("tts_demo_missing", lang))
+        return
+    bot.send_audio(
+        chat_id,
+        demo_audio,
+        caption=t("tts_demo_caption", lang).format(voice=voice_name),
+    )
 
 # ----------------- public API -----------------
 def register(bot):
@@ -143,6 +155,12 @@ def register(bot):
             )
             db.set_state(cq.from_user.id, _make_state(cq.message.message_id, name))
             bot.answer_callback_query(cq.id, name)
+            return
+
+        if route.startswith("demo:"):
+            voice_name = route.split(":", 1)[1]
+            _send_demo_audio(bot, cq.message.chat.id, voice_name, lang)
+            bot.answer_callback_query(cq.id)
             return
 
         if route.startswith("delete:"):

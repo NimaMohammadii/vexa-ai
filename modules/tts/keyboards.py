@@ -22,6 +22,7 @@ def keyboard(
     prefix: str = "tts",
     include_custom: bool = True,
     quality: str = "pro",
+    show_demo_button: bool = True,
 ):
     kb = InlineKeyboardMarkup(row_width=3)
 
@@ -63,6 +64,14 @@ def keyboard(
                     callback_data=f"{prefix}:delete:{selected_voice}",
                 )
             )
+
+    if show_demo_button and selected_voice:
+        kb.add(
+            InlineKeyboardButton(
+                t("tts_demo", lang),
+                callback_data=f"{prefix}:demo:{selected_voice}",
+            )
+        )
 
     kb.row(
         InlineKeyboardButton(
