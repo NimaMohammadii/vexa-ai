@@ -15,5 +15,5 @@ def keyboard(selected_voice: str, lang: str = "fa", user_id: int | None = None):
         prefix="tts_openai",
         include_custom=False,
         quality="medium",
+        show_demo_button=False,
     )
-

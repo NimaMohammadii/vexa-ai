@@ -70,3 +70,11 @@ STATE_SET_IG   = "ADMIN:SET:IG"
 # ——— تنظیمات: کانال تلگرام بر اساس زبان
 ASK_TG_LANG       = "📢 یوزرنیم/لینک کانال تلگرام را برای این زبان بفرستید."
 STATE_SET_TG_LANG = "ADMIN:SET:TG_LANG"
+
+# ——— دمو صدای TTS
+ASK_TTS_DEMO_VOICE = "🎧 نام دقیق صدای TTS را بفرستید."
+ASK_TTS_DEMO_AUDIO = (
+    "🎵 فایل صوتی دمو را بفرستید (audio/voice/file) یا یک لینک مستقیم به فایل بفرستید."
+)
+STATE_TTS_DEMO_VOICE = "ADMIN:TTS:DEMO:VOICE"
+STATE_TTS_DEMO_AUDIO = "ADMIN:TTS:DEMO:AUDIO"

@@ -1,4 +1,7 @@
 # modules/tts/settings.py
+import json
+
+import db
 
 # نام State برای انتظار متن
 STATE_WAIT_TEXT = "tts:wait_text"
@@ -130,11 +133,42 @@ VOICES_BY_LANG = {
     },
 }
 
+DEMO_AUDIO_BY_VOICE = {
+    # "Liam": "<TELEGRAM_FILE_ID_OR_URL>",
+}
+
+DEMO_AUDIO_SETTING_KEY = "TTS_DEMO_AUDIO_BY_VOICE"
+
 def get_default_voice_name(lang: str) -> str:
     return DEFAULT_VOICE_NAME_BY_LANG.get(lang, DEFAULT_VOICE_NAME_BY_LANG[DEFAULT_LANGUAGE])
 
 def get_voices(lang: str) -> dict[str, str]:
     return VOICES_BY_LANG.get(lang, VOICES_BY_LANG[DEFAULT_LANGUAGE])
+
+def _load_demo_audio_settings() -> dict[str, str]:
+    raw = db.get_setting(DEMO_AUDIO_SETTING_KEY, "")
+    if not raw:
+        return {}
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return {}
+    if isinstance(data, dict):
+        return {str(k): str(v) for k, v in data.items() if v}
+    return {}
+
+def get_demo_audio_map() -> dict[str, str]:
+    data = dict(DEMO_AUDIO_BY_VOICE)
+    data.update(_load_demo_audio_settings())
+    return data
+
+def get_demo_audio(voice_name: str) -> str | None:
+    return get_demo_audio_map().get(voice_name)
+
+def set_demo_audio(voice_name: str, file_id_or_url: str) -> None:
+    data = get_demo_audio_map()
+    data[voice_name] = file_id_or_url
+    db.set_setting(DEMO_AUDIO_SETTING_KEY, json.dumps(data, ensure_ascii=False))
 
 # خروجی‌ها (هر کدوم یک فایل MP3)
 OUTPUTS = [

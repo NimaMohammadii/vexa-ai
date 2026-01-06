@@ -43,6 +43,7 @@ def admin_menu():
         InlineKeyboardButton("⚙️ تنظیمات", callback_data="admin:settings"),
         InlineKeyboardButton("📤 خروجی‌ها", callback_data="admin:exports"),
     )
+    kb.add(InlineKeyboardButton("🎧 دمو صدای TTS", callback_data="admin:tts_demo"))
     kb.add(InlineKeyboardButton("⬅️ بازگشت", callback_data="admin:back"))
     return kb
 

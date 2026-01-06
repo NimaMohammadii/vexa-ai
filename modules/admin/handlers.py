@@ -25,6 +25,8 @@ from .texts import (
     ASK_IG,    STATE_SET_IG,
     ASK_FORMULA, STATE_FORMULA,
     ASK_TG_LANG, STATE_SET_TG_LANG,
+    ASK_TTS_DEMO_VOICE, ASK_TTS_DEMO_AUDIO,
+    STATE_TTS_DEMO_VOICE, STATE_TTS_DEMO_AUDIO,
 )
 from .keyboards import (
     admin_menu,
@@ -42,6 +44,7 @@ from .keyboards import (
 )
 from modules.lang.keyboards import LANGS
 from modules.i18n import t
+from modules.tts.settings import get_demo_audio_map, set_demo_audio
 
 LANG_LABELS = {code: label for label, code in LANGS}
 
@@ -501,6 +504,18 @@ def register(bot):
             edit_or_send(bot, cq.message.chat.id, cq.message.message_id, "⚙️ تنظیمات ربات:", settings_menu())
             return
 
+        if action == "tts_demo":
+            db.clear_state(cq.from_user.id)
+            db.set_state(cq.from_user.id, STATE_TTS_DEMO_VOICE)
+            edit_or_send(
+                bot,
+                cq.message.chat.id,
+                cq.message.message_id,
+                ASK_TTS_DEMO_VOICE,
+                admin_menu(),
+            )
+            return
+
         if action == "features":
             edit_or_send(bot, cq.message.chat.id, cq.message.message_id, "🧩 مدیریت دسترسی بخش‌ها:", feature_access_menu())
             return
@@ -955,3 +970,50 @@ def register(bot):
         db.set_setting("IG_URL", (msg.text or "").strip())
         db.clear_state(msg.from_user.id)
         bot.reply_to(msg, DONE)
+
+    # دمو صدای TTS
+    @bot.message_handler(func=lambda m: db.get_state(m.from_user.id) == STATE_TTS_DEMO_VOICE, content_types=['text'])
+    def s_tts_demo_voice(msg: types.Message):
+        if not _is_owner(msg.from_user):
+            return
+        voice_name = (msg.text or "").strip()
+        if not voice_name:
+            bot.reply_to(msg, "❌ نام صدا نامعتبر است.")
+            return
+        db.set_state(msg.from_user.id, f"{STATE_TTS_DEMO_AUDIO}:{voice_name}")
+        bot.reply_to(msg, ASK_TTS_DEMO_AUDIO)
+
+    @bot.message_handler(
+        func=lambda m: (db.get_state(m.from_user.id) or "").startswith(STATE_TTS_DEMO_AUDIO),
+        content_types=['text', 'audio', 'voice', 'document'],
+    )
+    def s_tts_demo_audio(msg: types.Message):
+        if not _is_owner(msg.from_user):
+            return
+        state_raw = db.get_state(msg.from_user.id) or ""
+        parts = state_raw.split(":")
+        voice_name = parts[-1] if parts else ""
+        if not voice_name:
+            db.clear_state(msg.from_user.id)
+            bot.reply_to(msg, "⚠️ وضعیت نامعتبر.")
+            return
+
+        file_id_or_url = None
+        if msg.audio:
+            file_id_or_url = msg.audio.file_id
+        elif msg.voice:
+            file_id_or_url = msg.voice.file_id
+        elif msg.document:
+            file_id_or_url = msg.document.file_id
+        else:
+            text = (msg.text or "").strip()
+            if text:
+                file_id_or_url = text
+
+        if not file_id_or_url:
+            bot.reply_to(msg, "❌ فایل یا لینک معتبر ارسال نشده است.")
+            return
+
+        set_demo_audio(voice_name, file_id_or_url)
+        db.clear_state(msg.from_user.id)
+        bot.reply_to(msg, f"{DONE}\n🎧 دمو برای صدای «{voice_name}» ذخیره شد.")
