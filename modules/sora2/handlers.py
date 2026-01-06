@@ -7,10 +7,11 @@ import logging
 import db
 from config import BOT_OWNER_ID
 from modules.i18n import t
+from modules.home.keyboards import _back_to_home_kb
 from telebot import TeleBot
 from telebot.types import CallbackQuery
 
-from utils import edit_or_send, ensure_force_sub
+from utils import edit_or_send, ensure_force_sub, feature_disabled_text, is_feature_enabled
 from .keyboards import main_keyboard, no_credit_keyboard
 from .settings import CREDIT_COST, QUEUE_START_POSITION
 from .texts import (
@@ -53,6 +54,16 @@ def open_sora2_menu(bot: TeleBot, cq: CallbackQuery) -> None:
     if user.get("banned"):
         bot.answer_callback_query(cq.id, t("error_banned", lang), show_alert=True)
         return
+    if not is_feature_enabled("FEATURE_SORA2"):
+        edit_or_send(
+            bot,
+            cq.message.chat.id,
+            cq.message.message_id,
+            feature_disabled_text("FEATURE_SORA2", lang),
+            _back_to_home_kb(lang),
+        )
+        bot.answer_callback_query(cq.id)
+        return
     if not ensure_force_sub(bot, user["user_id"], cq.message.chat.id, cq.message.message_id, lang):
         bot.answer_callback_query(cq.id)
         return
@@ -71,6 +82,9 @@ def _handle_purchase(bot: TeleBot, cq: CallbackQuery) -> None:
     user, lang = _get_user_and_lang(cq.from_user)
     if user.get("banned"):
         bot.answer_callback_query(cq.id, t("error_banned", lang), show_alert=True)
+        return
+    if not is_feature_enabled("FEATURE_SORA2"):
+        bot.answer_callback_query(cq.id, feature_disabled_text("FEATURE_SORA2", lang), show_alert=True)
         return
     if not ensure_force_sub(bot, user["user_id"], cq.message.chat.id, cq.message.message_id, lang):
         bot.answer_callback_query(cq.id)

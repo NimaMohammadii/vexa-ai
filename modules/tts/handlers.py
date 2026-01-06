@@ -2,7 +2,7 @@
 from io import BytesIO
 import time
 import db
-from utils import edit_or_send, ensure_force_sub, send_main_menu
+from utils import edit_or_send, ensure_force_sub, feature_disabled_text, is_feature_enabled, send_main_menu
 from config import DEBUG
 from modules.i18n import t
 from .texts import TITLE, ask_text, PROCESSING, NO_CREDIT, ERROR, BANNED
@@ -69,6 +69,17 @@ def register(bot):
     def tts_router(cq):
         user = db.get_or_create_user(cq.from_user)
         lang = db.get_user_lang(user["user_id"], "fa")
+        if not is_feature_enabled("FEATURE_TTS"):
+            edit_or_send(
+                bot,
+                cq.message.chat.id,
+                cq.message.message_id,
+                feature_disabled_text("FEATURE_TTS", lang),
+                None,
+            )
+            db.clear_state(cq.from_user.id)
+            bot.answer_callback_query(cq.id)
+            return
 
         route = cq.data.split(":", 1)[1]
 
@@ -299,6 +310,15 @@ def register(bot):
 def open_tts(bot, cq):
     user = db.get_or_create_user(cq.from_user)
     lang = db.get_user_lang(user["user_id"], "fa")
+    if not is_feature_enabled("FEATURE_TTS"):
+        edit_or_send(
+            bot,
+            cq.message.chat.id,
+            cq.message.message_id,
+            feature_disabled_text("FEATURE_TTS", lang),
+            None,
+        )
+        return
     voices = get_voices(lang)
     sel = get_default_voice_name(lang)
     edit_or_send(

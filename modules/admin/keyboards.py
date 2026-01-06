@@ -5,6 +5,15 @@ from typing import Optional
 import db
 from modules.lang.keyboards import LANGS
 
+FEATURE_TOGGLES = [
+    ("GPT", "FEATURE_GPT"),
+    ("تبدیل متن به صدا", "FEATURE_TTS"),
+    ("Voice Clone", "FEATURE_CLONE"),
+    ("تولید تصویر", "FEATURE_IMAGE"),
+    ("تولید ویدیو", "FEATURE_VIDEO"),
+    ("Sora 2", "FEATURE_SORA2"),
+]
+
 # ————— منوی اصلی ادمین —————
 def admin_menu():
     kb = InlineKeyboardMarkup()
@@ -68,8 +77,21 @@ def settings_menu():
         InlineKeyboardButton("📷 لینک اینستاگرام", callback_data="admin:set:ig"),
     )
     kb.add(InlineKeyboardButton(f"🔐 عضویت اجباری: {mode_label}", callback_data="admin:toggle:fs"))
+    kb.add(InlineKeyboardButton("🧩 دسترسی بخش‌ها", callback_data="admin:features"))
     kb.add(InlineKeyboardButton("🔐 عضویت اجباری بر اساس زبان", callback_data="admin:fs_lang:list"))
     kb.add(InlineKeyboardButton("⬅️ بازگشت", callback_data="admin:menu"))
+    return kb
+
+
+def feature_access_menu():
+    s = db.get_settings()
+    kb = InlineKeyboardMarkup()
+    for label, key in FEATURE_TOGGLES:
+        raw = (s.get(key) or "1").strip().lower()
+        enabled = raw in {"1", "true", "yes", "on", "enabled"}
+        status = "✅ فعال" if enabled else "❌ غیرفعال"
+        kb.add(InlineKeyboardButton(f"{label}: {status}", callback_data=f"admin:feature:toggle:{key}"))
+    kb.add(InlineKeyboardButton("⬅️ بازگشت", callback_data="admin:settings"))
     return kb
 
 

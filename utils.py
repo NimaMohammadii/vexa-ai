@@ -6,6 +6,30 @@ from modules.i18n import t
 import re
 import db
 
+_FEATURE_LABEL_KEYS = {
+    "FEATURE_GPT": "feature_gpt",
+    "FEATURE_TTS": "feature_tts",
+    "FEATURE_CLONE": "feature_clone",
+    "FEATURE_IMAGE": "feature_image",
+    "FEATURE_VIDEO": "feature_video",
+    "FEATURE_SORA2": "feature_sora2",
+}
+_FEATURE_ENABLED_VALUES = {"1", "true", "yes", "on", "enabled"}
+
+
+def is_feature_enabled(feature_key: str, default: str = "1") -> bool:
+    value = (db.get_setting(feature_key, default) or default).strip().lower()
+    return value in _FEATURE_ENABLED_VALUES
+
+
+def feature_label(feature_key: str, lang: str) -> str:
+    label_key = _FEATURE_LABEL_KEYS.get(feature_key)
+    return t(label_key, lang) if label_key else feature_key
+
+
+def feature_disabled_text(feature_key: str, lang: str) -> str:
+    return t("feature_disabled", lang).format(feature=feature_label(feature_key, lang))
+
 def edit_or_send(bot, chat_id, message_id, text, reply_markup=None, parse_mode="HTML"):
     try:
         bot.edit_message_text(chat_id=chat_id, message_id=message_id,
