@@ -83,14 +83,11 @@ def _schedule_low_credit_warning(bot, user, chat_id: int, delay: float) -> None:
 
 
 def _handle_feature_disabled(bot, cq: CallbackQuery, lang: str, feature_key: str) -> None:
-    edit_or_send(
-        bot,
-        cq.message.chat.id,
-        cq.message.message_id,
+    bot.answer_callback_query(
+        cq.id,
         feature_disabled_text(feature_key, lang),
-        _back_to_home_kb(lang),
+        show_alert=True,
     )
-    bot.answer_callback_query(cq.id)
 
 
 def _send_daily_bonus_unlocked(bot, user_id: int, chat_id: int) -> None:
