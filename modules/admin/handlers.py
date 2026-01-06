@@ -25,7 +25,7 @@ from .texts import (
     ASK_IG,    STATE_SET_IG,
     ASK_FORMULA, STATE_FORMULA,
     ASK_TG_LANG, STATE_SET_TG_LANG,
-    ASK_DEMO_VOICE, ASK_DEMO_AUDIO, STATE_DEMO_AUDIO,
+    ASK_DEMO_LANG, ASK_DEMO_VOICE, ASK_DEMO_AUDIO, STATE_DEMO_AUDIO,
 )
 from .keyboards import (
     admin_menu,
@@ -40,6 +40,7 @@ from .keyboards import (
     force_sub_lang_list,
     force_sub_lang_menu,
     cast_lang_menu,
+    demo_languages_menu,
     demo_voices_menu,
     demo_voice_actions_menu,
 )
@@ -506,27 +507,48 @@ def register(bot):
             return
 
         if action == "demo":
-            if len(p) >= 4 and p[2] == "voice":
-                voice_name = p[3]
+            if len(p) >= 4 and p[2] == "lang":
+                lang_code = p[3]
                 db.clear_state(cq.from_user.id)
-                db.set_state(cq.from_user.id, f"{STATE_DEMO_AUDIO}:{voice_name}")
+                label = LANG_LABELS.get(lang_code, lang_code)
                 edit_or_send(
                     bot,
                     cq.message.chat.id,
                     cq.message.message_id,
-                    f"{ASK_DEMO_AUDIO}\n\nصدا: <b>{voice_name}</b>",
-                    demo_voice_actions_menu(voice_name),
+                    f"{ASK_DEMO_VOICE}\n\nزبان: <b>{label}</b>",
+                    demo_voices_menu(lang_code),
                 )
                 return
-            if len(p) >= 4 and p[2] == "delete":
-                voice_name = p[3]
-                clear_demo_audio(voice_name)
+            if len(p) >= 5 and p[2] == "voice":
+                lang_code = p[3]
+                voice_name = p[4]
+                db.clear_state(cq.from_user.id)
+                db.set_state(cq.from_user.id, f"{STATE_DEMO_AUDIO}:{lang_code}:{voice_name}")
+                label = LANG_LABELS.get(lang_code, lang_code)
+                edit_or_send(
+                    bot,
+                    cq.message.chat.id,
+                    cq.message.message_id,
+                    f"{ASK_DEMO_AUDIO}\n\nزبان: <b>{label}</b>\nصدا: <b>{voice_name}</b>",
+                    demo_voice_actions_menu(lang_code, voice_name),
+                )
+                return
+            if len(p) >= 5 and p[2] == "delete":
+                lang_code = p[3]
+                voice_name = p[4]
+                clear_demo_audio(voice_name, lang=lang_code)
                 db.clear_state(cq.from_user.id)
                 bot.answer_callback_query(cq.id, "🗑 دمو حذف شد.")
-                edit_or_send(bot, cq.message.chat.id, cq.message.message_id, ASK_DEMO_VOICE, demo_voices_menu())
+                edit_or_send(
+                    bot,
+                    cq.message.chat.id,
+                    cq.message.message_id,
+                    ASK_DEMO_VOICE,
+                    demo_voices_menu(lang_code),
+                )
                 return
             db.clear_state(cq.from_user.id)
-            edit_or_send(bot, cq.message.chat.id, cq.message.message_id, ASK_DEMO_VOICE, demo_voices_menu())
+            edit_or_send(bot, cq.message.chat.id, cq.message.message_id, ASK_DEMO_LANG, demo_languages_menu())
             return
 
         if action == "features":
@@ -992,8 +1014,13 @@ def register(bot):
         if not _is_owner(msg.from_user): return
         raw_state = db.get_state(msg.from_user.id) or ""
         parts = raw_state.split(":")
-        voice_name = parts[-1] if parts else ""
-        if not voice_name:
+        if len(parts) < 3:
+            db.clear_state(msg.from_user.id)
+            bot.reply_to(msg, "⚠️ وضعیت نامعتبر.")
+            return
+        lang_code = parts[-2]
+        voice_name = parts[-1]
+        if not voice_name or not lang_code:
             db.clear_state(msg.from_user.id)
             bot.reply_to(msg, "⚠️ وضعیت نامعتبر.")
             return
@@ -1018,6 +1045,7 @@ def register(bot):
             bot.reply_to(msg, "❌ فایل صوتی ارسال کنید.")
             return
 
-        set_demo_audio(voice_name, file_id, kind=kind)
+        set_demo_audio(voice_name, file_id, kind=kind, lang=lang_code)
         db.clear_state(msg.from_user.id)
-        bot.reply_to(msg, f"{DONE}\n🎧 دمو برای <b>{voice_name}</b> ذخیره شد.")
+        lang_label = LANG_LABELS.get(lang_code, lang_code)
+        bot.reply_to(msg, f"{DONE}\n🎧 دمو برای <b>{voice_name}</b> ({lang_label}) ذخیره شد.")
