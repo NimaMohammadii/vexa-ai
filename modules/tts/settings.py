@@ -135,7 +135,9 @@ DEMO_AUDIO_BY_VOICE = {
     # "Liam": "<TELEGRAM_FILE_ID_OR_URL>",
 }
 
-def _demo_setting_key(voice_name: str) -> str:
+def _demo_setting_key(voice_name: str, lang: str | None = None) -> str:
+    if lang:
+        return f"TTS_DEMO_{lang}_{voice_name}"
     return f"TTS_DEMO_{voice_name}"
 
 def get_default_voice_name(lang: str) -> str:
@@ -144,8 +146,12 @@ def get_default_voice_name(lang: str) -> str:
 def get_voices(lang: str) -> dict[str, str]:
     return VOICES_BY_LANG.get(lang, VOICES_BY_LANG[DEFAULT_LANGUAGE])
 
-def get_demo_audio(voice_name: str) -> dict[str, str] | None:
-    stored = db.get_setting(_demo_setting_key(voice_name))
+def get_demo_audio(voice_name: str, lang: str | None = None) -> dict[str, str] | None:
+    stored = None
+    if lang:
+        stored = db.get_setting(_demo_setting_key(voice_name, lang))
+    if not stored:
+        stored = db.get_setting(_demo_setting_key(voice_name))
     if stored:
         if ":" in stored:
             kind, file_id = stored.split(":", 1)
@@ -157,11 +163,11 @@ def get_demo_audio(voice_name: str) -> dict[str, str] | None:
         return None
     return {"file_id": fallback, "kind": "audio"}
 
-def set_demo_audio(voice_name: str, file_id: str, *, kind: str = "audio") -> None:
-    db.set_setting(_demo_setting_key(voice_name), f"{kind}:{file_id}")
+def set_demo_audio(voice_name: str, file_id: str, *, kind: str = "audio", lang: str | None = None) -> None:
+    db.set_setting(_demo_setting_key(voice_name, lang), f"{kind}:{file_id}")
 
-def clear_demo_audio(voice_name: str) -> None:
-    db.set_setting(_demo_setting_key(voice_name), "")
+def clear_demo_audio(voice_name: str, *, lang: str | None = None) -> None:
+    db.set_setting(_demo_setting_key(voice_name, lang), "")
 
 # خروجی‌ها (هر کدوم یک فایل MP3)
 OUTPUTS = [

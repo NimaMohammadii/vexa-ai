@@ -4,7 +4,7 @@ import datetime
 from typing import Optional
 import db
 from modules.lang.keyboards import LANGS
-from modules.tts.settings import VOICES_BY_LANG
+from modules.tts.settings import get_demo_audio, get_voices
 
 FEATURE_TOGGLES = [
     ("GPT", "FEATURE_GPT"),
@@ -90,34 +90,42 @@ def _chunk(seq, n):
         yield seq[i : i + n]
 
 
-def demo_voices_menu():
-    seen = set()
-    names = []
-    for voices in VOICES_BY_LANG.values():
-        for name in voices.keys():
-            if name not in seen:
-                seen.add(name)
-                names.append(name)
-    names.sort()
-
-    kb = InlineKeyboardMarkup(row_width=3)
-    for row in _chunk(names, 3):
-        buttons = []
-        for name in row:
-            has_demo = bool(db.get_setting(f"TTS_DEMO_{name}"))
-            label = f"{'✅ ' if has_demo else ''}{name}"
-            buttons.append(InlineKeyboardButton(label, callback_data=f"admin:demo:voice:{name}"))
-        kb.row(*buttons)
+def demo_languages_menu():
+    kb = InlineKeyboardMarkup(row_width=2)
+    row = []
+    for label, code in LANGS:
+        row.append(InlineKeyboardButton(label, callback_data=f"admin:demo:lang:{code}"))
+        if len(row) == 2:
+            kb.row(*row)
+            row = []
+    if row:
+        kb.row(*row)
     kb.add(InlineKeyboardButton("⬅️ بازگشت", callback_data="admin:settings"))
     return kb
 
 
-def demo_voice_actions_menu(voice_name: str):
-    has_demo = bool(db.get_setting(f"TTS_DEMO_{voice_name}"))
+def demo_voices_menu(lang_code: str):
+    voices = list(get_voices(lang_code).keys())
+    voices.sort()
+
+    kb = InlineKeyboardMarkup(row_width=3)
+    for row in _chunk(voices, 3):
+        buttons = []
+        for name in row:
+            has_demo = bool(get_demo_audio(name, lang_code))
+            label = f"{'✅ ' if has_demo else ''}{name}"
+            buttons.append(InlineKeyboardButton(label, callback_data=f"admin:demo:voice:{lang_code}:{name}"))
+        kb.row(*buttons)
+    kb.add(InlineKeyboardButton("⬅️ بازگشت", callback_data="admin:demo"))
+    return kb
+
+
+def demo_voice_actions_menu(lang_code: str, voice_name: str):
+    has_demo = bool(get_demo_audio(voice_name, lang_code))
     kb = InlineKeyboardMarkup()
     if has_demo:
-        kb.add(InlineKeyboardButton("🗑 حذف دمو", callback_data=f"admin:demo:delete:{voice_name}"))
-    kb.add(InlineKeyboardButton("⬅️ بازگشت", callback_data="admin:demo"))
+        kb.add(InlineKeyboardButton("🗑 حذف دمو", callback_data=f"admin:demo:delete:{lang_code}:{voice_name}"))
+    kb.add(InlineKeyboardButton("⬅️ بازگشت", callback_data=f"admin:demo:lang:{lang_code}"))
     return kb
 
 

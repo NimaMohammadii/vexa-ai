@@ -103,7 +103,7 @@ def _send_demo_audio(
     voice_name: str,
     lang: str,
 ) -> str:
-    demo_audio = get_demo_audio(voice_name)
+    demo_audio = get_demo_audio(voice_name, lang)
     if not demo_audio:
         bot.send_message(chat_id, t("tts_demo_missing", lang))
         return "missing"
