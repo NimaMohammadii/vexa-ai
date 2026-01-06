@@ -1,5 +1,6 @@
 # modules/tts/handlers.py
 from io import BytesIO
+import threading
 import time
 import db
 from utils import edit_or_send, ensure_force_sub, feature_disabled_text, is_feature_enabled, send_main_menu
@@ -63,20 +64,73 @@ def safe_del(bot, chat_id, message_id):
     except Exception:
         pass
 
-def _send_demo_audio(bot, chat_id: int, voice_name: str, lang: str):
+_DEMO_AUTO_DELETE_SECONDS = 60
+
+def _demo_lock_key(user_id: int, voice_name: str) -> str:
+    return f"tts_demo_lock:{user_id}:{voice_name}"
+
+def _get_demo_lock(user_id: int, voice_name: str):
+    raw = db.get_setting(_demo_lock_key(user_id, voice_name))
+    if not raw:
+        return None
+    try:
+        message_id_str, expires_at_str = raw.split(":", 1)
+        return {"message_id": int(message_id_str), "expires_at": int(expires_at_str)}
+    except (ValueError, TypeError):
+        return None
+
+def _set_demo_lock(user_id: int, voice_name: str, message_id: int, expires_at: int) -> None:
+    db.set_setting(_demo_lock_key(user_id, voice_name), f"{message_id}:{expires_at}")
+
+def _clear_demo_lock(user_id: int, voice_name: str, message_id: int | None = None) -> None:
+    if message_id is not None:
+        current = _get_demo_lock(user_id, voice_name)
+        if not current or current["message_id"] != message_id:
+            return
+    db.set_setting(_demo_lock_key(user_id, voice_name), "")
+
+def _delete_demo_message(bot, chat_id: int, user_id: int, voice_name: str, message_id: int) -> None:
+    try:
+        bot.delete_message(chat_id, message_id)
+    except Exception:
+        pass
+    _clear_demo_lock(user_id, voice_name, message_id=message_id)
+
+def _send_demo_audio(
+    bot,
+    chat_id: int,
+    user_id: int,
+    voice_name: str,
+    lang: str,
+) -> str:
     demo_audio = get_demo_audio(voice_name)
     if not demo_audio:
         bot.send_message(chat_id, t("tts_demo_missing", lang))
-        return
+        return "missing"
+    existing_lock = _get_demo_lock(user_id, voice_name)
+    now = int(time.time())
+    if existing_lock and existing_lock["expires_at"] > now:
+        return "locked"
+    if existing_lock:
+        _clear_demo_lock(user_id, voice_name, message_id=existing_lock["message_id"])
     file_id = demo_audio["file_id"]
     kind = demo_audio.get("kind", "audio")
     caption = t("tts_demo_caption", lang).format(voice=voice_name)
     if kind == "voice":
-        bot.send_voice(chat_id, file_id, caption=caption)
+        sent = bot.send_voice(chat_id, file_id, caption=caption)
     elif kind == "document":
-        bot.send_document(chat_id, file_id, caption=caption)
+        sent = bot.send_document(chat_id, file_id, caption=caption)
     else:
-        bot.send_audio(chat_id, file_id, caption=caption)
+        sent = bot.send_audio(chat_id, file_id, caption=caption)
+    expires_at = int(time.time()) + _DEMO_AUTO_DELETE_SECONDS
+    _set_demo_lock(user_id, voice_name, sent.message_id, expires_at)
+    timer = threading.Timer(
+        _DEMO_AUTO_DELETE_SECONDS,
+        _delete_demo_message,
+        args=(bot, chat_id, user_id, voice_name, sent.message_id),
+    )
+    timer.start()
+    return "sent"
 
 # ----------------- public API -----------------
 def register(bot):
@@ -163,8 +217,13 @@ def register(bot):
 
         if route.startswith("demo:"):
             voice_name = route.split(":", 1)[1]
-            _send_demo_audio(bot, cq.message.chat.id, voice_name, lang)
-            bot.answer_callback_query(cq.id)
+            result = _send_demo_audio(bot, cq.message.chat.id, cq.from_user.id, voice_name, lang)
+            if result == "sent":
+                bot.answer_callback_query(cq.id)
+            elif result == "locked":
+                bot.answer_callback_query(cq.id, t("tts_demo_wait", lang), show_alert=False)
+            else:
+                bot.answer_callback_query(cq.id)
             return
 
         if route.startswith("delete:"):
