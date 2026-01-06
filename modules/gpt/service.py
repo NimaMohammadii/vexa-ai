@@ -315,13 +315,49 @@ def _prepare_assistant_payload(
 ) -> Dict[str, Any]:
     chosen_model = (model or GPT_MODEL or "gpt-4o-mini").strip() or "gpt-4o-mini"
 
+    def _normalise_assistant_content(content: Any) -> Any:
+        if isinstance(content, str):
+            text = content.strip()
+            if not text:
+                return ""
+            return [{"type": "input_text", "text": text}]
+
+        if isinstance(content, list):
+            parts: List[Dict[str, Any]] = []
+            for item in content:
+                if not isinstance(item, dict):
+                    continue
+                part_type = (item.get("type") or "").strip()
+                if part_type == "text":
+                    text = item.get("text") or item.get("content") or item.get("value") or ""
+                    if str(text).strip():
+                        parts.append({"type": "input_text", "text": str(text)})
+                    continue
+                if part_type == "image_url":
+                    image_url = item.get("image_url")
+                    url = ""
+                    if isinstance(image_url, dict):
+                        url = image_url.get("url") or image_url.get("image_url") or ""
+                    elif isinstance(image_url, str):
+                        url = image_url
+                    if url:
+                        parts.append({"type": "input_image", "image_url": url})
+                    continue
+                if part_type in {"input_text", "input_image"}:
+                    parts.append(item)
+                    continue
+                parts.append(item)
+            return parts if parts else ""
+
+        return content
+
     # The Responses API expects the conversation history under the "input" key.
     payload: Dict[str, Any] = {
         "model": chosen_model,
         "input": [
             {
                 "role": item.get("role", "assistant"),
-                "content": item.get("content", ""),
+                "content": _normalise_assistant_content(item.get("content", "")),
             }
             for item in normalised
         ],
