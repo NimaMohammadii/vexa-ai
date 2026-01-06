@@ -112,6 +112,15 @@ def demo_voices_menu():
     return kb
 
 
+def demo_voice_actions_menu(voice_name: str):
+    has_demo = bool(db.get_setting(f"TTS_DEMO_{voice_name}"))
+    kb = InlineKeyboardMarkup()
+    if has_demo:
+        kb.add(InlineKeyboardButton("🗑 حذف دمو", callback_data=f"admin:demo:delete:{voice_name}"))
+    kb.add(InlineKeyboardButton("⬅️ بازگشت", callback_data="admin:demo"))
+    return kb
+
+
 def feature_access_menu():
     s = db.get_settings()
     kb = InlineKeyboardMarkup()
