@@ -41,10 +41,11 @@ from .keyboards import (
     force_sub_lang_menu,
     cast_lang_menu,
     demo_voices_menu,
+    demo_voice_actions_menu,
 )
 from modules.lang.keyboards import LANGS
 from modules.i18n import t
-from modules.tts.settings import set_demo_audio
+from modules.tts.settings import set_demo_audio, clear_demo_audio
 
 LANG_LABELS = {code: label for label, code in LANGS}
 
@@ -514,8 +515,15 @@ def register(bot):
                     cq.message.chat.id,
                     cq.message.message_id,
                     f"{ASK_DEMO_AUDIO}\n\nصدا: <b>{voice_name}</b>",
-                    demo_voices_menu(),
+                    demo_voice_actions_menu(voice_name),
                 )
+                return
+            if len(p) >= 4 and p[2] == "delete":
+                voice_name = p[3]
+                clear_demo_audio(voice_name)
+                db.clear_state(cq.from_user.id)
+                bot.answer_callback_query(cq.id, "🗑 دمو حذف شد.")
+                edit_or_send(bot, cq.message.chat.id, cq.message.message_id, ASK_DEMO_VOICE, demo_voices_menu())
                 return
             db.clear_state(cq.from_user.id)
             edit_or_send(bot, cq.message.chat.id, cq.message.message_id, ASK_DEMO_VOICE, demo_voices_menu())

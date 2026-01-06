@@ -160,6 +160,9 @@ def get_demo_audio(voice_name: str) -> dict[str, str] | None:
 def set_demo_audio(voice_name: str, file_id: str, *, kind: str = "audio") -> None:
     db.set_setting(_demo_setting_key(voice_name), f"{kind}:{file_id}")
 
+def clear_demo_audio(voice_name: str) -> None:
+    db.set_setting(_demo_setting_key(voice_name), "")
+
 # خروجی‌ها (هر کدوم یک فایل MP3)
 OUTPUTS = [
     {"mime": "audio/mpeg"},
