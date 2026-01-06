@@ -68,11 +68,15 @@ def _send_demo_audio(bot, chat_id: int, voice_name: str, lang: str):
     if not demo_audio:
         bot.send_message(chat_id, t("tts_demo_missing", lang))
         return
-    bot.send_audio(
-        chat_id,
-        demo_audio,
-        caption=t("tts_demo_caption", lang).format(voice=voice_name),
-    )
+    file_id = demo_audio["file_id"]
+    kind = demo_audio.get("kind", "audio")
+    caption = t("tts_demo_caption", lang).format(voice=voice_name)
+    if kind == "voice":
+        bot.send_voice(chat_id, file_id, caption=caption)
+    elif kind == "document":
+        bot.send_document(chat_id, file_id, caption=caption)
+    else:
+        bot.send_audio(chat_id, file_id, caption=caption)
 
 # ----------------- public API -----------------
 def register(bot):

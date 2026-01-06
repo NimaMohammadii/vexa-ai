@@ -25,6 +25,7 @@ from .texts import (
     ASK_IG,    STATE_SET_IG,
     ASK_FORMULA, STATE_FORMULA,
     ASK_TG_LANG, STATE_SET_TG_LANG,
+    ASK_DEMO_VOICE, ASK_DEMO_AUDIO, STATE_DEMO_AUDIO,
 )
 from .keyboards import (
     admin_menu,
@@ -39,9 +40,11 @@ from .keyboards import (
     force_sub_lang_list,
     force_sub_lang_menu,
     cast_lang_menu,
+    demo_voices_menu,
 )
 from modules.lang.keyboards import LANGS
 from modules.i18n import t
+from modules.tts.settings import set_demo_audio
 
 LANG_LABELS = {code: label for label, code in LANGS}
 
@@ -501,6 +504,23 @@ def register(bot):
             edit_or_send(bot, cq.message.chat.id, cq.message.message_id, "⚙️ تنظیمات ربات:", settings_menu())
             return
 
+        if action == "demo":
+            if len(p) >= 4 and p[2] == "voice":
+                voice_name = p[3]
+                db.clear_state(cq.from_user.id)
+                db.set_state(cq.from_user.id, f"{STATE_DEMO_AUDIO}:{voice_name}")
+                edit_or_send(
+                    bot,
+                    cq.message.chat.id,
+                    cq.message.message_id,
+                    f"{ASK_DEMO_AUDIO}\n\nصدا: <b>{voice_name}</b>",
+                    demo_voices_menu(),
+                )
+                return
+            db.clear_state(cq.from_user.id)
+            edit_or_send(bot, cq.message.chat.id, cq.message.message_id, ASK_DEMO_VOICE, demo_voices_menu())
+            return
+
         if action == "features":
             edit_or_send(bot, cq.message.chat.id, cq.message.message_id, "🧩 مدیریت دسترسی بخش‌ها:", feature_access_menu())
             return
@@ -955,3 +975,41 @@ def register(bot):
         db.set_setting("IG_URL", (msg.text or "").strip())
         db.clear_state(msg.from_user.id)
         bot.reply_to(msg, DONE)
+
+    @bot.message_handler(
+        func=lambda m: (db.get_state(m.from_user.id) or "").startswith(STATE_DEMO_AUDIO),
+        content_types=['audio', 'voice', 'document'],
+    )
+    def s_set_demo_audio(msg: types.Message):
+        if not _is_owner(msg.from_user): return
+        raw_state = db.get_state(msg.from_user.id) or ""
+        parts = raw_state.split(":")
+        voice_name = parts[-1] if parts else ""
+        if not voice_name:
+            db.clear_state(msg.from_user.id)
+            bot.reply_to(msg, "⚠️ وضعیت نامعتبر.")
+            return
+
+        file_id = None
+        kind = "audio"
+        if getattr(msg, "audio", None):
+            file_id = msg.audio.file_id
+            kind = "audio"
+        elif getattr(msg, "voice", None):
+            file_id = msg.voice.file_id
+            kind = "voice"
+        elif getattr(msg, "document", None):
+            mime_type = getattr(msg.document, "mime_type", "") or ""
+            if mime_type and not mime_type.startswith("audio/"):
+                bot.reply_to(msg, "❌ فایل باید صوتی باشد.")
+                return
+            file_id = msg.document.file_id
+            kind = "document"
+
+        if not file_id:
+            bot.reply_to(msg, "❌ فایل صوتی ارسال کنید.")
+            return
+
+        set_demo_audio(voice_name, file_id, kind=kind)
+        db.clear_state(msg.from_user.id)
+        bot.reply_to(msg, f"{DONE}\n🎧 دمو برای <b>{voice_name}</b> ذخیره شد.")
