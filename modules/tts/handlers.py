@@ -96,27 +96,6 @@ def _delete_demo_message(bot, chat_id: int, user_id: int, voice_name: str, messa
         pass
     _clear_demo_lock(user_id, voice_name, message_id=message_id)
 
-def _run_demo_countdown(
-    bot,
-    chat_id: int,
-    user_id: int,
-    voice_name: str,
-    message_id: int,
-    lang: str,
-    seconds: int,
-) -> None:
-    for remaining in range(seconds, 0, -1):
-        current = _get_demo_lock(user_id, voice_name)
-        if not current or current["message_id"] != message_id:
-            return
-        caption = t("tts_demo_caption", lang).format(voice=voice_name, seconds=remaining)
-        try:
-            bot.edit_message_caption(chat_id=chat_id, message_id=message_id, caption=caption)
-        except Exception:
-            pass
-        time.sleep(1)
-    _delete_demo_message(bot, chat_id, user_id, voice_name, message_id)
-
 def _send_demo_audio(
     bot,
     chat_id: int,
@@ -148,19 +127,13 @@ def _send_demo_audio(
         sent = bot.send_audio(chat_id, file_id, caption=caption)
     expires_at = int(time.time()) + _DEMO_AUTO_DELETE_SECONDS
     _set_demo_lock(user_id, voice_name, sent.message_id, expires_at)
-    threading.Thread(
-        target=_run_demo_countdown,
-        args=(
-            bot,
-            chat_id,
-            user_id,
-            voice_name,
-            sent.message_id,
-            lang,
-            _DEMO_AUTO_DELETE_SECONDS,
-        ),
-        daemon=True,
-    ).start()
+    timer = threading.Timer(
+        _DEMO_AUTO_DELETE_SECONDS,
+        _delete_demo_message,
+        args=(bot, chat_id, user_id, voice_name, sent.message_id),
+    )
+    timer.daemon = True
+    timer.start()
     return "sent"
 
 # ----------------- public API -----------------
