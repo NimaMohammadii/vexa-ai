@@ -289,7 +289,7 @@ def _prepare_chat_payload(
     top_p: Optional[float],
     max_tokens: Optional[int],
 ) -> Dict[str, Any]:
-    chosen_model = (model or GPT_MODEL or "gpt-4o-mini").strip() or "gpt-4o-mini"
+    chosen_model = (model or GPT_MODEL or "gpt-5-nano").strip() or "gpt-5-nano"
 
     payload: Dict[str, Any] = {
         "model": chosen_model,
@@ -313,7 +313,7 @@ def _prepare_assistant_payload(
     top_p: Optional[float],
     max_tokens: Optional[int],
 ) -> Dict[str, Any]:
-    chosen_model = (model or GPT_MODEL or "gpt-4o-mini").strip() or "gpt-4o-mini"
+    chosen_model = (model or GPT_MODEL or "gpt-5-nano").strip() or "gpt-5-nano"
 
     def _normalise_assistant_content(content: Any) -> Any:
         if isinstance(content, str):
