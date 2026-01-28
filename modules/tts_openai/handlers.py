@@ -12,6 +12,7 @@ from modules.i18n import t
 from modules.tts.texts import ask_text, PROCESSING, NO_CREDIT, ERROR, BANNED
 from modules.tts.keyboards import no_credit_keyboard
 from modules.tts.upsell import schedule_creator_upsell
+from modules.home.keyboards import menu_actions
 from .keyboards import keyboard as tts_keyboard
 from .settings import (
     STATE_WAIT_TEXT,
@@ -146,6 +147,11 @@ def register(bot):
         user = db.get_or_create_user(msg.from_user)
         user_id = user["user_id"]
 
+        lang = db.get_user_lang(user_id, "fa")
+        if menu_actions(lang).get((msg.text or "").strip()):
+            db.clear_state(user_id)
+            return
+
         current_state = db.get_state(user_id) or ""
 
         if current_state.startswith("tts_openai:processing"):
@@ -156,8 +162,6 @@ def register(bot):
         cost = 0
         status = None
         try:
-            lang = db.get_user_lang(user_id, "fa")
-
             if not ensure_force_sub(bot, user_id, msg.chat.id, msg.message_id, lang):
                 return
 
