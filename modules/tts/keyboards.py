@@ -23,6 +23,7 @@ def keyboard(
     include_custom: bool = True,
     quality: str = "pro",
     show_demo_button: bool = True,
+    locked_voices: set[str] | None = None,
 ):
     kb = InlineKeyboardMarkup(row_width=3)
 
@@ -43,12 +44,13 @@ def keyboard(
         allow_custom = False
 
     all_names = default_names + ([voice[0] for voice in custom_voices] if allow_custom else [])
+    locked = locked_voices or set()
 
     for row in _chunk(all_names, 3):
         kb.row(
             *[
                 InlineKeyboardButton(
-                    ("✔️ " if n == selected_voice else "") + n,
+                    ("🔒 " if n in locked else "") + ("✔️ " if n == selected_voice else "") + n,
                     callback_data=f"{prefix}:voice:{n}",
                 )
                 for n in row
