@@ -44,8 +44,18 @@ def edit_or_send(bot, chat_id, message_id, text, reply_markup=None, parse_mode="
         if "message is not modified" in str(exc).lower():
             return
         bot.send_message(chat_id, text, reply_markup=reply_markup, parse_mode=parse_mode)
+        if message_id is not None:
+            try:
+                bot.delete_message(chat_id, message_id)
+            except Exception:
+                pass
     except Exception:
         bot.send_message(chat_id, text, reply_markup=reply_markup, parse_mode=parse_mode)
+        if message_id is not None:
+            try:
+                bot.delete_message(chat_id, message_id)
+            except Exception:
+                pass
 
 def smart_edit_or_send(bot, obj, text, reply_markup=None, parse_mode="HTML"):
     """
