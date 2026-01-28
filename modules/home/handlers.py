@@ -434,11 +434,7 @@ def register(bot):
 
         if action == "profile":
             if not is_feature_enabled("FEATURE_PROFILE"):
-                bot.reply_to(msg, feature_disabled_text("FEATURE_PROFILE", lang))
                 return
-            from modules.profile.handlers import open_profile_from_message
-
-            open_profile_from_message(bot, msg, menu_message_id=menu_message_id)
             return
 
         if action == "credit":
@@ -563,12 +559,16 @@ def register(bot):
             return
         if route == "profile":
             if not is_feature_enabled("FEATURE_PROFILE"):
-                _handle_feature_disabled(bot, cq, lang, "FEATURE_PROFILE")
+                bot.answer_callback_query(
+                    cq.id,
+                    feature_disabled_text("FEATURE_PROFILE", lang),
+                    show_alert=True,
+                )
                 return
-            bot.answer_callback_query(cq.id)
-            from modules.profile.handlers import open_profile
+            from modules.profile.handlers import build_balance_alert
 
-            open_profile(bot, cq)
+            title, body = build_balance_alert(lang, user["user_id"], user["credits"])
+            bot.answer_callback_query(cq.id, f"{title}\n\n{body}", show_alert=True)
             return
 
         if route == "credit":
