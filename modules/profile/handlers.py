@@ -14,8 +14,11 @@ def open_profile(bot, cq):
     edit_or_send(bot, cq.message.chat.id, cq.message.message_id, txt, main_menu(lang))
 
 
-def open_profile_from_message(bot, msg):
+def open_profile_from_message(bot, msg, menu_message_id: int | None = None):
     user = db.get_or_create_user(msg.from_user)
     lang = db.get_user_lang(user["user_id"], "fa")
     txt = PROFILE_TEXT(lang, user["user_id"], user["credits"])
-    bot.send_message(msg.chat.id, txt, reply_markup=main_menu(lang), parse_mode="HTML")
+    if menu_message_id:
+        edit_or_send(bot, msg.chat.id, menu_message_id, txt, main_menu(lang))
+    else:
+        bot.send_message(msg.chat.id, txt, reply_markup=main_menu(lang), parse_mode="HTML")

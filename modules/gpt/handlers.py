@@ -86,12 +86,6 @@ REALTIME_HINTS = {
 }
 
 
-def _back_keyboard(lang: str) -> InlineKeyboardMarkup:
-    kb = InlineKeyboardMarkup()
-    kb.add(InlineKeyboardButton(t("back", lang), callback_data="home:back"))
-    return kb
-
-
 def _chat_keyboard(lang: str) -> ReplyKeyboardMarkup:
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
     kb.add(KeyboardButton(t("gpt_end_button", lang)))
@@ -242,7 +236,7 @@ def _start_chat(
 ) -> bool:
     error = _ensure_gpt_ready(lang)
     if error:
-        edit_or_send(bot, chat_id, message_id, error, _back_keyboard(lang))
+        edit_or_send(bot, chat_id, message_id, error, None)
         return False
 
     db.set_state(user_id, GPT_STATE)
@@ -350,7 +344,7 @@ def _handle_chat_completion(bot, user_id: int, chat_id: int, lang: str, messages
         _respond(bot, thinking, lang, t("gpt_error", lang).format(error=t("gpt_error_unknown", lang)))
 
 
-def open_gpt_from_message(bot, msg):
+def open_gpt_from_message(bot, msg, menu_message_id: int | None = None):
     user = db.get_or_create_user(msg.from_user)
     if user.get("banned"):
         bot.reply_to(msg, "⛔️ دسترسی شما مسدود است.")
@@ -364,7 +358,8 @@ def open_gpt_from_message(bot, msg):
     if not _handle_force_sub(bot, user["user_id"], lang, msg.chat.id, msg.message_id):
         return
 
-    _start_chat(bot, msg.chat.id, msg.message_id, user["user_id"], lang, reset_history=True)
+    target_message_id = menu_message_id or msg.message_id
+    _start_chat(bot, msg.chat.id, target_message_id, user["user_id"], lang, reset_history=True)
 
 
 def register(bot):

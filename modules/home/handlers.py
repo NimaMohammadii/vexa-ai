@@ -424,40 +424,47 @@ def register(bot):
         if not _ensure_force_sub(bot, user["user_id"], msg.chat.id, msg.message_id, lang):
             return
 
+        try:
+            bot.delete_message(msg.chat.id, msg.message_id)
+        except Exception:
+            pass
+
+        menu_message_id = db.get_last_main_menu_id(user["user_id"]) or None
+
         if action == "profile":
             from modules.profile.handlers import open_profile_from_message
 
-            open_profile_from_message(bot, msg)
+            open_profile_from_message(bot, msg, menu_message_id=menu_message_id)
             return
 
         if action == "credit":
             from modules.credit.handlers import open_credit_from_message
 
-            open_credit_from_message(bot, msg)
+            open_credit_from_message(bot, msg, menu_message_id=menu_message_id)
             return
 
         if action == "tts":
             from modules.tts.handlers import open_tts_from_message
 
-            open_tts_from_message(bot, msg)
+            open_tts_from_message(bot, msg, menu_message_id=menu_message_id)
             return
 
         if action == "gpt":
             from modules.gpt.handlers import open_gpt_from_message
 
-            open_gpt_from_message(bot, msg)
+            open_gpt_from_message(bot, msg, menu_message_id=menu_message_id)
             return
 
         if action == "lang":
             from modules.lang.handlers import open_language_from_message
 
-            open_language_from_message(bot, msg)
+            open_language_from_message(bot, msg, menu_message_id=menu_message_id)
             return
 
         if action == "invite":
             from modules.invite.handlers import open_invite_from_message
 
-            open_invite_from_message(bot, msg)
+            open_invite_from_message(bot, msg, menu_message_id=menu_message_id)
             return
 
     @bot.callback_query_handler(
