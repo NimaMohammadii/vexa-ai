@@ -389,6 +389,77 @@ def register(bot):
         )
         _schedule_low_credit_warning(bot, user, msg.chat.id, LOW_CREDIT_DELAY)
 
+    @bot.message_handler(func=lambda m: bool(m.text))
+    def menu_text_router(msg: Message):
+        user = db.get_or_create_user(msg.from_user)
+        stored_lang = (user.get("lang") or "").strip()
+        lang = stored_lang or "fa"
+
+        menu_actions = {
+            t("btn_profile", lang): "profile",
+            t("btn_credit", lang): "credit",
+            t("btn_tts", lang): "tts",
+            t("btn_gpt", lang): "gpt",
+            t("btn_lang", lang): "lang",
+            t("btn_invite", lang): "invite",
+        }
+
+        action = menu_actions.get((msg.text or "").strip())
+        if not action:
+            return
+
+        if not stored_lang:
+            from modules.lang.handlers import send_language_menu
+
+            send_language_menu(
+                bot,
+                user,
+                msg.chat.id,
+                msg.message_id,
+                force_new=True,
+                display_lang="en",
+            )
+            return
+
+        if not _ensure_force_sub(bot, user["user_id"], msg.chat.id, msg.message_id, lang):
+            return
+
+        if action == "profile":
+            from modules.profile.handlers import open_profile_from_message
+
+            open_profile_from_message(bot, msg)
+            return
+
+        if action == "credit":
+            from modules.credit.handlers import open_credit_from_message
+
+            open_credit_from_message(bot, msg)
+            return
+
+        if action == "tts":
+            from modules.tts.handlers import open_tts_from_message
+
+            open_tts_from_message(bot, msg)
+            return
+
+        if action == "gpt":
+            from modules.gpt.handlers import open_gpt_from_message
+
+            open_gpt_from_message(bot, msg)
+            return
+
+        if action == "lang":
+            from modules.lang.handlers import open_language_from_message
+
+            open_language_from_message(bot, msg)
+            return
+
+        if action == "invite":
+            from modules.invite.handlers import open_invite_from_message
+
+            open_invite_from_message(bot, msg)
+            return
+
     @bot.callback_query_handler(
         func=lambda c: (
             c.data

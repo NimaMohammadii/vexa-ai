@@ -103,3 +103,8 @@ def register(bot):
 def open_language(bot, cq):
     user = db.get_or_create_user(cq.from_user)
     send_language_menu(bot, user, cq.message.chat.id, cq.message.message_id)
+
+
+def open_language_from_message(bot, msg):
+    user = db.get_or_create_user(msg.from_user)
+    send_language_menu(bot, user, msg.chat.id, force_new=True)
