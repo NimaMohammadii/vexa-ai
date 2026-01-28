@@ -236,14 +236,14 @@ def _start_chat(
 ) -> bool:
     error = _ensure_gpt_ready(lang)
     if error:
-        edit_or_send(bot, chat_id, message_id, error, None)
+        send_main_menu(bot, user_id, chat_id, error, None, message_id=message_id)
         return False
 
     db.set_state(user_id, GPT_STATE)
     if reset_history:
         db.clear_gpt_history(user_id)
     text = t("gpt_open", lang).format(cost=_format_credits(GPT_MESSAGE_COST))
-    edit_or_send(bot, chat_id, message_id, text, _chat_keyboard(lang))
+    send_main_menu(bot, user_id, chat_id, text, _chat_keyboard(lang), message_id=message_id)
     return True
 
 
@@ -353,7 +353,13 @@ def open_gpt_from_message(bot, msg, menu_message_id: int | None = None):
     lang = db.get_user_lang(user["user_id"], "fa")
     db.touch_last_seen(user["user_id"])
     if not is_feature_enabled("FEATURE_GPT"):
-        bot.send_message(msg.chat.id, feature_disabled_text("FEATURE_GPT", lang), parse_mode="HTML")
+        send_main_menu(
+            bot,
+            user["user_id"],
+            msg.chat.id,
+            feature_disabled_text("FEATURE_GPT", lang),
+            None,
+        )
         return
     if not _handle_force_sub(bot, user["user_id"], lang, msg.chat.id, msg.message_id):
         return

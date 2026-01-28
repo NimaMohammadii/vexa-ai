@@ -143,43 +143,36 @@ def open_credit_from_message(bot: TeleBot, msg: Message, menu_message_id: int | 
     if not is_feature_enabled("FEATURE_CREDIT"):
         text = feature_disabled_text("FEATURE_CREDIT", lang)
         if menu_message_id:
-            try:
-                bot.edit_message_text(
-                    text,
-                    msg.chat.id,
-                    menu_message_id,
-                    parse_mode="HTML",
-                )
-            except Exception:
-                bot.send_message(msg.chat.id, text, parse_mode="HTML")
+            send_main_menu(
+                bot,
+                user["user_id"],
+                msg.chat.id,
+                text,
+                None,
+                message_id=menu_message_id,
+            )
         else:
-            bot.send_message(msg.chat.id, text, parse_mode="HTML")
+            send_main_menu(bot, user["user_id"], msg.chat.id, text, None)
         return
     if not _ensure_force_sub(bot, user["user_id"], msg.chat.id, msg.message_id, lang):
         return
     text = f"🛒 <b>{t('credit_title', lang)}</b>\n\n{t('credit_header', lang)}"
     if menu_message_id:
-        try:
-            bot.edit_message_text(
-                text,
-                msg.chat.id,
-                menu_message_id,
-                parse_mode="HTML",
-                reply_markup=credit_menu_kb(lang),
-            )
-        except Exception:
-            bot.send_message(
-                msg.chat.id,
-                text,
-                parse_mode="HTML",
-                reply_markup=credit_menu_kb(lang),
-            )
-    else:
-        bot.send_message(
+        send_main_menu(
+            bot,
+            user["user_id"],
             msg.chat.id,
             text,
-            parse_mode="HTML",
-            reply_markup=credit_menu_kb(lang),
+            credit_menu_kb(lang),
+            message_id=menu_message_id,
+        )
+    else:
+        send_main_menu(
+            bot,
+            user["user_id"],
+            msg.chat.id,
+            text,
+            credit_menu_kb(lang),
         )
 
 # === API عمومی برای ادغام با منوی Credit موجود تو ===

@@ -482,58 +482,41 @@ def open_tts_from_message(bot, msg, menu_message_id: int | None = None):
     lang = db.get_user_lang(user["user_id"], "fa")
     if not is_feature_enabled("FEATURE_TTS"):
         if menu_message_id:
-            edit_or_send(
+            send_main_menu(
                 bot,
+                user["user_id"],
                 msg.chat.id,
-                menu_message_id,
                 feature_disabled_text("FEATURE_TTS", lang),
                 None,
+                message_id=menu_message_id,
             )
         else:
-            bot.send_message(
+            send_main_menu(
+                bot,
+                user["user_id"],
                 msg.chat.id,
                 feature_disabled_text("FEATURE_TTS", lang),
-                parse_mode="HTML",
+                None,
             )
         return
     voices = get_voices(lang)
     sel = get_default_voice_name(lang)
     access = get_voice_access(user["user_id"], lang)
-    target_message_id = None
-    if menu_message_id:
-        try:
-            bot.edit_message_text(
-                ask_text(lang, sel),
-                msg.chat.id,
-                menu_message_id,
-                reply_markup=tts_keyboard(
-                    sel,
-                    lang,
-                    user["user_id"],
-                    quality="pro",
-                    voices=voices,
-                    locked_voices=access["locked"],
-                ),
-                parse_mode="HTML",
-            )
-            target_message_id = menu_message_id
-        except Exception:
-            target_message_id = None
-
-    if target_message_id is None:
-        menu_msg = bot.send_message(
-            msg.chat.id,
-            ask_text(lang, sel),
-            reply_markup=tts_keyboard(
-                sel,
-                lang,
-                user["user_id"],
-                quality="pro",
-                voices=voices,
-                locked_voices=access["locked"],
-            ),
-            parse_mode="HTML",
-        )
-        target_message_id = menu_msg.message_id
+    menu_msg = send_main_menu(
+        bot,
+        user["user_id"],
+        msg.chat.id,
+        ask_text(lang, sel),
+        tts_keyboard(
+            sel,
+            lang,
+            user["user_id"],
+            quality="pro",
+            voices=voices,
+            locked_voices=access["locked"],
+        ),
+        message_id=menu_message_id,
+    )
+    target_message_id = menu_msg.message_id if menu_msg else menu_message_id
 
     db.set_state(msg.from_user.id, _make_state(target_message_id, sel))

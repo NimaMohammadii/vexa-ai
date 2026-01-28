@@ -33,9 +33,9 @@ def send_language_menu(
 ):
     text, markup, _ = _language_menu_content(user, display_lang)
     if force_new or message_id is None:
-        bot.send_message(chat_id, text, reply_markup=markup, parse_mode="HTML")
+        send_main_menu(bot, user["user_id"], chat_id, text, markup)
     else:
-        edit_or_send(bot, chat_id, message_id, text, markup)
+        send_main_menu(bot, user["user_id"], chat_id, text, markup, message_id=message_id)
 
 
 def register(bot):
