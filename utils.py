@@ -7,12 +7,16 @@ import re
 import db
 
 _FEATURE_LABEL_KEYS = {
+    "FEATURE_PROFILE": "feature_profile",
+    "FEATURE_CREDIT": "feature_credit",
     "FEATURE_GPT": "feature_gpt",
     "FEATURE_TTS": "feature_tts",
     "FEATURE_CLONE": "feature_clone",
     "FEATURE_IMAGE": "feature_image",
     "FEATURE_VIDEO": "feature_video",
     "FEATURE_SORA2": "feature_sora2",
+    "FEATURE_LANG": "feature_lang",
+    "FEATURE_INVITE": "feature_invite",
 }
 _FEATURE_ENABLED_VALUES = {"1", "true", "yes", "on", "enabled"}
 

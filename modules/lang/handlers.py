@@ -2,7 +2,7 @@
 from typing import Optional
 
 import db
-from utils import edit_or_send, check_force_sub, send_main_menu
+from utils import edit_or_send, check_force_sub, feature_disabled_text, is_feature_enabled, send_main_menu
 from .texts import TITLE
 from .keyboards import lang_menu
 from modules.home.texts import MAIN
@@ -42,6 +42,10 @@ def register(bot):
     @bot.message_handler(commands=["language"])
     def language_cmd(msg):
         user = db.get_or_create_user(msg.from_user)
+        stored_lang = (user.get("lang") or "").strip()
+        if stored_lang and not is_feature_enabled("FEATURE_LANG"):
+            bot.reply_to(msg, feature_disabled_text("FEATURE_LANG", stored_lang))
+            return
         send_language_menu(bot, user, msg.chat.id, force_new=True)
 
     @bot.callback_query_handler(func=lambda c: c.data and c.data.startswith("lang:"))
@@ -102,11 +106,23 @@ def register(bot):
 
 def open_language(bot, cq):
     user = db.get_or_create_user(cq.from_user)
+    stored_lang = (user.get("lang") or "").strip()
+    if stored_lang and not is_feature_enabled("FEATURE_LANG"):
+        bot.answer_callback_query(
+            cq.id,
+            feature_disabled_text("FEATURE_LANG", stored_lang),
+            show_alert=True,
+        )
+        return
     send_language_menu(bot, user, cq.message.chat.id, cq.message.message_id)
 
 
 def open_language_from_message(bot, msg, menu_message_id: int | None = None):
     user = db.get_or_create_user(msg.from_user)
+    stored_lang = (user.get("lang") or "").strip()
+    if stored_lang and not is_feature_enabled("FEATURE_LANG"):
+        bot.reply_to(msg, feature_disabled_text("FEATURE_LANG", stored_lang))
+        return
     if menu_message_id:
         send_language_menu(bot, user, msg.chat.id, message_id=menu_message_id)
     else:

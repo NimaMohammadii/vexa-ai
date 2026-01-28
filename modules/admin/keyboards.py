@@ -7,12 +7,16 @@ from modules.lang.keyboards import LANGS
 from modules.tts.settings import get_demo_audio, get_voices
 
 FEATURE_TOGGLES = [
+    ("پروفایل", "FEATURE_PROFILE"),
+    ("خرید کردیت", "FEATURE_CREDIT"),
     ("GPT", "FEATURE_GPT"),
     ("تبدیل متن به صدا", "FEATURE_TTS"),
     ("Voice Clone", "FEATURE_CLONE"),
     ("تولید تصویر", "FEATURE_IMAGE"),
     ("تولید ویدیو", "FEATURE_VIDEO"),
     ("Sora 2", "FEATURE_SORA2"),
+    ("انتخاب زبان", "FEATURE_LANG"),
+    ("دعوت دوستان", "FEATURE_INVITE"),
 ]
 
 # ————— منوی اصلی ادمین —————

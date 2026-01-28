@@ -433,12 +433,18 @@ def register(bot):
         menu_message_id = db.get_last_main_menu_id(user["user_id"]) or None
 
         if action == "profile":
+            if not is_feature_enabled("FEATURE_PROFILE"):
+                bot.reply_to(msg, feature_disabled_text("FEATURE_PROFILE", lang))
+                return
             from modules.profile.handlers import open_profile_from_message
 
             open_profile_from_message(bot, msg, menu_message_id=menu_message_id)
             return
 
         if action == "credit":
+            if not is_feature_enabled("FEATURE_CREDIT"):
+                bot.reply_to(msg, feature_disabled_text("FEATURE_CREDIT", lang))
+                return
             from modules.credit.handlers import open_credit_from_message
 
             open_credit_from_message(bot, msg, menu_message_id=menu_message_id)
@@ -457,12 +463,18 @@ def register(bot):
             return
 
         if action == "lang":
+            if not is_feature_enabled("FEATURE_LANG"):
+                bot.reply_to(msg, feature_disabled_text("FEATURE_LANG", lang))
+                return
             from modules.lang.handlers import open_language_from_message
 
             open_language_from_message(bot, msg, menu_message_id=menu_message_id)
             return
 
         if action == "invite":
+            if not is_feature_enabled("FEATURE_INVITE"):
+                bot.reply_to(msg, feature_disabled_text("FEATURE_INVITE", lang))
+                return
             from modules.invite.handlers import open_invite_from_message
 
             open_invite_from_message(bot, msg, menu_message_id=menu_message_id)
@@ -550,6 +562,9 @@ def register(bot):
             open_tts(bot, cq)
             return
         if route == "profile":
+            if not is_feature_enabled("FEATURE_PROFILE"):
+                _handle_feature_disabled(bot, cq, lang, "FEATURE_PROFILE")
+                return
             bot.answer_callback_query(cq.id)
             from modules.profile.handlers import open_profile
 
@@ -557,6 +572,9 @@ def register(bot):
             return
 
         if route == "credit":
+            if not is_feature_enabled("FEATURE_CREDIT"):
+                _handle_feature_disabled(bot, cq, lang, "FEATURE_CREDIT")
+                return
             bot.answer_callback_query(cq.id)
             from modules.credit.handlers import open_credit
 
@@ -574,6 +592,9 @@ def register(bot):
             return
 
         if route == "invite":
+            if not is_feature_enabled("FEATURE_INVITE"):
+                _handle_feature_disabled(bot, cq, lang, "FEATURE_INVITE")
+                return
             bot.answer_callback_query(cq.id)
             from modules.invite.handlers import open_invite
 
@@ -581,6 +602,9 @@ def register(bot):
             return
 
         if route == "lang":
+            if not is_feature_enabled("FEATURE_LANG"):
+                _handle_feature_disabled(bot, cq, lang, "FEATURE_LANG")
+                return
             bot.answer_callback_query(cq.id)
             from modules.lang.handlers import open_language
 
