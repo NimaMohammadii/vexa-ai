@@ -8,7 +8,4 @@ def token_menu(lang: str) -> InlineKeyboardMarkup:
     keyboard.add(
         InlineKeyboardButton(t("api_token_rotate", lang), callback_data="api:rotate")
     )
-    keyboard.add(
-        InlineKeyboardButton(t("home_back_to_menu", lang), callback_data="home:back")
-    )
     return keyboard

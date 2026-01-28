@@ -6,6 +6,7 @@ import db
 from utils import edit_or_send, ensure_force_sub, feature_disabled_text, is_feature_enabled, send_main_menu
 from config import DEBUG
 from modules.i18n import t
+from modules.home.keyboards import menu_actions
 from .texts import TITLE, ask_text, PROCESSING, NO_CREDIT, ERROR, BANNED
 from .keyboards import keyboard as tts_keyboard
 from .upsell import schedule_creator_upsell
@@ -314,6 +315,11 @@ def register(bot):
     def on_text_to_tts(msg):
         user = db.get_or_create_user(msg.from_user)
         user_id = user["user_id"]
+
+        lang = db.get_user_lang(user_id, "fa")
+        if menu_actions(lang).get((msg.text or "").strip()):
+            db.clear_state(user_id)
+            return
         
         # 🔒 LOCK: جلوگیری از اجرای دوگانه
         lock_key = f"tts_processing_{user_id}"
@@ -327,8 +333,6 @@ def register(bot):
         db.set_state(user_id, f"tts:processing:{int(time.time())}")
         
         try:
-            lang = db.get_user_lang(user_id, "fa")
-
             if not ensure_force_sub(bot, user_id, msg.chat.id, msg.message_id, lang):
                 return
 

@@ -17,7 +17,7 @@ from utils import (
 )
 from modules.i18n import t
 from .texts import MAIN, HELP
-from .keyboards import main_menu, _back_to_home_kb
+from .keyboards import main_menu, menu_actions, _back_to_home_kb
 
 
 ONBOARDING_DAILY_BONUS_DELAY = 15.0
@@ -389,29 +389,25 @@ def register(bot):
         )
         _schedule_low_credit_warning(bot, user, msg.chat.id, LOW_CREDIT_DELAY)
 
-    @bot.message_handler(
-        func=lambda m: bool(m.text)
-        and not (db.get_state(m.from_user.id) or "").startswith(
-            ("tts:wait_text", "tts_openai:wait_text")
-        )
-    )
+    @bot.message_handler(func=lambda m: bool(m.text))
     def menu_text_router(msg: Message):
         user = db.get_or_create_user(msg.from_user)
         stored_lang = (user.get("lang") or "").strip()
         lang = stored_lang or "fa"
 
-        menu_actions = {
-            t("btn_profile", lang): "profile",
-            t("btn_credit", lang): "credit",
-            t("btn_tts", lang): "tts",
-            t("btn_gpt", lang): "gpt",
-            t("btn_lang", lang): "lang",
-            t("btn_invite", lang): "invite",
-        }
-
-        action = menu_actions.get((msg.text or "").strip())
+        action = menu_actions(lang).get((msg.text or "").strip())
         if not action:
             return
+
+        current_state = db.get_state(msg.from_user.id) or ""
+        if current_state.startswith(("tts:wait_text", "tts_openai:wait_text")):
+            try:
+                parts = current_state.split(":")
+                if len(parts) >= 3 and parts[2].isdigit():
+                    bot.delete_message(msg.chat.id, int(parts[2]))
+            except Exception:
+                pass
+            db.clear_state(msg.from_user.id)
 
         if not stored_lang:
             from modules.lang.handlers import send_language_menu

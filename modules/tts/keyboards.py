@@ -87,7 +87,6 @@ def keyboard(
     )
 
     kb.add(InlineKeyboardButton(t("btn_clone", lang), callback_data="home:clone"))
-    kb.add(InlineKeyboardButton(t("back", lang), callback_data="home:back"))
     return kb
 
 

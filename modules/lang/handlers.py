@@ -18,7 +18,7 @@ def _language_menu_content(
     render_lang = display_lang or stored_lang or "fa"
     return (
         TITLE(render_lang),
-        lang_menu(stored_lang, render_lang, show_back=bool(stored_lang)),
+        lang_menu(stored_lang, render_lang, show_back=False),
         stored_lang or render_lang,
     )
 
