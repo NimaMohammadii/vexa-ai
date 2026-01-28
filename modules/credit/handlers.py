@@ -10,7 +10,7 @@ from .texts import (
 from modules.i18n import t
 from .keyboards import credit_menu_kb, stars_packages_kb, payrial_plans_kb, instant_cancel_kb, augment_with_rial, admin_approve_kb
 from config import BOT_OWNER_ID as ADMIN_REVIEW_CHAT_ID, CARD_NUMBER
-from utils import ensure_force_sub, send_main_menu
+from utils import ensure_force_sub, feature_disabled_text, is_feature_enabled, send_main_menu
 from .settings import PAYMENT_PLANS, STAR_PACKAGES
 from .settings import RECEIPT_WAIT_TTL
 
@@ -93,6 +93,18 @@ def open_credit(bot: TeleBot, cq):
     
     user = db.get_or_create_user(cq.from_user)
     lang = db.get_user_lang(user["user_id"], "fa")
+    if not is_feature_enabled("FEATURE_CREDIT"):
+        text = feature_disabled_text("FEATURE_CREDIT", lang)
+        try:
+            bot.edit_message_text(
+                text,
+                cq.message.chat.id,
+                cq.message.message_id,
+                parse_mode="HTML",
+            )
+        except Exception:
+            bot.send_message(cq.message.chat.id, text, parse_mode="HTML")
+        return
     if not _ensure_force_sub(bot, user["user_id"], cq.message.chat.id, cq.message.message_id, lang):
         return
     text = f"🛒 <b>{t('credit_title', lang)}</b>\n\n{t('credit_header', lang)}"
@@ -128,6 +140,21 @@ def open_credit_from_message(bot: TeleBot, msg: Message, menu_message_id: int | 
 
     user = db.get_or_create_user(msg.from_user)
     lang = db.get_user_lang(user["user_id"], "fa")
+    if not is_feature_enabled("FEATURE_CREDIT"):
+        text = feature_disabled_text("FEATURE_CREDIT", lang)
+        if menu_message_id:
+            try:
+                bot.edit_message_text(
+                    text,
+                    msg.chat.id,
+                    menu_message_id,
+                    parse_mode="HTML",
+                )
+            except Exception:
+                bot.send_message(msg.chat.id, text, parse_mode="HTML")
+        else:
+            bot.send_message(msg.chat.id, text, parse_mode="HTML")
+        return
     if not _ensure_force_sub(bot, user["user_id"], msg.chat.id, msg.message_id, lang):
         return
     text = f"🛒 <b>{t('credit_title', lang)}</b>\n\n{t('credit_header', lang)}"

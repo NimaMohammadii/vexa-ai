@@ -202,12 +202,16 @@ def ensure_default_settings():
         "FORCE_SUB_MODE": "none",
         "TG_CHANNEL": "",
         "IG_URL": "",
+        "FEATURE_PROFILE": "1",
+        "FEATURE_CREDIT": "1",
         "FEATURE_GPT": "1",
         "FEATURE_TTS": "1",
         "FEATURE_CLONE": "1",
         "FEATURE_IMAGE": "1",
         "FEATURE_VIDEO": "1",
         "FEATURE_SORA2": "1",
+        "FEATURE_LANG": "1",
+        "FEATURE_INVITE": "1",
     }
     for k,v in defaults.items():
         if get_setting(k) is None:
