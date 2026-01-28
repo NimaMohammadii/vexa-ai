@@ -8,7 +8,7 @@ from telebot.types import CallbackQuery
 
 import db
 from modules.i18n import t
-from utils import edit_or_send, ensure_force_sub, feature_disabled_text, is_feature_enabled
+from utils import edit_or_send, ensure_force_sub, feature_disabled_text, is_feature_enabled, send_main_menu
 from .texts import INVITE_TEXT
 from .keyboards import keyboard as invite_keyboard
 
@@ -73,18 +73,21 @@ def open_invite_from_message(bot, msg, menu_message_id: int | None = None):
     lang = db.get_user_lang(user["user_id"], "fa")
     if not is_feature_enabled("FEATURE_INVITE"):
         if menu_message_id:
-            edit_or_send(
+            send_main_menu(
                 bot,
+                user["user_id"],
                 msg.chat.id,
-                menu_message_id,
                 feature_disabled_text("FEATURE_INVITE", lang),
                 None,
+                message_id=menu_message_id,
             )
         else:
-            bot.send_message(
+            send_main_menu(
+                bot,
+                user["user_id"],
                 msg.chat.id,
                 feature_disabled_text("FEATURE_INVITE", lang),
-                parse_mode="HTML",
+                None,
             )
         return
     if not ensure_force_sub(bot, user["user_id"], msg.chat.id, msg.message_id, lang):
@@ -93,19 +96,21 @@ def open_invite_from_message(bot, msg, menu_message_id: int | None = None):
     me = bot.get_me()
     ref_url = f"https://t.me/{me.username}?start={user['ref_code']}"
     if menu_message_id:
-        edit_or_send(
+        send_main_menu(
             bot,
+            user["user_id"],
             msg.chat.id,
-            menu_message_id,
             INVITE_TEXT(lang, ref_url, bonus),
             invite_keyboard(lang),
+            message_id=menu_message_id,
         )
     else:
-        bot.send_message(
+        send_main_menu(
+            bot,
+            user["user_id"],
             msg.chat.id,
             INVITE_TEXT(lang, ref_url, bonus),
-            reply_markup=invite_keyboard(lang),
-            parse_mode="HTML",
+            invite_keyboard(lang),
         )
 
 

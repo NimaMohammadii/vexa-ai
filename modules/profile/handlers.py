@@ -1,6 +1,6 @@
 # modules/profile/handlers.py
 import db
-from utils import edit_or_send, feature_disabled_text, is_feature_enabled
+from utils import edit_or_send, feature_disabled_text, is_feature_enabled, send_main_menu
 from .texts import PROFILE_TEXT
 from modules.home.keyboards import main_menu
 
@@ -28,23 +28,32 @@ def open_profile_from_message(bot, msg, menu_message_id: int | None = None):
     lang = db.get_user_lang(user["user_id"], "fa")
     if not is_feature_enabled("FEATURE_PROFILE"):
         if menu_message_id:
-            edit_or_send(
+            send_main_menu(
                 bot,
+                user["user_id"],
                 msg.chat.id,
-                menu_message_id,
                 feature_disabled_text("FEATURE_PROFILE", lang),
                 main_menu(lang),
+                message_id=menu_message_id,
             )
         else:
-            bot.send_message(
+            send_main_menu(
+                bot,
+                user["user_id"],
                 msg.chat.id,
                 feature_disabled_text("FEATURE_PROFILE", lang),
-                reply_markup=main_menu(lang),
-                parse_mode="HTML",
+                main_menu(lang),
             )
         return
     txt = PROFILE_TEXT(lang, user["user_id"], user["credits"])
     if menu_message_id:
-        edit_or_send(bot, msg.chat.id, menu_message_id, txt, main_menu(lang))
+        send_main_menu(
+            bot,
+            user["user_id"],
+            msg.chat.id,
+            txt,
+            main_menu(lang),
+            message_id=menu_message_id,
+        )
     else:
-        bot.send_message(msg.chat.id, txt, reply_markup=main_menu(lang), parse_mode="HTML")
+        send_main_menu(bot, user["user_id"], msg.chat.id, txt, main_menu(lang))
