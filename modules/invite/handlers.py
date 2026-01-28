@@ -59,7 +59,7 @@ def open_invite(bot, cq):
     edit_or_send(bot, cq.message.chat.id, cq.message.message_id, INVITE_TEXT(lang, ref_url, bonus), invite_keyboard(lang))
 
 
-def open_invite_from_message(bot, msg):
+def open_invite_from_message(bot, msg, menu_message_id: int | None = None):
     user = db.get_or_create_user(msg.from_user)
     lang = db.get_user_lang(user["user_id"], "fa")
     if not ensure_force_sub(bot, user["user_id"], msg.chat.id, msg.message_id, lang):
@@ -67,12 +67,21 @@ def open_invite_from_message(bot, msg):
     bonus = int(db.get_setting("BONUS_REFERRAL", "30") or 30)
     me = bot.get_me()
     ref_url = f"https://t.me/{me.username}?start={user['ref_code']}"
-    bot.send_message(
-        msg.chat.id,
-        INVITE_TEXT(lang, ref_url, bonus),
-        reply_markup=invite_keyboard(lang),
-        parse_mode="HTML",
-    )
+    if menu_message_id:
+        edit_or_send(
+            bot,
+            msg.chat.id,
+            menu_message_id,
+            INVITE_TEXT(lang, ref_url, bonus),
+            invite_keyboard(lang),
+        )
+    else:
+        bot.send_message(
+            msg.chat.id,
+            INVITE_TEXT(lang, ref_url, bonus),
+            reply_markup=invite_keyboard(lang),
+            parse_mode="HTML",
+        )
 
 
 def _claim_daily_reward(bot: TeleBot, cq: CallbackQuery, user_id: int, lang: str) -> None:
