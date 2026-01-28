@@ -389,7 +389,12 @@ def register(bot):
         )
         _schedule_low_credit_warning(bot, user, msg.chat.id, LOW_CREDIT_DELAY)
 
-    @bot.message_handler(func=lambda m: bool(m.text))
+    @bot.message_handler(
+        func=lambda m: bool(m.text)
+        and not (db.get_state(m.from_user.id) or "").startswith(
+            ("tts:wait_text", "tts_openai:wait_text")
+        )
+    )
     def menu_text_router(msg: Message):
         user = db.get_or_create_user(msg.from_user)
         stored_lang = (user.get("lang") or "").strip()
