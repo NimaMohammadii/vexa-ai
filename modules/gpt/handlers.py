@@ -350,6 +350,23 @@ def _handle_chat_completion(bot, user_id: int, chat_id: int, lang: str, messages
         _respond(bot, thinking, lang, t("gpt_error", lang).format(error=t("gpt_error_unknown", lang)))
 
 
+def open_gpt_from_message(bot, msg):
+    user = db.get_or_create_user(msg.from_user)
+    if user.get("banned"):
+        bot.reply_to(msg, "⛔️ دسترسی شما مسدود است.")
+        return
+
+    lang = db.get_user_lang(user["user_id"], "fa")
+    db.touch_last_seen(user["user_id"])
+    if not is_feature_enabled("FEATURE_GPT"):
+        bot.send_message(msg.chat.id, feature_disabled_text("FEATURE_GPT", lang), parse_mode="HTML")
+        return
+    if not _handle_force_sub(bot, user["user_id"], lang, msg.chat.id, msg.message_id):
+        return
+
+    _start_chat(bot, msg.chat.id, msg.message_id, user["user_id"], lang, reset_history=True)
+
+
 def register(bot):
     @bot.message_handler(commands=["gpt"])
     def open_gpt(msg):

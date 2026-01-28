@@ -110,6 +110,34 @@ def open_credit(bot: TeleBot, cq):
             parse_mode="HTML", reply_markup=credit_menu_kb(lang)
         )
 
+
+def open_credit_from_message(bot: TeleBot, msg: Message):
+    """باز کردن منوی اصلی خرید کردیت از پیام کاربر"""
+    import db
+
+    user_state = db.get_state(msg.from_user.id) or ""
+    if user_state.startswith("tts:wait_text:"):
+        try:
+            parts = user_state.split(":")
+            if len(parts) >= 3 and parts[2].isdigit():
+                tts_menu_id = int(parts[2])
+                bot.delete_message(msg.chat.id, tts_menu_id)
+        except Exception:
+            pass
+        db.clear_state(msg.from_user.id)
+
+    user = db.get_or_create_user(msg.from_user)
+    lang = db.get_user_lang(user["user_id"], "fa")
+    if not _ensure_force_sub(bot, user["user_id"], msg.chat.id, msg.message_id, lang):
+        return
+    text = f"🛒 <b>{t('credit_title', lang)}</b>\n\n{t('credit_header', lang)}"
+    bot.send_message(
+        msg.chat.id,
+        text,
+        parse_mode="HTML",
+        reply_markup=credit_menu_kb(lang),
+    )
+
 # === API عمومی برای ادغام با منوی Credit موجود تو ===
 def add_rial_button_to_credit_menu(markup, lang: str = "fa"):
     """در کد فعلی منوی Credit، قبل از ارسال reply_markup این تابع را صدا بزن:
