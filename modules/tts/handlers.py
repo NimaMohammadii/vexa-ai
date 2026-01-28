@@ -16,7 +16,9 @@ from .settings import (
     BANNED_WORDS,
     get_default_voice_name,
     get_demo_audio,
+    get_voice_access,
     get_voices,
+    try_unlock_voice,
 )
 from .service import synthesize
 
@@ -176,7 +178,8 @@ def register(bot):
             default_voice_name = get_default_voice_name(lang)
             state = db.get_state(cq.from_user.id) or ""
             _, voice_name = _parse_state(state, default_voice_name)
-            if voice_name not in voices:
+            access = get_voice_access(user["user_id"], lang)
+            if voice_name not in voices or voice_name in access["locked"]:
                 voice_name = default_voice_name
 
             edit_or_send(
@@ -184,7 +187,14 @@ def register(bot):
                 cq.message.chat.id,
                 cq.message.message_id,
                 ask_text(lang, voice_name),
-                tts_keyboard(voice_name, lang, user["user_id"], quality="pro", voices=voices),
+                tts_keyboard(
+                    voice_name,
+                    lang,
+                    user["user_id"],
+                    quality="pro",
+                    voices=voices,
+                    locked_voices=access["locked"],
+                ),
             )
             db.set_state(cq.from_user.id, _make_state(cq.message.message_id, voice_name))
             bot.answer_callback_query(cq.id, t("tts_quality_pro", lang))
@@ -200,12 +210,26 @@ def register(bot):
         if route.startswith("voice:"):
             name = route.split(":", 1)[1]
             voices = get_voices(lang)
+            access = get_voice_access(user["user_id"], lang)
 
             # بررسی وجود صدا در لیست پیش‌فرض یا کاستوم
             custom_voice_id = db.get_user_voice(user["user_id"], name)
             if name not in voices and not custom_voice_id:
                 bot.answer_callback_query(cq.id, t("tts_voice_not_found", lang))
                 return
+            if name in voices and name in access["locked"]:
+                unlock_status = try_unlock_voice(user["user_id"], name)
+                if unlock_status == "unlocked":
+                    bot.answer_callback_query(cq.id, t("tts_voice_unlocked", lang).format(voice=name))
+                elif unlock_status == "already_unlocked":
+                    bot.answer_callback_query(cq.id)
+                elif unlock_status == "limit_reached":
+                    bot.answer_callback_query(cq.id, t("tts_voice_unlock_limit", lang), show_alert=True)
+                    return
+                else:
+                    bot.answer_callback_query(cq.id, t("tts_voice_locked", lang), show_alert=True)
+                    return
+                access = get_voice_access(user["user_id"], lang)
 
             # منوی «متن را بفرست» با صدای انتخابی
             edit_or_send(
@@ -213,7 +237,14 @@ def register(bot):
                 cq.message.chat.id,
                 cq.message.message_id,
                 ask_text(lang, name),
-                tts_keyboard(name, lang, user["user_id"], quality="pro", voices=voices),
+                tts_keyboard(
+                    name,
+                    lang,
+                    user["user_id"],
+                    quality="pro",
+                    voices=voices,
+                    locked_voices=access["locked"],
+                ),
             )
             db.set_state(cq.from_user.id, _make_state(cq.message.message_id, name))
             bot.answer_callback_query(cq.id, name)
@@ -252,12 +283,20 @@ def register(bot):
                     # بازگشت به منوی انتخاب صدا
                     voices = get_voices(lang)
                     sel = get_default_voice_name(lang)
+                    access = get_voice_access(user["user_id"], lang)
                     edit_or_send(
                         bot,
                         cq.message.chat.id,
                         cq.message.message_id,
                         ask_text(lang, sel),
-                        tts_keyboard(sel, lang, user["user_id"], quality="pro", voices=voices)
+                        tts_keyboard(
+                            sel,
+                            lang,
+                            user["user_id"],
+                            quality="pro",
+                            voices=voices,
+                            locked_voices=access["locked"],
+                        )
                     )
                     db.set_state(cq.from_user.id, _make_state(cq.message.message_id, sel))
                 except Exception as e:
@@ -296,9 +335,12 @@ def register(bot):
             voices = get_voices(lang)
             default_voice_name = get_default_voice_name(lang)
             last_menu_id, voice_name = _parse_state(current_state, default_voice_name)
+            access = get_voice_access(user_id, lang)
             
             # بررسی صدای پیش‌فرض یا کاستوم
             voice_id = voices.get(voice_name)
+            if voice_id and voice_name in access["locked"]:
+                voice_id = None
             if not voice_id:
                 # اگر صدای پیش‌فرض نبود، از صداهای کاستوم کاربر بگیر
                 voice_id = db.get_user_voice(user_id, voice_name)
@@ -369,7 +411,14 @@ def register(bot):
             new_menu = bot.send_message(
                 msg.chat.id,
                 ask_text(lang, voice_name),
-                reply_markup=tts_keyboard(voice_name, lang, user_id, quality="pro", voices=voices)
+                reply_markup=tts_keyboard(
+                    voice_name,
+                    lang,
+                    user_id,
+                    quality="pro",
+                    voices=voices,
+                    locked_voices=access["locked"],
+                )
             )
             db.set_state(user_id, _make_state(new_menu.message_id, voice_name))
             schedule_creator_upsell(bot, user_id, msg.chat.id)
@@ -406,11 +455,19 @@ def open_tts(bot, cq):
         return
     voices = get_voices(lang)
     sel = get_default_voice_name(lang)
+    access = get_voice_access(user["user_id"], lang)
     edit_or_send(
         bot,
         cq.message.chat.id,
         cq.message.message_id,
         ask_text(lang, sel),
-        tts_keyboard(sel, lang, user["user_id"], quality="pro", voices=voices),
+        tts_keyboard(
+            sel,
+            lang,
+            user["user_id"],
+            quality="pro",
+            voices=voices,
+            locked_voices=access["locked"],
+        ),
     )
     db.set_state(cq.from_user.id, _make_state(cq.message.message_id, sel))

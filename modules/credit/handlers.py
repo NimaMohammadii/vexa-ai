@@ -11,7 +11,7 @@ from modules.i18n import t
 from .keyboards import credit_menu_kb, stars_packages_kb, payrial_plans_kb, instant_cancel_kb, augment_with_rial, admin_approve_kb
 from config import BOT_OWNER_ID as ADMIN_REVIEW_CHAT_ID, CARD_NUMBER
 from utils import ensure_force_sub, send_main_menu
-from .settings import PAYMENT_PLANS
+from .settings import PAYMENT_PLANS, STAR_PACKAGES
 from .settings import RECEIPT_WAIT_TTL
 
 # تلاش برای خواندن تنظیمات پرداخت تلگرام از config (اختیاری اضافه کنید)
@@ -183,12 +183,18 @@ def register(bot: TeleBot):
 
             stars = int(parts[2])
             credits = int(parts[3])
+            plan_name = None
+            for plan in STAR_PACKAGES:
+                if plan.get("stars") == stars and plan.get("credits") == credits:
+                    plan_name = plan.get("plan_name")
+                    break
 
             # ساخت payload برای تشخیص سفارش در پاسخ شیپینگ/پرداخت
             import json
             invoice_payload = json.dumps({
                 "user_id": c.from_user.id,
-                "credits": credits
+                "credits": credits,
+                "plan_name": plan_name,
             })
 
             # برای Telegram Stars معمولا provider_token خالی و currency = "XTR"
@@ -209,7 +215,7 @@ def register(bot: TeleBot):
             # اگر ارسال با Stars ناموفق شد، تلاش به ارسال invoice با provider معمولی (fallback)
             try:
                 import json
-                payload = json.dumps({"user_id": c.from_user.id, "credits": credits})
+                payload = json.dumps({"user_id": c.from_user.id, "credits": credits, "plan_name": plan_name})
 
                 # مقدار price باید به کوچک‌ترین واحد پولی ارسال شود (مثلاً سنت)
                 amount_smallest_unit = int(stars * 100)
@@ -248,12 +254,18 @@ def register(bot: TeleBot):
             import json, db
             user_id = message.from_user.id
             lang = db.get_user_lang(user_id, "fa")
-            credits = json.loads(message.successful_payment.invoice_payload)["credits"]
+            payload = json.loads(message.successful_payment.invoice_payload)
+            credits = payload["credits"]
+            plan_name = payload.get("plan_name")
             stars = message.successful_payment.total_amount
 
             # اضافه کردن کردیت به حساب کاربر
             db.get_or_create_user(message.from_user)
             db.add_credits(user_id, credits)
+
+            if plan_name:
+                from modules.tts.settings import apply_voice_subscription
+                apply_voice_subscription(user_id, plan_name)
 
             # ذخیره تراکنش
             db.log_purchase(user_id, stars, credits, message.successful_payment.telegram_payment_charge_id)
