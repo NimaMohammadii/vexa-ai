@@ -1,22 +1,22 @@
 # modules/home/keyboards.py
-from telebot.types import InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 from modules.i18n import t
 
 
-def main_menu(lang: str) -> ReplyKeyboardMarkup:
-    kb = ReplyKeyboardMarkup(resize_keyboard=True)
+def main_menu(lang: str) -> InlineKeyboardMarkup:
+    kb = InlineKeyboardMarkup(row_width=2)
     kb.row(
-        KeyboardButton(t("btn_profile", lang)),
-        KeyboardButton(t("btn_credit", lang)),
+        InlineKeyboardButton(t("btn_profile", lang), callback_data="home:profile"),
+        InlineKeyboardButton(t("btn_credit", lang), callback_data="home:credit"),
     )
     kb.row(
-        KeyboardButton(t("btn_tts", lang)),
-        KeyboardButton(t("btn_gpt", lang)),
+        InlineKeyboardButton(t("btn_tts", lang), callback_data="home:tts"),
+        InlineKeyboardButton(t("btn_gpt", lang), callback_data="home:gpt_chat"),
     )
     kb.row(
-        KeyboardButton(t("btn_lang", lang)),
-        KeyboardButton(t("btn_invite", lang)),
+        InlineKeyboardButton(t("btn_lang", lang), callback_data="home:lang"),
+        InlineKeyboardButton(t("btn_invite", lang), callback_data="home:invite"),
     )
     return kb
 
@@ -33,4 +33,5 @@ def menu_actions(lang: str) -> dict[str, str]:
 
 def _back_to_home_kb(lang: str) -> InlineKeyboardMarkup:
     kb = InlineKeyboardMarkup()
+    kb.add(InlineKeyboardButton(t("home_back_to_menu", lang), callback_data="home:back"))
     return kb

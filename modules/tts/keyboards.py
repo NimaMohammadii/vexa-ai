@@ -87,6 +87,7 @@ def keyboard(
     )
 
     kb.add(InlineKeyboardButton(t("btn_clone", lang), callback_data="home:clone"))
+    kb.add(InlineKeyboardButton(t("home_back_to_menu", lang), callback_data="home:back"))
     return kb
 
 
@@ -94,4 +95,5 @@ def no_credit_keyboard(lang: str = "fa"):
     """کیبورد برای پیام کردیت کافی نیست"""
     kb = InlineKeyboardMarkup(row_width=1)
     kb.add(InlineKeyboardButton(t("btn_credit", lang), callback_data="credit:menu"))
+    kb.add(InlineKeyboardButton(t("home_back_to_menu", lang), callback_data="home:back"))
     return kb
