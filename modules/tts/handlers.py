@@ -4,7 +4,6 @@ import threading
 import time
 import db
 from utils import edit_or_send, ensure_force_sub, feature_disabled_text, is_feature_enabled, send_main_menu
-from telebot.types import ReplyKeyboardRemove
 from config import DEBUG
 from modules.i18n import t
 from .texts import TITLE, ask_text, PROCESSING, NO_CREDIT, ERROR, BANNED
@@ -17,17 +16,9 @@ from .settings import (
     BANNED_WORDS,
     get_default_voice_name,
     get_demo_audio,
-    get_voice_access,
     get_voices,
-    try_unlock_voice,
 )
 from .service import synthesize
-from modules.tts_openai.service import synthesize as openai_synthesize
-from modules.tts_openai.settings import (
-    DEFAULT_VOICE_NAME as OPENAI_DEFAULT_VOICE_NAME,
-    OUTPUTS as OPENAI_OUTPUTS,
-    VOICES as OPENAI_VOICES,
-)
 
 # ----------------- filters -----------------
 _NORMALIZE_REPLACEMENTS = {
@@ -50,17 +41,9 @@ def _normalize_text(text: str) -> str:
 
 _BANNED_WORDS = tuple(_normalize_text(word) for word in BANNED_WORDS if word)
 
-_PROCESSING_TIMEOUT_SECONDS = 180
-
 def _has_banned_word(text: str) -> bool:
     normalized = _normalize_text(text)
     return any(word and word in normalized for word in _BANNED_WORDS)
-
-def _processing_timed_out(state: str) -> bool:
-    parts = (state or "").split(":")
-    if len(parts) >= 3 and parts[1] == "processing" and parts[2].isdigit():
-        return (time.time() - int(parts[2])) > _PROCESSING_TIMEOUT_SECONDS
-    return False
 
 # ----------------- helpers -----------------
 def _parse_state(raw: str, default_voice_name: str):
@@ -193,8 +176,7 @@ def register(bot):
             default_voice_name = get_default_voice_name(lang)
             state = db.get_state(cq.from_user.id) or ""
             _, voice_name = _parse_state(state, default_voice_name)
-            access = get_voice_access(user["user_id"], lang)
-            if voice_name not in voices or voice_name in access["locked"]:
+            if voice_name not in voices:
                 voice_name = default_voice_name
 
             edit_or_send(
@@ -202,14 +184,7 @@ def register(bot):
                 cq.message.chat.id,
                 cq.message.message_id,
                 ask_text(lang, voice_name),
-                tts_keyboard(
-                    voice_name,
-                    lang,
-                    user["user_id"],
-                    quality="pro",
-                    voices=voices,
-                    locked_voices=access["locked"],
-                ),
+                tts_keyboard(voice_name, lang, user["user_id"], quality="pro", voices=voices),
             )
             db.set_state(cq.from_user.id, _make_state(cq.message.message_id, voice_name))
             bot.answer_callback_query(cq.id, t("tts_quality_pro", lang))
@@ -225,26 +200,12 @@ def register(bot):
         if route.startswith("voice:"):
             name = route.split(":", 1)[1]
             voices = get_voices(lang)
-            access = get_voice_access(user["user_id"], lang)
 
             # بررسی وجود صدا در لیست پیش‌فرض یا کاستوم
             custom_voice_id = db.get_user_voice(user["user_id"], name)
             if name not in voices and not custom_voice_id:
                 bot.answer_callback_query(cq.id, t("tts_voice_not_found", lang))
                 return
-            if name in voices and name in access["locked"]:
-                unlock_status = try_unlock_voice(user["user_id"], name)
-                if unlock_status == "unlocked":
-                    bot.answer_callback_query(cq.id, t("tts_voice_unlocked", lang).format(voice=name))
-                elif unlock_status == "already_unlocked":
-                    bot.answer_callback_query(cq.id)
-                elif unlock_status == "limit_reached":
-                    bot.answer_callback_query(cq.id, t("tts_voice_unlock_limit", lang), show_alert=True)
-                    return
-                else:
-                    bot.answer_callback_query(cq.id, t("tts_voice_locked", lang), show_alert=True)
-                    return
-                access = get_voice_access(user["user_id"], lang)
 
             # منوی «متن را بفرست» با صدای انتخابی
             edit_or_send(
@@ -252,14 +213,7 @@ def register(bot):
                 cq.message.chat.id,
                 cq.message.message_id,
                 ask_text(lang, name),
-                tts_keyboard(
-                    name,
-                    lang,
-                    user["user_id"],
-                    quality="pro",
-                    voices=voices,
-                    locked_voices=access["locked"],
-                ),
+                tts_keyboard(name, lang, user["user_id"], quality="pro", voices=voices),
             )
             db.set_state(cq.from_user.id, _make_state(cq.message.message_id, name))
             bot.answer_callback_query(cq.id, name)
@@ -298,20 +252,12 @@ def register(bot):
                     # بازگشت به منوی انتخاب صدا
                     voices = get_voices(lang)
                     sel = get_default_voice_name(lang)
-                    access = get_voice_access(user["user_id"], lang)
                     edit_or_send(
                         bot,
                         cq.message.chat.id,
                         cq.message.message_id,
                         ask_text(lang, sel),
-                        tts_keyboard(
-                            sel,
-                            lang,
-                            user["user_id"],
-                            quality="pro",
-                            voices=voices,
-                            locked_voices=access["locked"],
-                        )
+                        tts_keyboard(sel, lang, user["user_id"], quality="pro", voices=voices)
                     )
                     db.set_state(cq.from_user.id, _make_state(cq.message.message_id, sel))
                 except Exception as e:
@@ -323,43 +269,36 @@ def register(bot):
 
     # دریافت متن برای تبدیل
     @bot.message_handler(
-        func=lambda m: (db.get_state(m.from_user.id) or "").startswith((STATE_WAIT_TEXT, "tts:processing")),
+        func=lambda m: (db.get_state(m.from_user.id) or "").startswith(STATE_WAIT_TEXT),
         content_types=["text"]
     )
     def on_text_to_tts(msg):
         user = db.get_or_create_user(msg.from_user)
         user_id = user["user_id"]
-
-        lang = db.get_user_lang(user_id, "fa")
+        
         # 🔒 LOCK: جلوگیری از اجرای دوگانه
+        lock_key = f"tts_processing_{user_id}"
         current_state = db.get_state(user_id) or ""
         
-        # اگر در حالت processing است، در صورت گذشت زمان کافی، ریست کن
+        # اگر در حالت processing است، return کن (جلوگیری از duplicate)
         if current_state.startswith("tts:processing"):
-            if _processing_timed_out(current_state):
-                db.clear_state(user_id)
-                current_state = ""
-            else:
-                return
+            return
             
         # تغییر state به processing تا دیگه handler دوباره اجرا نشه
         db.set_state(user_id, f"tts:processing:{int(time.time())}")
         
-        cost = 0
-        status = None
         try:
+            lang = db.get_user_lang(user_id, "fa")
+
             if not ensure_force_sub(bot, user_id, msg.chat.id, msg.message_id, lang):
                 return
 
             voices = get_voices(lang)
             default_voice_name = get_default_voice_name(lang)
             last_menu_id, voice_name = _parse_state(current_state, default_voice_name)
-            access = get_voice_access(user_id, lang)
             
             # بررسی صدای پیش‌فرض یا کاستوم
             voice_id = voices.get(voice_name)
-            if voice_id and voice_name in access["locked"]:
-                voice_id = None
             if not voice_id:
                 # اگر صدای پیش‌فرض نبود، از صداهای کاستوم کاربر بگیر
                 voice_id = db.get_user_voice(user_id, voice_name)
@@ -409,20 +348,11 @@ def register(bot):
                 )
                 return
 
-            status = bot.send_message(
-                msg.chat.id,
-                PROCESSING(lang),
-                reply_markup=ReplyKeyboardRemove(),
-            )
+            status = bot.send_message(msg.chat.id, PROCESSING(lang))
             
             # 🎯 فقط یکبار API call
             print(f"🔥 TTS REQUEST: user={user_id}, text_len={len(text)}, voice={voice_name}")
-            try:
-                audio_data = synthesize(text, voice_id, "audio/mpeg")
-            except Exception as e:
-                openai_voice = OPENAI_VOICES.get(OPENAI_DEFAULT_VOICE_NAME, "alloy")
-                audio_data = openai_synthesize(text, openai_voice, OPENAI_OUTPUTS[0]["mime"])
-                print(f"⚠️ TTS FALLBACK: user={user_id}, reason={e}")
+            audio_data = synthesize(text, voice_id, "audio/mpeg")
             print(f"✅ TTS RESPONSE: user={user_id}, audio_size={len(audio_data)} bytes")
 
             # پاک‌سازی پیام‌ها
@@ -439,14 +369,7 @@ def register(bot):
             new_menu = bot.send_message(
                 msg.chat.id,
                 ask_text(lang, voice_name),
-                reply_markup=tts_keyboard(
-                    voice_name,
-                    lang,
-                    user_id,
-                    quality="pro",
-                    voices=voices,
-                    locked_voices=access["locked"],
-                )
+                reply_markup=tts_keyboard(voice_name, lang, user_id, quality="pro", voices=voices)
             )
             db.set_state(user_id, _make_state(new_menu.message_id, voice_name))
             schedule_creator_upsell(bot, user_id, msg.chat.id)
@@ -454,13 +377,11 @@ def register(bot):
         except Exception as e:
             # برگردان کردیت در صورت خطا
             try:
-                if cost:
-                    db.add_credits(user_id, cost)
-                    print(f"❌ TTS ERROR: user={user_id}, credits refunded={cost}, error={e}")
+                db.add_credits(user_id, cost)
+                print(f"❌ TTS ERROR: user={user_id}, credits refunded={cost}")
             except:
                 pass
-            if status:
-                safe_del(bot, status.chat.id, status.message_id)
+            safe_del(bot, status.chat.id if 'status' in locals() else None, status.message_id if 'status' in locals() else None)
             err = ERROR(lang)
             bot.send_message(msg.chat.id, err)
             db.clear_state(user_id)
@@ -485,64 +406,11 @@ def open_tts(bot, cq):
         return
     voices = get_voices(lang)
     sel = get_default_voice_name(lang)
-    access = get_voice_access(user["user_id"], lang)
     edit_or_send(
         bot,
         cq.message.chat.id,
         cq.message.message_id,
         ask_text(lang, sel),
-        tts_keyboard(
-            sel,
-            lang,
-            user["user_id"],
-            quality="pro",
-            voices=voices,
-            locked_voices=access["locked"],
-        ),
+        tts_keyboard(sel, lang, user["user_id"], quality="pro", voices=voices),
     )
     db.set_state(cq.from_user.id, _make_state(cq.message.message_id, sel))
-
-
-def open_tts_from_message(bot, msg, menu_message_id: int | None = None):
-    user = db.get_or_create_user(msg.from_user)
-    lang = db.get_user_lang(user["user_id"], "fa")
-    if not is_feature_enabled("FEATURE_TTS"):
-        if menu_message_id:
-            send_main_menu(
-                bot,
-                user["user_id"],
-                msg.chat.id,
-                feature_disabled_text("FEATURE_TTS", lang),
-                None,
-                message_id=menu_message_id,
-            )
-        else:
-            send_main_menu(
-                bot,
-                user["user_id"],
-                msg.chat.id,
-                feature_disabled_text("FEATURE_TTS", lang),
-                None,
-            )
-        return
-    voices = get_voices(lang)
-    sel = get_default_voice_name(lang)
-    access = get_voice_access(user["user_id"], lang)
-    menu_msg = send_main_menu(
-        bot,
-        user["user_id"],
-        msg.chat.id,
-        ask_text(lang, sel),
-        tts_keyboard(
-            sel,
-            lang,
-            user["user_id"],
-            quality="pro",
-            voices=voices,
-            locked_voices=access["locked"],
-        ),
-        message_id=menu_message_id,
-    )
-    target_message_id = menu_msg.message_id if menu_msg else menu_message_id
-
-    db.set_state(msg.from_user.id, _make_state(target_message_id, sel))

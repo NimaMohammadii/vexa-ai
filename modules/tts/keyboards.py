@@ -23,7 +23,6 @@ def keyboard(
     include_custom: bool = True,
     quality: str = "pro",
     show_demo_button: bool = True,
-    locked_voices: set[str] | None = None,
 ):
     kb = InlineKeyboardMarkup(row_width=3)
 
@@ -44,13 +43,12 @@ def keyboard(
         allow_custom = False
 
     all_names = default_names + ([voice[0] for voice in custom_voices] if allow_custom else [])
-    locked = locked_voices or set()
 
     for row in _chunk(all_names, 3):
         kb.row(
             *[
                 InlineKeyboardButton(
-                    ("🔒 " if n in locked else "") + ("✔️ " if n == selected_voice else "") + n,
+                    ("✔️ " if n == selected_voice else "") + n,
                     callback_data=f"{prefix}:voice:{n}",
                 )
                 for n in row
@@ -87,7 +85,7 @@ def keyboard(
     )
 
     kb.add(InlineKeyboardButton(t("btn_clone", lang), callback_data="home:clone"))
-    kb.add(InlineKeyboardButton(t("home_back_to_menu", lang), callback_data="home:back"))
+    kb.add(InlineKeyboardButton(t("back", lang), callback_data="home:back"))
     return kb
 
 
@@ -95,5 +93,4 @@ def no_credit_keyboard(lang: str = "fa"):
     """کیبورد برای پیام کردیت کافی نیست"""
     kb = InlineKeyboardMarkup(row_width=1)
     kb.add(InlineKeyboardButton(t("btn_credit", lang), callback_data="credit:menu"))
-    kb.add(InlineKeyboardButton(t("home_back_to_menu", lang), callback_data="home:back"))
     return kb
