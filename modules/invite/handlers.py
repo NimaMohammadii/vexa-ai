@@ -8,7 +8,7 @@ from telebot.types import CallbackQuery
 
 import db
 from modules.i18n import t
-from utils import edit_or_send, ensure_force_sub, feature_disabled_text, is_feature_enabled, send_main_menu
+from utils import edit_or_send, ensure_force_sub
 from .texts import INVITE_TEXT
 from .keyboards import keyboard as invite_keyboard
 
@@ -51,67 +51,12 @@ def register(bot: TeleBot) -> None:
 def open_invite(bot, cq):
     user = db.get_or_create_user(cq.from_user)
     lang = db.get_user_lang(user["user_id"], "fa")
-    if not is_feature_enabled("FEATURE_INVITE"):
-        edit_or_send(
-            bot,
-            cq.message.chat.id,
-            cq.message.message_id,
-            feature_disabled_text("FEATURE_INVITE", lang),
-            None,
-        )
-        return
     if not ensure_force_sub(bot, user["user_id"], cq.message.chat.id, cq.message.message_id, lang):
         return
     bonus = int(db.get_setting("BONUS_REFERRAL", "30") or 30)
     me = bot.get_me()
     ref_url = f"https://t.me/{me.username}?start={user['ref_code']}"
     edit_or_send(bot, cq.message.chat.id, cq.message.message_id, INVITE_TEXT(lang, ref_url, bonus), invite_keyboard(lang))
-
-
-def open_invite_from_message(bot, msg, menu_message_id: int | None = None):
-    user = db.get_or_create_user(msg.from_user)
-    lang = db.get_user_lang(user["user_id"], "fa")
-    if not is_feature_enabled("FEATURE_INVITE"):
-        if menu_message_id:
-            send_main_menu(
-                bot,
-                user["user_id"],
-                msg.chat.id,
-                feature_disabled_text("FEATURE_INVITE", lang),
-                None,
-                message_id=menu_message_id,
-            )
-        else:
-            send_main_menu(
-                bot,
-                user["user_id"],
-                msg.chat.id,
-                feature_disabled_text("FEATURE_INVITE", lang),
-                None,
-            )
-        return
-    if not ensure_force_sub(bot, user["user_id"], msg.chat.id, msg.message_id, lang):
-        return
-    bonus = int(db.get_setting("BONUS_REFERRAL", "30") or 30)
-    me = bot.get_me()
-    ref_url = f"https://t.me/{me.username}?start={user['ref_code']}"
-    if menu_message_id:
-        send_main_menu(
-            bot,
-            user["user_id"],
-            msg.chat.id,
-            INVITE_TEXT(lang, ref_url, bonus),
-            invite_keyboard(lang),
-            message_id=menu_message_id,
-        )
-    else:
-        send_main_menu(
-            bot,
-            user["user_id"],
-            msg.chat.id,
-            INVITE_TEXT(lang, ref_url, bonus),
-            invite_keyboard(lang),
-        )
 
 
 def _claim_daily_reward(bot: TeleBot, cq: CallbackQuery, user_id: int, lang: str) -> None:
