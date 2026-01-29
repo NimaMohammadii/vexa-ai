@@ -17,7 +17,7 @@ from utils import (
 )
 from modules.i18n import t
 from .texts import MAIN, HELP
-from .keyboards import main_menu, menu_actions, _back_to_home_kb
+from .keyboards import main_menu, _back_to_home_kb
 
 
 ONBOARDING_DAILY_BONUS_DELAY = 15.0
@@ -389,93 +389,6 @@ def register(bot):
         )
         _schedule_low_credit_warning(bot, user, msg.chat.id, LOW_CREDIT_DELAY)
 
-    @bot.message_handler(func=lambda m: bool(m.text))
-    def menu_text_router(msg: Message):
-        user = db.get_or_create_user(msg.from_user)
-        stored_lang = (user.get("lang") or "").strip()
-        lang = stored_lang or "fa"
-
-        action = menu_actions(lang).get((msg.text or "").strip())
-        if not action:
-            return
-
-        current_state = db.get_state(msg.from_user.id) or ""
-        if current_state.startswith(("tts:wait_text", "tts_openai:wait_text")):
-            try:
-                parts = current_state.split(":")
-                if len(parts) >= 3 and parts[2].isdigit():
-                    bot.delete_message(msg.chat.id, int(parts[2]))
-            except Exception:
-                pass
-            db.clear_state(msg.from_user.id)
-
-        if not stored_lang:
-            from modules.lang.handlers import send_language_menu
-
-            send_language_menu(
-                bot,
-                user,
-                msg.chat.id,
-                msg.message_id,
-                force_new=True,
-                display_lang="en",
-            )
-            return
-
-        if not _ensure_force_sub(bot, user["user_id"], msg.chat.id, msg.message_id, lang):
-            return
-
-        try:
-            bot.delete_message(msg.chat.id, msg.message_id)
-        except Exception:
-            pass
-
-        menu_message_id = db.get_last_main_menu_id(user["user_id"]) or None
-
-        if action == "profile":
-            if not is_feature_enabled("FEATURE_PROFILE"):
-                return
-            return
-
-        if action == "credit":
-            if not is_feature_enabled("FEATURE_CREDIT"):
-                bot.reply_to(msg, feature_disabled_text("FEATURE_CREDIT", lang))
-                return
-            from modules.credit.handlers import open_credit_from_message
-
-            open_credit_from_message(bot, msg, menu_message_id=menu_message_id)
-            return
-
-        if action == "tts":
-            from modules.tts.handlers import open_tts_from_message
-
-            open_tts_from_message(bot, msg, menu_message_id=menu_message_id)
-            return
-
-        if action == "gpt":
-            from modules.gpt.handlers import open_gpt_from_message
-
-            open_gpt_from_message(bot, msg, menu_message_id=menu_message_id)
-            return
-
-        if action == "lang":
-            if not is_feature_enabled("FEATURE_LANG"):
-                bot.reply_to(msg, feature_disabled_text("FEATURE_LANG", lang))
-                return
-            from modules.lang.handlers import open_language_from_message
-
-            open_language_from_message(bot, msg, menu_message_id=menu_message_id)
-            return
-
-        if action == "invite":
-            if not is_feature_enabled("FEATURE_INVITE"):
-                bot.reply_to(msg, feature_disabled_text("FEATURE_INVITE", lang))
-                return
-            from modules.invite.handlers import open_invite_from_message
-
-            open_invite_from_message(bot, msg, menu_message_id=menu_message_id)
-            return
-
     @bot.callback_query_handler(
         func=lambda c: (
             c.data
@@ -558,23 +471,13 @@ def register(bot):
             open_tts(bot, cq)
             return
         if route == "profile":
-            if not is_feature_enabled("FEATURE_PROFILE"):
-                bot.answer_callback_query(
-                    cq.id,
-                    feature_disabled_text("FEATURE_PROFILE", lang),
-                    show_alert=True,
-                )
-                return
-            from modules.profile.handlers import build_balance_alert
+            bot.answer_callback_query(cq.id)
+            from modules.profile.handlers import open_profile
 
-            title, body = build_balance_alert(lang, user["user_id"], user["credits"])
-            bot.answer_callback_query(cq.id, f"{title}\n\n{body}", show_alert=True)
+            open_profile(bot, cq)
             return
 
         if route == "credit":
-            if not is_feature_enabled("FEATURE_CREDIT"):
-                _handle_feature_disabled(bot, cq, lang, "FEATURE_CREDIT")
-                return
             bot.answer_callback_query(cq.id)
             from modules.credit.handlers import open_credit
 
@@ -592,9 +495,6 @@ def register(bot):
             return
 
         if route == "invite":
-            if not is_feature_enabled("FEATURE_INVITE"):
-                _handle_feature_disabled(bot, cq, lang, "FEATURE_INVITE")
-                return
             bot.answer_callback_query(cq.id)
             from modules.invite.handlers import open_invite
 
@@ -602,9 +502,6 @@ def register(bot):
             return
 
         if route == "lang":
-            if not is_feature_enabled("FEATURE_LANG"):
-                _handle_feature_disabled(bot, cq, lang, "FEATURE_LANG")
-                return
             bot.answer_callback_query(cq.id)
             from modules.lang.handlers import open_language
 
