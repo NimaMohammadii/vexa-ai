@@ -7,16 +7,12 @@ import re
 import db
 
 _FEATURE_LABEL_KEYS = {
-    "FEATURE_PROFILE": "feature_profile",
-    "FEATURE_CREDIT": "feature_credit",
     "FEATURE_GPT": "feature_gpt",
     "FEATURE_TTS": "feature_tts",
     "FEATURE_CLONE": "feature_clone",
     "FEATURE_IMAGE": "feature_image",
     "FEATURE_VIDEO": "feature_video",
     "FEATURE_SORA2": "feature_sora2",
-    "FEATURE_LANG": "feature_lang",
-    "FEATURE_INVITE": "feature_invite",
 }
 _FEATURE_ENABLED_VALUES = {"1", "true", "yes", "on", "enabled"}
 
@@ -34,52 +30,18 @@ def feature_label(feature_key: str, lang: str) -> str:
 def feature_disabled_text(feature_key: str, lang: str) -> str:
     return t("feature_disabled", lang).format(feature=feature_label(feature_key, lang))
 
-def edit_or_send(
-    bot,
-    chat_id,
-    message_id,
-    text,
-    reply_markup=None,
-    parse_mode="HTML",
-    user_id: int | None = None,
-):
-    tracker_id = user_id or chat_id
-    if tracker_id:
-        last_menu_id = db.get_last_main_menu_id(tracker_id)
-        if last_menu_id and last_menu_id != message_id:
-            try:
-                bot.delete_message(chat_id, last_menu_id)
-            except Exception:
-                pass
+def edit_or_send(bot, chat_id, message_id, text, reply_markup=None, parse_mode="HTML"):
     try:
         bot.edit_message_text(chat_id=chat_id, message_id=message_id,
                               text=text, reply_markup=reply_markup, parse_mode=parse_mode)
-        if tracker_id and message_id is not None:
-            db.set_last_main_menu_id(tracker_id, message_id)
     except ApiTelegramException as exc:
         # اگر پیام تغییری نکرده باشد، تلگرام خطای «message is not modified» می‌دهد.
         # در این حالت نیازی به ارسال پیام جدید نیست.
         if "message is not modified" in str(exc).lower():
-            if tracker_id and message_id is not None:
-                db.set_last_main_menu_id(tracker_id, message_id)
             return
-        sent = bot.send_message(chat_id, text, reply_markup=reply_markup, parse_mode=parse_mode)
-        if tracker_id:
-            db.set_last_main_menu_id(tracker_id, sent.message_id)
-        if message_id is not None:
-            try:
-                bot.delete_message(chat_id, message_id)
-            except Exception:
-                pass
+        bot.send_message(chat_id, text, reply_markup=reply_markup, parse_mode=parse_mode)
     except Exception:
-        sent = bot.send_message(chat_id, text, reply_markup=reply_markup, parse_mode=parse_mode)
-        if tracker_id:
-            db.set_last_main_menu_id(tracker_id, sent.message_id)
-        if message_id is not None:
-            try:
-                bot.delete_message(chat_id, message_id)
-            except Exception:
-                pass
+        bot.send_message(chat_id, text, reply_markup=reply_markup, parse_mode=parse_mode)
 
 def smart_edit_or_send(bot, obj, text, reply_markup=None, parse_mode="HTML"):
     """

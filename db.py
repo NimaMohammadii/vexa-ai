@@ -141,26 +141,6 @@ def init_db():
             created_at INTEGER
         )""")
         cur.execute(
-            """CREATE TABLE IF NOT EXISTS user_voice_subscriptions(
-                user_id INTEGER PRIMARY KEY,
-                plan_name TEXT,
-                expires_at INTEGER,
-                created_at INTEGER,
-                updated_at INTEGER
-            )"""
-        )
-        cur.execute(
-            """CREATE TABLE IF NOT EXISTS user_voice_unlocks(
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
-                voice_name TEXT,
-                created_at INTEGER
-            )"""
-        )
-        cur.execute(
-            "CREATE UNIQUE INDEX IF NOT EXISTS idx_user_voice_unlocks_unique ON user_voice_unlocks(user_id, voice_name)"
-        )
-        cur.execute(
             """CREATE TABLE IF NOT EXISTS image_generations(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
@@ -202,16 +182,12 @@ def ensure_default_settings():
         "FORCE_SUB_MODE": "none",
         "TG_CHANNEL": "",
         "IG_URL": "",
-        "FEATURE_PROFILE": "1",
-        "FEATURE_CREDIT": "1",
         "FEATURE_GPT": "1",
         "FEATURE_TTS": "1",
         "FEATURE_CLONE": "1",
         "FEATURE_IMAGE": "1",
         "FEATURE_VIDEO": "1",
         "FEATURE_SORA2": "1",
-        "FEATURE_LANG": "1",
-        "FEATURE_INVITE": "1",
     }
     for k,v in defaults.items():
         if get_setting(k) is None:
@@ -324,66 +300,6 @@ def delete_user_voice_by_voice_id(voice_id:str):
     with closing(sqlite3.connect(DB_PATH)) as con:
         cur = con.cursor()
         cur.execute("DELETE FROM user_voices WHERE voice_id=?", (voice_id,))
-        con.commit()
-
-def set_user_voice_subscription(user_id: int, plan_name: str, expires_at: int) -> None:
-    now = int(time.time())
-    with closing(sqlite3.connect(DB_PATH)) as con:
-        cur = con.cursor()
-        cur.execute(
-            """INSERT INTO user_voice_subscriptions(user_id, plan_name, expires_at, created_at, updated_at)
-                   VALUES(?,?,?,?,?)
-                   ON CONFLICT(user_id) DO UPDATE SET
-                       plan_name=excluded.plan_name,
-                       expires_at=excluded.expires_at,
-                       updated_at=excluded.updated_at""",
-            (user_id, plan_name, expires_at, now, now),
-        )
-        con.commit()
-
-def get_user_voice_subscription(user_id: int) -> dict | None:
-    with closing(sqlite3.connect(DB_PATH)) as con:
-        cur = con.cursor()
-        cur.execute(
-            "SELECT plan_name, expires_at FROM user_voice_subscriptions WHERE user_id=? LIMIT 1",
-            (user_id,),
-        )
-        row = cur.fetchone()
-        if not row:
-            return None
-        return {"plan_name": row[0], "expires_at": int(row[1] or 0)}
-
-def clear_user_voice_subscription(user_id: int) -> None:
-    with closing(sqlite3.connect(DB_PATH)) as con:
-        cur = con.cursor()
-        cur.execute("DELETE FROM user_voice_subscriptions WHERE user_id=?", (user_id,))
-        con.commit()
-
-def add_user_voice_unlock(user_id: int, voice_name: str) -> None:
-    with closing(sqlite3.connect(DB_PATH)) as con:
-        cur = con.cursor()
-        cur.execute(
-            "INSERT OR IGNORE INTO user_voice_unlocks(user_id, voice_name, created_at) VALUES(?,?,?)",
-            (user_id, voice_name, int(time.time())),
-        )
-        con.commit()
-
-def list_user_voice_unlocks(user_id: int) -> list[str]:
-    with closing(sqlite3.connect(DB_PATH)) as con:
-        cur = con.cursor()
-        cur.execute(
-            "SELECT voice_name FROM user_voice_unlocks WHERE user_id=? ORDER BY created_at ASC",
-            (user_id,),
-        )
-        return [row[0] for row in cur.fetchall()]
-
-def delete_user_voice_unlock(user_id: int, voice_name: str) -> None:
-    with closing(sqlite3.connect(DB_PATH)) as con:
-        cur = con.cursor()
-        cur.execute(
-            "DELETE FROM user_voice_unlocks WHERE user_id=? AND voice_name=?",
-            (user_id, voice_name),
-        )
         con.commit()
         return cur.rowcount > 0
 
