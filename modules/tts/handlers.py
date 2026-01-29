@@ -22,6 +22,12 @@ from .settings import (
     try_unlock_voice,
 )
 from .service import synthesize
+from modules.tts_openai.service import synthesize as openai_synthesize
+from modules.tts_openai.settings import (
+    DEFAULT_VOICE_NAME as OPENAI_DEFAULT_VOICE_NAME,
+    OUTPUTS as OPENAI_OUTPUTS,
+    VOICES as OPENAI_VOICES,
+)
 
 # ----------------- filters -----------------
 _NORMALIZE_REPLACEMENTS = {
@@ -339,6 +345,8 @@ def register(bot):
         # تغییر state به processing تا دیگه handler دوباره اجرا نشه
         db.set_state(user_id, f"tts:processing:{int(time.time())}")
         
+        cost = 0
+        status = None
         try:
             if not ensure_force_sub(bot, user_id, msg.chat.id, msg.message_id, lang):
                 return
@@ -409,7 +417,12 @@ def register(bot):
             
             # 🎯 فقط یکبار API call
             print(f"🔥 TTS REQUEST: user={user_id}, text_len={len(text)}, voice={voice_name}")
-            audio_data = synthesize(text, voice_id, "audio/mpeg")
+            try:
+                audio_data = synthesize(text, voice_id, "audio/mpeg")
+            except Exception as e:
+                openai_voice = OPENAI_VOICES.get(OPENAI_DEFAULT_VOICE_NAME, "alloy")
+                audio_data = openai_synthesize(text, openai_voice, OPENAI_OUTPUTS[0]["mime"])
+                print(f"⚠️ TTS FALLBACK: user={user_id}, reason={e}")
             print(f"✅ TTS RESPONSE: user={user_id}, audio_size={len(audio_data)} bytes")
 
             # پاک‌سازی پیام‌ها
@@ -441,11 +454,13 @@ def register(bot):
         except Exception as e:
             # برگردان کردیت در صورت خطا
             try:
-                db.add_credits(user_id, cost)
-                print(f"❌ TTS ERROR: user={user_id}, credits refunded={cost}")
+                if cost:
+                    db.add_credits(user_id, cost)
+                    print(f"❌ TTS ERROR: user={user_id}, credits refunded={cost}, error={e}")
             except:
                 pass
-            safe_del(bot, status.chat.id if 'status' in locals() else None, status.message_id if 'status' in locals() else None)
+            if status:
+                safe_del(bot, status.chat.id, status.message_id)
             err = ERROR(lang)
             bot.send_message(msg.chat.id, err)
             db.clear_state(user_id)
