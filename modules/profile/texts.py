@@ -10,3 +10,11 @@ def PROFILE_TEXT(lang: str, uid: int, credits: float) -> str:
             credits=db.format_credit_amount(credits),
         )
     )
+
+
+def PROFILE_ALERT_TEXT(lang: str, credits: float) -> str:
+    title = t("profile_balance_alert_title", lang)
+    body = t("profile_balance_alert_body", lang).format(
+        credits=db.format_credit_amount(credits),
+    )
+    return f"{title}\n\n{body}"
