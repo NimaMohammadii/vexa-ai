@@ -10,8 +10,8 @@ from .texts import (
 from modules.i18n import t
 from .keyboards import credit_menu_kb, stars_packages_kb, payrial_plans_kb, instant_cancel_kb, augment_with_rial, admin_approve_kb
 from config import BOT_OWNER_ID as ADMIN_REVIEW_CHAT_ID, CARD_NUMBER
-from utils import ensure_force_sub, feature_disabled_text, is_feature_enabled, send_main_menu
-from .settings import PAYMENT_PLANS, STAR_PACKAGES
+from utils import ensure_force_sub, send_main_menu
+from .settings import PAYMENT_PLANS
 from .settings import RECEIPT_WAIT_TTL
 
 # تلاش برای خواندن تنظیمات پرداخت تلگرام از config (اختیاری اضافه کنید)
@@ -93,86 +93,21 @@ def open_credit(bot: TeleBot, cq):
     
     user = db.get_or_create_user(cq.from_user)
     lang = db.get_user_lang(user["user_id"], "fa")
-    if not is_feature_enabled("FEATURE_CREDIT"):
-        text = feature_disabled_text("FEATURE_CREDIT", lang)
-        try:
-            bot.edit_message_text(
-                text,
-                cq.message.chat.id,
-                cq.message.message_id,
-                parse_mode="HTML",
-            )
-        except Exception:
-            bot.send_message(cq.message.chat.id, text, parse_mode="HTML")
-        return
     if not _ensure_force_sub(bot, user["user_id"], cq.message.chat.id, cq.message.message_id, lang):
         return
-    text = t("credit_stars_menu", lang)
+    text = f"🛒 <b>{t('credit_title', lang)}</b>\n\n{t('credit_header', lang)}"
     
     # ادیت کردن همین پیام
     try:
         bot.edit_message_text(
             text, cq.message.chat.id, cq.message.message_id,
-            parse_mode="HTML", reply_markup=stars_packages_kb(lang)
+            parse_mode="HTML", reply_markup=credit_menu_kb(lang)
         )
     except Exception:
         # اگر ادیت نشد، پیام جدید بفرست
         bot.send_message(
             cq.message.chat.id, text,
-            parse_mode="HTML", reply_markup=stars_packages_kb(lang)
-        )
-
-
-def open_credit_from_message(bot: TeleBot, msg: Message, menu_message_id: int | None = None):
-    """باز کردن منوی اصلی خرید کردیت از پیام کاربر"""
-    import db
-
-    user_state = db.get_state(msg.from_user.id) or ""
-    if user_state.startswith("tts:wait_text:"):
-        try:
-            parts = user_state.split(":")
-            if len(parts) >= 3 and parts[2].isdigit():
-                tts_menu_id = int(parts[2])
-                bot.delete_message(msg.chat.id, tts_menu_id)
-        except Exception:
-            pass
-        db.clear_state(msg.from_user.id)
-
-    user = db.get_or_create_user(msg.from_user)
-    lang = db.get_user_lang(user["user_id"], "fa")
-    if not is_feature_enabled("FEATURE_CREDIT"):
-        text = feature_disabled_text("FEATURE_CREDIT", lang)
-        if menu_message_id:
-            send_main_menu(
-                bot,
-                user["user_id"],
-                msg.chat.id,
-                text,
-                None,
-                message_id=menu_message_id,
-            )
-        else:
-            send_main_menu(bot, user["user_id"], msg.chat.id, text, None)
-        return
-    if not _ensure_force_sub(bot, user["user_id"], msg.chat.id, msg.message_id, lang):
-        return
-    text = t("credit_stars_menu", lang)
-    if menu_message_id:
-        send_main_menu(
-            bot,
-            user["user_id"],
-            msg.chat.id,
-            text,
-            stars_packages_kb(lang),
-            message_id=menu_message_id,
-        )
-    else:
-        send_main_menu(
-            bot,
-            user["user_id"],
-            msg.chat.id,
-            text,
-            stars_packages_kb(lang),
+            parse_mode="HTML", reply_markup=credit_menu_kb(lang)
         )
 
 # === API عمومی برای ادغام با منوی Credit موجود تو ===
@@ -248,18 +183,12 @@ def register(bot: TeleBot):
 
             stars = int(parts[2])
             credits = int(parts[3])
-            plan_name = None
-            for plan in STAR_PACKAGES:
-                if plan.get("stars") == stars and plan.get("credits") == credits:
-                    plan_name = plan.get("plan_name")
-                    break
 
             # ساخت payload برای تشخیص سفارش در پاسخ شیپینگ/پرداخت
             import json
             invoice_payload = json.dumps({
                 "user_id": c.from_user.id,
-                "credits": credits,
-                "plan_name": plan_name,
+                "credits": credits
             })
 
             # برای Telegram Stars معمولا provider_token خالی و currency = "XTR"
@@ -280,7 +209,7 @@ def register(bot: TeleBot):
             # اگر ارسال با Stars ناموفق شد، تلاش به ارسال invoice با provider معمولی (fallback)
             try:
                 import json
-                payload = json.dumps({"user_id": c.from_user.id, "credits": credits, "plan_name": plan_name})
+                payload = json.dumps({"user_id": c.from_user.id, "credits": credits})
 
                 # مقدار price باید به کوچک‌ترین واحد پولی ارسال شود (مثلاً سنت)
                 amount_smallest_unit = int(stars * 100)
@@ -319,18 +248,12 @@ def register(bot: TeleBot):
             import json, db
             user_id = message.from_user.id
             lang = db.get_user_lang(user_id, "fa")
-            payload = json.loads(message.successful_payment.invoice_payload)
-            credits = payload["credits"]
-            plan_name = payload.get("plan_name")
+            credits = json.loads(message.successful_payment.invoice_payload)["credits"]
             stars = message.successful_payment.total_amount
 
             # اضافه کردن کردیت به حساب کاربر
             db.get_or_create_user(message.from_user)
             db.add_credits(user_id, credits)
-
-            if plan_name:
-                from modules.tts.settings import apply_voice_subscription
-                apply_voice_subscription(user_id, plan_name)
 
             # ذخیره تراکنش
             db.log_purchase(user_id, stars, credits, message.successful_payment.telegram_payment_charge_id)
@@ -441,7 +364,7 @@ def register(bot: TeleBot):
                              reply_markup=instant_cancel_kb(lang))
 
     # بازگشت/لغو → خروج از حالت انتظار و برگشت به منوی اصلی
-    @bot.callback_query_handler(func=lambda c: c.data == "credit:cancel")
+    @bot.callback_query_handler(func=lambda c: c.data in ("credit:menu", "credit:cancel"))
     def on_back(c: CallbackQuery):
         bot.answer_callback_query(c.id)
         _clear_wait(c.from_user.id)
