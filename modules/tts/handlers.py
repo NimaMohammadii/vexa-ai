@@ -44,9 +44,17 @@ def _normalize_text(text: str) -> str:
 
 _BANNED_WORDS = tuple(_normalize_text(word) for word in BANNED_WORDS if word)
 
+_PROCESSING_TIMEOUT_SECONDS = 180
+
 def _has_banned_word(text: str) -> bool:
     normalized = _normalize_text(text)
     return any(word and word in normalized for word in _BANNED_WORDS)
+
+def _processing_timed_out(state: str) -> bool:
+    parts = (state or "").split(":")
+    if len(parts) >= 3 and parts[1] == "processing" and parts[2].isdigit():
+        return (time.time() - int(parts[2])) > _PROCESSING_TIMEOUT_SECONDS
+    return False
 
 # ----------------- helpers -----------------
 def _parse_state(raw: str, default_voice_name: str):
@@ -325,9 +333,13 @@ def register(bot):
         lock_key = f"tts_processing_{user_id}"
         current_state = db.get_state(user_id) or ""
         
-        # اگر در حالت processing است، return کن (جلوگیری از duplicate)
+        # اگر در حالت processing است، در صورت گذشت زمان کافی، ریست کن
         if current_state.startswith("tts:processing"):
-            return
+            if _processing_timed_out(current_state):
+                db.clear_state(user_id)
+                current_state = ""
+            else:
+                return
             
         # تغییر state به processing تا دیگه handler دوباره اجرا نشه
         db.set_state(user_id, f"tts:processing:{int(time.time())}")
