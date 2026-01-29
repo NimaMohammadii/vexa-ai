@@ -12,14 +12,14 @@ DEFAULT_LANGUAGE = "fa"
 
 # صدای پیش‌فرض برای هر زبان (وقتی هنوز چیزی ذخیره نشده)
 DEFAULT_VOICE_NAME_BY_LANG = {
-    "fa": "Nazy",
-    "en": "Nazy",
-    "ar": "Nazy",
-    "tr": "Nazy",
-    "ru": "Nazy",
-    "es": "Nazy",
-    "de": "Nazy",
-    "fr": "Nazy",
+    "fa": "Liam",
+    "en": "Ava",
+    "ar": "Liam",
+    "tr": "Melis",
+    "ru": "Алина",
+    "es": "Valeria",
+    "de": "Lena",
+    "fr": "Léa",
 }
 
 # لیست صداها به تفکیک زبان: name -> eleven voice_id
