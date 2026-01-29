@@ -12,7 +12,6 @@ from modules.i18n import t
 from modules.tts.texts import ask_text, PROCESSING, NO_CREDIT, ERROR, BANNED
 from modules.tts.keyboards import no_credit_keyboard
 from modules.tts.upsell import schedule_creator_upsell
-from modules.home.keyboards import menu_actions
 from .keyboards import keyboard as tts_keyboard
 from .settings import (
     STATE_WAIT_TEXT,
@@ -48,19 +47,10 @@ def _normalize_text(text: str) -> str:
 
 _BANNED_WORDS = tuple(_normalize_text(word) for word in BANNED_WORDS if word)
 
-_PROCESSING_TIMEOUT_SECONDS = 180
-
 
 def _has_banned_word(text: str) -> bool:
     normalized = _normalize_text(text)
     return any(word and word in normalized for word in _BANNED_WORDS)
-
-
-def _processing_timed_out(state: str) -> bool:
-    parts = (state or "").split(":")
-    if len(parts) >= 3 and parts[1] == "processing" and parts[2].isdigit():
-        return (time.time() - int(parts[2])) > _PROCESSING_TIMEOUT_SECONDS
-    return False
 
 
 def _parse_state(raw: str):
@@ -149,32 +139,25 @@ def register(bot):
             return
 
     @bot.message_handler(
-        func=lambda m: (db.get_state(m.from_user.id) or "").startswith((STATE_WAIT_TEXT, "tts_openai:processing")),
+        func=lambda m: (db.get_state(m.from_user.id) or "").startswith(STATE_WAIT_TEXT),
         content_types=["text"],
     )
     def on_text_to_tts(msg):
         user = db.get_or_create_user(msg.from_user)
         user_id = user["user_id"]
 
-        lang = db.get_user_lang(user_id, "fa")
-        if menu_actions(lang).get((msg.text or "").strip()):
-            db.clear_state(user_id)
-            return
-
         current_state = db.get_state(user_id) or ""
 
         if current_state.startswith("tts_openai:processing"):
-            if _processing_timed_out(current_state):
-                db.clear_state(user_id)
-                current_state = ""
-            else:
-                return
+            return
 
         db.set_state(user_id, f"tts_openai:processing:{int(time.time())}")
 
         cost = 0
         status = None
         try:
+            lang = db.get_user_lang(user_id, "fa")
+
             if not ensure_force_sub(bot, user_id, msg.chat.id, msg.message_id, lang):
                 return
 
