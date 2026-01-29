@@ -86,6 +86,12 @@ REALTIME_HINTS = {
 }
 
 
+def _back_keyboard(lang: str) -> InlineKeyboardMarkup:
+    kb = InlineKeyboardMarkup()
+    kb.add(InlineKeyboardButton(t("back", lang), callback_data="home:back"))
+    return kb
+
+
 def _chat_keyboard(lang: str) -> ReplyKeyboardMarkup:
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
     kb.add(KeyboardButton(t("gpt_end_button", lang)))
@@ -236,14 +242,14 @@ def _start_chat(
 ) -> bool:
     error = _ensure_gpt_ready(lang)
     if error:
-        send_main_menu(bot, user_id, chat_id, error, None, message_id=message_id)
+        edit_or_send(bot, chat_id, message_id, error, _back_keyboard(lang))
         return False
 
     db.set_state(user_id, GPT_STATE)
     if reset_history:
         db.clear_gpt_history(user_id)
     text = t("gpt_open", lang).format(cost=_format_credits(GPT_MESSAGE_COST))
-    send_main_menu(bot, user_id, chat_id, text, _chat_keyboard(lang), message_id=message_id)
+    edit_or_send(bot, chat_id, message_id, text, _chat_keyboard(lang))
     return True
 
 
@@ -342,30 +348,6 @@ def _handle_chat_completion(bot, user_id: int, chat_id: int, lang: str, messages
         if DEBUG:
             print("GPT chat handler error:", exc)
         _respond(bot, thinking, lang, t("gpt_error", lang).format(error=t("gpt_error_unknown", lang)))
-
-
-def open_gpt_from_message(bot, msg, menu_message_id: int | None = None):
-    user = db.get_or_create_user(msg.from_user)
-    if user.get("banned"):
-        bot.reply_to(msg, "⛔️ دسترسی شما مسدود است.")
-        return
-
-    lang = db.get_user_lang(user["user_id"], "fa")
-    db.touch_last_seen(user["user_id"])
-    if not is_feature_enabled("FEATURE_GPT"):
-        send_main_menu(
-            bot,
-            user["user_id"],
-            msg.chat.id,
-            feature_disabled_text("FEATURE_GPT", lang),
-            None,
-        )
-        return
-    if not _handle_force_sub(bot, user["user_id"], lang, msg.chat.id, msg.message_id):
-        return
-
-    target_message_id = menu_message_id or msg.message_id
-    _start_chat(bot, msg.chat.id, target_message_id, user["user_id"], lang, reset_history=True)
 
 
 def register(bot):
