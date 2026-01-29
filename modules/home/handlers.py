@@ -471,7 +471,6 @@ def register(bot):
             open_tts(bot, cq)
             return
         if route == "profile":
-            bot.answer_callback_query(cq.id)
             from modules.profile.handlers import open_profile
 
             open_profile(bot, cq)
