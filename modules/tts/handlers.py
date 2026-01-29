@@ -317,7 +317,7 @@ def register(bot):
 
     # دریافت متن برای تبدیل
     @bot.message_handler(
-        func=lambda m: (db.get_state(m.from_user.id) or "").startswith(STATE_WAIT_TEXT),
+        func=lambda m: (db.get_state(m.from_user.id) or "").startswith((STATE_WAIT_TEXT, "tts:processing")),
         content_types=["text"]
     )
     def on_text_to_tts(msg):
