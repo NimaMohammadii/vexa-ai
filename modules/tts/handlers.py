@@ -4,9 +4,9 @@ import threading
 import time
 import db
 from utils import edit_or_send, ensure_force_sub, feature_disabled_text, is_feature_enabled, send_main_menu
+from telebot.types import ReplyKeyboardRemove
 from config import DEBUG
 from modules.i18n import t
-from modules.home.keyboards import menu_actions
 from .texts import TITLE, ask_text, PROCESSING, NO_CREDIT, ERROR, BANNED
 from .keyboards import keyboard as tts_keyboard
 from .upsell import schedule_creator_upsell
@@ -325,12 +325,7 @@ def register(bot):
         user_id = user["user_id"]
 
         lang = db.get_user_lang(user_id, "fa")
-        if menu_actions(lang).get((msg.text or "").strip()):
-            db.clear_state(user_id)
-            return
-        
         # 🔒 LOCK: جلوگیری از اجرای دوگانه
-        lock_key = f"tts_processing_{user_id}"
         current_state = db.get_state(user_id) or ""
         
         # اگر در حالت processing است، در صورت گذشت زمان کافی، ریست کن
@@ -406,7 +401,11 @@ def register(bot):
                 )
                 return
 
-            status = bot.send_message(msg.chat.id, PROCESSING(lang))
+            status = bot.send_message(
+                msg.chat.id,
+                PROCESSING(lang),
+                reply_markup=ReplyKeyboardRemove(),
+            )
             
             # 🎯 فقط یکبار API call
             print(f"🔥 TTS REQUEST: user={user_id}, text_len={len(text)}, voice={voice_name}")
