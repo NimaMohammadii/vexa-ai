@@ -441,7 +441,7 @@ def register(bot: TeleBot):
                              reply_markup=instant_cancel_kb(lang))
 
     # بازگشت/لغو → خروج از حالت انتظار و برگشت به منوی اصلی
-    @bot.callback_query_handler(func=lambda c: c.data in ("credit:menu", "credit:cancel"))
+    @bot.callback_query_handler(func=lambda c: c.data == "credit:cancel")
     def on_back(c: CallbackQuery):
         bot.answer_callback_query(c.id)
         _clear_wait(c.from_user.id)
