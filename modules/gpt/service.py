@@ -300,7 +300,7 @@ def _prepare_chat_payload(
 
     limit = max_tokens if max_tokens is not None else GPT_MAX_TOKENS
     if limit > 0:
-        payload["max_tokens"] = limit
+        payload["max_completion_tokens"] = limit
 
     return payload
 
