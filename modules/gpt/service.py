@@ -291,12 +291,21 @@ def _prepare_chat_payload(
 ) -> Dict[str, Any]:
     chosen_model = (model or GPT_MODEL or "gpt-5-nano").strip() or "gpt-5-nano"
 
+    def _supports_custom_temperature(value: Optional[float]) -> bool:
+        if value is None:
+            return False
+        if chosen_model.startswith("gpt-5"):
+            return value == 1
+        return True
+
     payload: Dict[str, Any] = {
         "model": chosen_model,
         "messages": normalised,
-        "temperature": temperature if temperature is not None else GPT_TEMPERATURE,
         "top_p": top_p if top_p is not None else GPT_TOP_P,
     }
+    resolved_temperature = temperature if temperature is not None else GPT_TEMPERATURE
+    if _supports_custom_temperature(resolved_temperature):
+        payload["temperature"] = resolved_temperature
 
     limit = max_tokens if max_tokens is not None else GPT_MAX_TOKENS
     if limit > 0:
@@ -314,6 +323,13 @@ def _prepare_assistant_payload(
     max_tokens: Optional[int],
 ) -> Dict[str, Any]:
     chosen_model = (model or GPT_MODEL or "gpt-5-nano").strip() or "gpt-5-nano"
+
+    def _supports_custom_temperature(value: Optional[float]) -> bool:
+        if value is None:
+            return False
+        if chosen_model.startswith("gpt-5"):
+            return value == 1
+        return True
 
     def _normalise_assistant_content(content: Any) -> Any:
         if isinstance(content, str):
@@ -361,9 +377,11 @@ def _prepare_assistant_payload(
             }
             for item in normalised
         ],
-        "temperature": temperature if temperature is not None else GPT_TEMPERATURE,
         "top_p": top_p if top_p is not None else GPT_TOP_P,
     }
+    resolved_temperature = temperature if temperature is not None else GPT_TEMPERATURE
+    if _supports_custom_temperature(resolved_temperature):
+        payload["temperature"] = resolved_temperature
 
     limit = max_tokens if max_tokens is not None else GPT_MAX_TOKENS
     if limit > 0:
