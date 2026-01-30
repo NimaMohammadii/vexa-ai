@@ -49,7 +49,7 @@ def keyboard(
     buttons_per_row = 2
     page_capacity = 9
     use_pagination = len(all_names) > page_capacity
-    voice_capacity = page_capacity - 1 if use_pagination else page_capacity
+    voice_capacity = page_capacity
     total_pages = max(1, (len(all_names) + voice_capacity - 1) // voice_capacity)
     current_page = max(0, min(page, total_pages - 1))
     start = current_page * voice_capacity
@@ -57,12 +57,8 @@ def keyboard(
 
     has_next = use_pagination and current_page < total_pages - 1
     has_prev = use_pagination and current_page > 0
-    nav_label = t("tts_next", lang) if has_next else (t("tts_prev", lang) if has_prev else None)
-    render_names = page_names
-    if nav_label and len(page_names) % buttons_per_row == 1:
-        render_names = page_names[:-1]
 
-    for row in _chunk(render_names, buttons_per_row):
+    for row in _chunk(page_names, buttons_per_row):
         kb.row(
             *[
                 InlineKeyboardButton(
@@ -73,21 +69,17 @@ def keyboard(
             ]
         )
 
-    if nav_label:
-        nav_data = f"{prefix}:page:{'next' if has_next else 'prev'}"
-        last_row = []
-        if len(page_names) % buttons_per_row == 1:
-            last_name = page_names[-1]
-            last_row.append(
-                InlineKeyboardButton(
-                    ("✔️ " if last_name == selected_voice else "") + last_name,
-                    callback_data=f"{prefix}:voice:{last_name}",
-                )
+    if use_pagination and (has_prev or has_next):
+        nav_buttons = []
+        if has_prev:
+            nav_buttons.append(
+                InlineKeyboardButton(t("tts_prev", lang), callback_data=f"{prefix}:page:prev")
             )
-        elif len(page_names) % buttons_per_row == 0:
-            last_row.append(InlineKeyboardButton(" ", callback_data=f"{prefix}:noop"))
-        last_row.append(InlineKeyboardButton(nav_label, callback_data=nav_data))
-        kb.row(*last_row)
+        if has_next:
+            nav_buttons.append(
+                InlineKeyboardButton(t("tts_next", lang), callback_data=f"{prefix}:page:next")
+            )
+        kb.row(*nav_buttons)
 
     if allow_custom and selected_voice:
         is_custom = any(voice[0] == selected_voice for voice in custom_voices)
