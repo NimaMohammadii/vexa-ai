@@ -60,6 +60,18 @@ def _parse_state(raw: str, default_voice_name: str):
 def _make_state(menu_id: int, voice_name: str) -> str:
     return f"{STATE_WAIT_TEXT}:{menu_id}:{voice_name}"
 
+def _page_key(user_id: int) -> str:
+    return f"tts_page:{user_id}"
+
+def _get_page(user_id: int) -> int:
+    try:
+        return int(db.get_setting(_page_key(user_id), 0) or 0)
+    except (TypeError, ValueError):
+        return 0
+
+def _set_page(user_id: int, page: int) -> None:
+    db.set_setting(_page_key(user_id), max(0, page))
+
 def safe_del(bot, chat_id, message_id):
     try:
         bot.delete_message(chat_id, message_id)
@@ -194,6 +206,7 @@ def register(bot):
                     quality="pro",
                     voices=voices,
                     output_mode=output_mode,
+                    page=_get_page(user["user_id"]),
                 ),
             )
             db.set_state(cq.from_user.id, _make_state(cq.message.message_id, voice_name))
@@ -230,10 +243,45 @@ def register(bot):
                     quality="pro",
                     voices=voices,
                     output_mode=output_mode,
+                    page=_get_page(user["user_id"]),
                 ),
             )
             db.set_state(cq.from_user.id, _make_state(cq.message.message_id, name))
             bot.answer_callback_query(cq.id, name)
+            return
+
+        if route.startswith("page:"):
+            direction = route.split(":", 1)[1]
+            current_page = _get_page(user["user_id"])
+            next_page = current_page + (1 if direction == "next" else -1)
+            voices = get_voices(lang)
+            default_voice_name = get_default_voice_name(lang)
+            state = db.get_state(cq.from_user.id) or ""
+            _, voice_name = _parse_state(state, default_voice_name)
+            if voice_name not in voices:
+                voice_name = default_voice_name
+            _set_page(user["user_id"], next_page)
+            edit_or_send(
+                bot,
+                cq.message.chat.id,
+                cq.message.message_id,
+                ask_text(lang, voice_name),
+                tts_keyboard(
+                    voice_name,
+                    lang,
+                    user["user_id"],
+                    quality="pro",
+                    voices=voices,
+                    output_mode=output_mode,
+                    page=_get_page(user["user_id"]),
+                ),
+            )
+            db.set_state(cq.from_user.id, _make_state(cq.message.message_id, voice_name))
+            bot.answer_callback_query(cq.id)
+            return
+
+        if route == "noop":
+            bot.answer_callback_query(cq.id)
             return
 
         if route.startswith("demo:"):
@@ -269,6 +317,7 @@ def register(bot):
                     quality="pro",
                     voices=voices,
                     output_mode=output_mode,
+                    page=_get_page(user["user_id"]),
                 ),
             )
             db.set_state(cq.from_user.id, _make_state(cq.message.message_id, voice_name))
@@ -309,6 +358,7 @@ def register(bot):
                             quality="pro",
                             voices=voices,
                             output_mode=output_mode,
+                            page=_get_page(user["user_id"]),
                         )
                     )
                     db.set_state(cq.from_user.id, _make_state(cq.message.message_id, sel))
@@ -432,6 +482,7 @@ def register(bot):
                     quality="pro",
                     voices=voices,
                     output_mode=output_mode,
+                    page=_get_page(user_id),
                 )
             )
             db.set_state(user_id, _make_state(new_menu.message_id, voice_name))
@@ -470,6 +521,7 @@ def open_tts(bot, cq):
     voices = get_voices(lang)
     sel = get_default_voice_name(lang)
     output_mode = get_output_mode(user["user_id"])
+    _set_page(user["user_id"], 0)
     edit_or_send(
         bot,
         cq.message.chat.id,
@@ -482,6 +534,7 @@ def open_tts(bot, cq):
             quality="pro",
             voices=voices,
             output_mode=output_mode,
+            page=_get_page(user["user_id"]),
         ),
     )
     db.set_state(cq.from_user.id, _make_state(cq.message.message_id, sel))

@@ -24,8 +24,9 @@ def keyboard(
     quality: str = "pro",
     show_demo_button: bool = True,
     output_mode: str = "mp3",
+    page: int = 0,
 ):
-    kb = InlineKeyboardMarkup(row_width=3)
+    kb = InlineKeyboardMarkup(row_width=2)
 
     voice_source = voices or get_voices(lang)
     if isinstance(voice_source, dict):
@@ -45,7 +46,24 @@ def keyboard(
 
     all_names = default_names + ([voice[0] for voice in custom_voices] if allow_custom else [])
 
-    for row in _chunk(all_names, 3):
+    total_rows = 6
+    buttons_per_row = 2
+    page_capacity = total_rows * buttons_per_row
+    use_pagination = len(all_names) > page_capacity
+    voice_capacity = page_capacity - 1 if use_pagination else page_capacity
+    total_pages = max(1, (len(all_names) + voice_capacity - 1) // voice_capacity)
+    current_page = max(0, min(page, total_pages - 1))
+    start = current_page * voice_capacity
+    page_names = all_names[start : start + voice_capacity]
+
+    has_next = use_pagination and current_page < total_pages - 1
+    has_prev = use_pagination and current_page > 0
+    nav_label = "بعدی" if has_next else ("قبل" if has_prev else None)
+    render_names = page_names
+    if nav_label and len(page_names) % buttons_per_row == 1:
+        render_names = page_names[:-1]
+
+    for row in _chunk(render_names, buttons_per_row):
         kb.row(
             *[
                 InlineKeyboardButton(
@@ -55,6 +73,22 @@ def keyboard(
                 for n in row
             ]
         )
+
+    if nav_label:
+        nav_data = f"{prefix}:page:{'next' if has_next else 'prev'}"
+        last_row = []
+        if len(page_names) % buttons_per_row == 1:
+            last_name = page_names[-1]
+            last_row.append(
+                InlineKeyboardButton(
+                    ("✔️ " if last_name == selected_voice else "") + last_name,
+                    callback_data=f"{prefix}:voice:{last_name}",
+                )
+            )
+        elif len(page_names) % buttons_per_row == 0:
+            last_row.append(InlineKeyboardButton(" ", callback_data=f"{prefix}:noop"))
+        last_row.append(InlineKeyboardButton(nav_label, callback_data=nav_data))
+        kb.row(*last_row)
 
     if allow_custom and selected_voice:
         is_custom = any(voice[0] == selected_voice for voice in custom_voices)
@@ -72,6 +106,8 @@ def keyboard(
                 t("tts_demo", lang),
                 callback_data=f"{prefix}:demo:{selected_voice}",
             ),
+        )
+        kb.row(
             InlineKeyboardButton(
                 ("✔️ " if output_mode == "mp3" else "") + t("tts_output_mp3", lang),
                 callback_data=f"{prefix}:output:mp3",
@@ -81,17 +117,6 @@ def keyboard(
                 callback_data=f"{prefix}:output:voice",
             ),
         )
-
-    kb.row(
-        InlineKeyboardButton(
-            ("✔️ " if quality == "pro" else "") + t("tts_quality_pro", lang),
-            callback_data=f"{prefix}:quality:pro",
-        ),
-        InlineKeyboardButton(
-            ("✔️ " if quality == "medium" else "") + t("tts_quality_medium", lang),
-            callback_data=f"{prefix}:quality:medium",
-        ),
-    )
 
     kb.add(InlineKeyboardButton(t("btn_clone", lang), callback_data="home:clone"))
     kb.add(InlineKeyboardButton(t("back", lang), callback_data="home:back"))
