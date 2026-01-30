@@ -468,6 +468,27 @@ def extract_message_text(data: Dict[str, Any]) -> str:
     if not isinstance(data, dict):
         return ""
 
+    def _collect_text(value: Any, sink: List[str]) -> None:
+        if isinstance(value, str):
+            if value.strip():
+                sink.append(value.strip())
+            return
+        if isinstance(value, dict):
+            if isinstance(value.get("text"), str):
+                txt = value.get("text", "")
+            elif isinstance(value.get("value"), str):
+                txt = value.get("value", "")
+            elif isinstance(value.get("content"), str):
+                txt = value.get("content", "")
+            else:
+                txt = ""
+            if isinstance(txt, str) and txt.strip():
+                sink.append(txt.strip())
+            return
+        if isinstance(value, list):
+            for item in value:
+                _collect_text(item, sink)
+
     # Legacy chat-completions format
     choices = data.get("choices")
     if isinstance(choices, list) and choices:
@@ -476,8 +497,10 @@ def extract_message_text(data: Dict[str, Any]) -> str:
             message = first_choice.get("message")
             if isinstance(message, dict):
                 content = message.get("content")
-                if isinstance(content, str) and content.strip():
-                    return content
+                texts: List[str] = []
+                _collect_text(content, texts)
+                if texts:
+                    return "\n".join(texts).strip()
 
     # Responses API helpers
     output_text = data.get("output_text")
@@ -492,18 +515,7 @@ def extract_message_text(data: Dict[str, Any]) -> str:
         for block in blocks:
             if not isinstance(block, dict):
                 continue
-            if isinstance(block.get("text"), str):
-                txt = block.get("text", "")
-            elif isinstance(block.get("value"), str):
-                txt = block.get("value", "")
-            elif isinstance(block.get("content"), str):
-                txt = block.get("content", "")
-            else:
-                txt = ""
-            if not txt and block.get("type") == "output_text" and isinstance(block.get("text"), str):
-                txt = block.get("text", "")
-            if isinstance(txt, str) and txt.strip():
-                texts.append(txt.strip())
+            _collect_text(block, texts)
 
     output = data.get("output")
     if isinstance(output, list):
@@ -511,21 +523,18 @@ def extract_message_text(data: Dict[str, Any]) -> str:
             if not isinstance(item, dict):
                 continue
             content = item.get("content")
-            if isinstance(content, str) and content.strip():
-                texts.append(content.strip())
+            _collect_text(content, texts)
             _extract_from_blocks(content)
             message = item.get("message")
             if isinstance(message, dict):
                 msg_content = message.get("content")
-                if isinstance(msg_content, str) and msg_content.strip():
-                    texts.append(msg_content.strip())
+                _collect_text(msg_content, texts)
                 _extract_from_blocks(msg_content)
 
     message = data.get("message")
     if isinstance(message, dict):
         msg_content = message.get("content")
-        if isinstance(msg_content, str) and msg_content.strip():
-            texts.append(msg_content.strip())
+        _collect_text(msg_content, texts)
         _extract_from_blocks(msg_content)
 
     if texts:
