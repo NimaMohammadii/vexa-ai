@@ -49,6 +49,18 @@ from modules.i18n import t
 from modules.tts.settings import set_demo_audio, clear_demo_audio
 
 LANG_LABELS = {code: label for label, code in LANGS}
+MENU_LABELS = {
+    "home": "🏠 خانه",
+    "profile": "👤 پروفایل",
+    "credit": "💳 خرید کردیت",
+    "tts": "🎧 متن به گفتار",
+    "lang": "🌐 انتخاب زبان",
+    "invite": "🎁 دعوت",
+    "image": "🖼️ تصویر",
+    "video": "🎬 ویدیو",
+    "clone": "🧩 کلون صدا",
+    "sora2": "🧪 سورا ۲",
+}
 
 # ---------- Helpers ----------
 def _is_owner(u) -> bool:
@@ -73,6 +85,32 @@ def _format_username_line(user) -> str:
     if uname:
         return f"🔗 @{escape(uname)}"
     return "🔗 -"
+
+
+def _format_menu_usage(user_id: int) -> str:
+    usage = db.get_user_menu_usage(user_id)
+    if not usage:
+        return "📊 استفاده از منوها: <b>0</b>"
+    total = sum(item.get("count", 0) or 0 for item in usage)
+    lines = [f"📊 استفاده از منوها: <b>{total}</b>"]
+    for item in usage:
+        key = item.get("menu_key") or ""
+        label = MENU_LABELS.get(key, key or "—")
+        lines.append(f"• {label}: <b>{item.get('count', 0) or 0}</b>")
+    return "\n".join(lines)
+
+
+def _format_user_details(user_id: int, user: dict) -> str:
+    lang_code = (user.get("lang") or "fa").strip() or "fa"
+    lang_label = LANG_LABELS.get(lang_code, lang_code)
+    username = escape((user.get("username") or "-").strip())
+    status = "🚫 بن" if user.get("banned") else "✅ مجاز"
+    return (
+        f"👤 <b>{user_id}</b>\n"
+        f"@{username or '-'} | 💳 {db.format_credit_amount(user.get('credits', 0))} | {status}\n"
+        f"🌐 زبان: <b>{lang_label}</b>\n"
+        f"{_format_menu_usage(user_id)}"
+    )
 
 def _send_content_to_user(bot, uid: int, msg: types.Message, reply_markup=None):
     """
@@ -413,9 +451,7 @@ def register(bot):
             u = db.get_user(uid)
             if not u:
                 bot.answer_callback_query(cq.id, "کاربر یافت نشد."); return
-            txt = (f"👤 <b>{uid}</b>\n"
-                   f"@{u['username'] or '-'} | 💳 {db.format_credit_amount(u['credits'])} | "
-                   f"{'🚫 بن' if u['banned'] else '✅ مجاز'}")
+            txt = _format_user_details(uid, u)
             edit_or_send(bot, cq.message.chat.id, cq.message.message_id, txt, user_actions(uid))
             return
 
@@ -423,18 +459,14 @@ def register(bot):
         if action == "ban":
             uid = int(p[2]); db.set_ban(uid, True)
             u = db.get_user(uid)
-            txt = (
-                f"👤 <b>{uid}</b>\n@{u['username'] or '-'} | 💳 {db.format_credit_amount(u['credits'])} | 🚫 بن"
-            )
+            txt = _format_user_details(uid, u)
             edit_or_send(bot, cq.message.chat.id, cq.message.message_id, txt, user_actions(uid))
             bot.answer_callback_query(cq.id, "کاربر بن شد."); return
 
         if action == "unban":
             uid = int(p[2]); db.set_ban(uid, False)
             u = db.get_user(uid)
-            txt = (
-                f"👤 <b>{uid}</b>\n@{u['username'] or '-'} | 💳 {db.format_credit_amount(u['credits'])} | ✅ مجاز"
-            )
+            txt = _format_user_details(uid, u)
             edit_or_send(bot, cq.message.chat.id, cq.message.message_id, txt, user_actions(uid))
             bot.answer_callback_query(cq.id, "کاربر آن‌بن شد."); return
 
@@ -796,9 +828,7 @@ def register(bot):
         u = db.get_user(uid)
         if not u:
             bot.reply_to(msg, "❌ کاربر یافت نشد."); return
-        txt = (f"👤 <b>{uid}</b>\n"
-               f"@{u['username'] or '-'} | 💳 {db.format_credit_amount(u['credits'])} | "
-               f"{'🚫 بن' if u['banned'] else '✅ مجاز'}")
+        txt = _format_user_details(uid, u)
         edit_or_send(bot, msg.chat.id, msg.message_id, txt, user_actions(uid))
         db.clear_state(msg.from_user.id)
 
