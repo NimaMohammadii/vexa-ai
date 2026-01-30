@@ -191,10 +191,16 @@ DEMO_AUDIO_BY_VOICE = {
     # "Liam": "<TELEGRAM_FILE_ID_OR_URL>",
 }
 
+DEFAULT_OUTPUT_MODE = "mp3"
+OUTPUT_MODES = {"mp3", "voice"}
+
 def _demo_setting_key(voice_name: str, lang: str | None = None) -> str:
     if lang:
         return f"TTS_DEMO_{lang}_{voice_name}"
     return f"TTS_DEMO_{voice_name}"
+
+def _output_setting_key(user_id: int) -> str:
+    return f"TTS_OUTPUT_{user_id}"
 
 def get_default_voice_name(lang: str) -> str:
     return DEFAULT_VOICE_NAME_BY_LANG.get(lang, DEFAULT_VOICE_NAME_BY_LANG[DEFAULT_LANGUAGE])
@@ -224,6 +230,16 @@ def set_demo_audio(voice_name: str, file_id: str, *, kind: str = "audio", lang: 
 
 def clear_demo_audio(voice_name: str, *, lang: str | None = None) -> None:
     db.set_setting(_demo_setting_key(voice_name, lang), "")
+
+def get_output_mode(user_id: int, default: str = DEFAULT_OUTPUT_MODE) -> str:
+    mode = db.get_setting(_output_setting_key(user_id), default) or default
+    return mode if mode in OUTPUT_MODES else default
+
+def set_output_mode(user_id: int, mode: str) -> None:
+    normalized = (mode or "").strip().lower()
+    if normalized not in OUTPUT_MODES:
+        normalized = DEFAULT_OUTPUT_MODE
+    db.set_setting(_output_setting_key(user_id), normalized)
 
 # خروجی‌ها (هر کدوم یک فایل MP3)
 OUTPUTS = [

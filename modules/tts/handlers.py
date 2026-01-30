@@ -16,7 +16,9 @@ from .settings import (
     BANNED_WORDS,
     get_default_voice_name,
     get_demo_audio,
+    get_output_mode,
     get_voices,
+    set_output_mode,
 )
 from .service import synthesize
 
@@ -143,6 +145,7 @@ def register(bot):
     def tts_router(cq):
         user = db.get_or_create_user(cq.from_user)
         lang = db.get_user_lang(user["user_id"], "fa")
+        output_mode = get_output_mode(user["user_id"])
         if not is_feature_enabled("FEATURE_TTS"):
             edit_or_send(
                 bot,
@@ -184,7 +187,14 @@ def register(bot):
                 cq.message.chat.id,
                 cq.message.message_id,
                 ask_text(lang, voice_name),
-                tts_keyboard(voice_name, lang, user["user_id"], quality="pro", voices=voices),
+                tts_keyboard(
+                    voice_name,
+                    lang,
+                    user["user_id"],
+                    quality="pro",
+                    voices=voices,
+                    output_mode=output_mode,
+                ),
             )
             db.set_state(cq.from_user.id, _make_state(cq.message.message_id, voice_name))
             bot.answer_callback_query(cq.id, t("tts_quality_pro", lang))
@@ -213,7 +223,14 @@ def register(bot):
                 cq.message.chat.id,
                 cq.message.message_id,
                 ask_text(lang, name),
-                tts_keyboard(name, lang, user["user_id"], quality="pro", voices=voices),
+                tts_keyboard(
+                    name,
+                    lang,
+                    user["user_id"],
+                    quality="pro",
+                    voices=voices,
+                    output_mode=output_mode,
+                ),
             )
             db.set_state(cq.from_user.id, _make_state(cq.message.message_id, name))
             bot.answer_callback_query(cq.id, name)
@@ -228,6 +245,34 @@ def register(bot):
                 bot.answer_callback_query(cq.id, t("tts_demo_wait", lang), show_alert=False)
             else:
                 bot.answer_callback_query(cq.id)
+            return
+
+        if route.startswith("output:"):
+            mode = route.split(":", 1)[1]
+            set_output_mode(user["user_id"], mode)
+            voices = get_voices(lang)
+            default_voice_name = get_default_voice_name(lang)
+            state = db.get_state(cq.from_user.id) or ""
+            _, voice_name = _parse_state(state, default_voice_name)
+            if voice_name not in voices:
+                voice_name = default_voice_name
+            output_mode = get_output_mode(user["user_id"])
+            edit_or_send(
+                bot,
+                cq.message.chat.id,
+                cq.message.message_id,
+                ask_text(lang, voice_name),
+                tts_keyboard(
+                    voice_name,
+                    lang,
+                    user["user_id"],
+                    quality="pro",
+                    voices=voices,
+                    output_mode=output_mode,
+                ),
+            )
+            db.set_state(cq.from_user.id, _make_state(cq.message.message_id, voice_name))
+            bot.answer_callback_query(cq.id)
             return
 
         if route.startswith("delete:"):
@@ -257,7 +302,14 @@ def register(bot):
                         cq.message.chat.id,
                         cq.message.message_id,
                         ask_text(lang, sel),
-                        tts_keyboard(sel, lang, user["user_id"], quality="pro", voices=voices)
+                        tts_keyboard(
+                            sel,
+                            lang,
+                            user["user_id"],
+                            quality="pro",
+                            voices=voices,
+                            output_mode=output_mode,
+                        )
                     )
                     db.set_state(cq.from_user.id, _make_state(cq.message.message_id, sel))
                 except Exception as e:
@@ -363,13 +415,24 @@ def register(bot):
             # ارسال فایل (بدون کپشن) با نام Vexa.mp3
             bio = BytesIO(audio_data)
             bio.name = "Vexa.mp3"
-            bot.send_document(msg.chat.id, document=bio)
+            output_mode = get_output_mode(user_id)
+            if output_mode == "voice":
+                bot.send_voice(msg.chat.id, voice=bio)
+            else:
+                bot.send_document(msg.chat.id, document=bio)
 
             # بازگرداندن منوی TTS با صدای فعلی
             new_menu = bot.send_message(
                 msg.chat.id,
                 ask_text(lang, voice_name),
-                reply_markup=tts_keyboard(voice_name, lang, user_id, quality="pro", voices=voices)
+                reply_markup=tts_keyboard(
+                    voice_name,
+                    lang,
+                    user_id,
+                    quality="pro",
+                    voices=voices,
+                    output_mode=output_mode,
+                )
             )
             db.set_state(user_id, _make_state(new_menu.message_id, voice_name))
             schedule_creator_upsell(bot, user_id, msg.chat.id)
@@ -406,11 +469,19 @@ def open_tts(bot, cq):
         return
     voices = get_voices(lang)
     sel = get_default_voice_name(lang)
+    output_mode = get_output_mode(user["user_id"])
     edit_or_send(
         bot,
         cq.message.chat.id,
         cq.message.message_id,
         ask_text(lang, sel),
-        tts_keyboard(sel, lang, user["user_id"], quality="pro", voices=voices),
+        tts_keyboard(
+            sel,
+            lang,
+            user["user_id"],
+            quality="pro",
+            voices=voices,
+            output_mode=output_mode,
+        ),
     )
     db.set_state(cq.from_user.id, _make_state(cq.message.message_id, sel))

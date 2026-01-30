@@ -23,6 +23,7 @@ def keyboard(
     include_custom: bool = True,
     quality: str = "pro",
     show_demo_button: bool = True,
+    output_mode: str = "mp3",
 ):
     kb = InlineKeyboardMarkup(row_width=3)
 
@@ -66,11 +67,19 @@ def keyboard(
             )
 
     if show_demo_button and selected_voice:
-        kb.add(
+        kb.row(
             InlineKeyboardButton(
                 t("tts_demo", lang),
                 callback_data=f"{prefix}:demo:{selected_voice}",
-            )
+            ),
+            InlineKeyboardButton(
+                ("✔️ " if output_mode == "mp3" else "") + t("tts_output_mp3", lang),
+                callback_data=f"{prefix}:output:mp3",
+            ),
+            InlineKeyboardButton(
+                ("✔️ " if output_mode == "voice" else "") + t("tts_output_voice", lang),
+                callback_data=f"{prefix}:output:voice",
+            ),
         )
 
     kb.row(
