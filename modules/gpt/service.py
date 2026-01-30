@@ -331,12 +331,14 @@ def _prepare_assistant_payload(
             return value == 1
         return True
 
-    def _normalise_assistant_content(content: Any) -> Any:
+    def _normalise_assistant_content(content: Any, role: str) -> Any:
+        text_type = "output_text" if role == "assistant" else "input_text"
+
         if isinstance(content, str):
             text = content.strip()
             if not text:
                 return ""
-            return [{"type": "input_text", "text": text}]
+            return [{"type": text_type, "text": text}]
 
         if isinstance(content, list):
             parts: List[Dict[str, Any]] = []
@@ -347,7 +349,7 @@ def _prepare_assistant_payload(
                 if part_type == "text":
                     text = item.get("text") or item.get("content") or item.get("value") or ""
                     if str(text).strip():
-                        parts.append({"type": "input_text", "text": str(text)})
+                        parts.append({"type": text_type, "text": str(text)})
                     continue
                 if part_type == "image_url":
                     image_url = item.get("image_url")
@@ -359,7 +361,7 @@ def _prepare_assistant_payload(
                     if url:
                         parts.append({"type": "input_image", "image_url": url})
                     continue
-                if part_type in {"input_text", "input_image"}:
+                if part_type in {"input_text", "input_image", "output_text"}:
                     parts.append(item)
                     continue
                 parts.append(item)
@@ -373,7 +375,10 @@ def _prepare_assistant_payload(
         "input": [
             {
                 "role": item.get("role", "assistant"),
-                "content": _normalise_assistant_content(item.get("content", "")),
+                "content": _normalise_assistant_content(
+                    item.get("content", ""),
+                    str(item.get("role", "assistant")).strip().lower(),
+                ),
             }
             for item in normalised
         ],
