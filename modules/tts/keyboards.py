@@ -46,9 +46,8 @@ def keyboard(
 
     all_names = default_names + ([voice[0] for voice in custom_voices] if allow_custom else [])
 
-    total_rows = 4
     buttons_per_row = 2
-    page_capacity = total_rows * buttons_per_row
+    page_capacity = 9
     use_pagination = len(all_names) > page_capacity
     voice_capacity = page_capacity - 1 if use_pagination else page_capacity
     total_pages = max(1, (len(all_names) + voice_capacity - 1) // voice_capacity)
