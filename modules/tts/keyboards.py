@@ -46,7 +46,7 @@ def keyboard(
 
     all_names = default_names + ([voice[0] for voice in custom_voices] if allow_custom else [])
 
-    total_rows = 6
+    total_rows = 4
     buttons_per_row = 2
     page_capacity = total_rows * buttons_per_row
     use_pagination = len(all_names) > page_capacity
@@ -58,7 +58,7 @@ def keyboard(
 
     has_next = use_pagination and current_page < total_pages - 1
     has_prev = use_pagination and current_page > 0
-    nav_label = "بعدی" if has_next else ("قبل" if has_prev else None)
+    nav_label = t("tts_next", lang) if has_next else (t("tts_prev", lang) if has_prev else None)
     render_names = page_names
     if nav_label and len(page_names) % buttons_per_row == 1:
         render_names = page_names[:-1]
