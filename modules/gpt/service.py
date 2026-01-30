@@ -474,14 +474,20 @@ def extract_message_text(data: Dict[str, Any]) -> str:
                 sink.append(value.strip())
             return
         if isinstance(value, dict):
-            if isinstance(value.get("text"), str):
-                txt = value.get("text", "")
+            text_value = value.get("text")
+            txt = ""
+            if isinstance(text_value, str):
+                txt = text_value
+            elif isinstance(text_value, dict):
+                for key in ("value", "content", "text"):
+                    nested = text_value.get(key)
+                    if isinstance(nested, str):
+                        txt = nested
+                        break
             elif isinstance(value.get("value"), str):
                 txt = value.get("value", "")
             elif isinstance(value.get("content"), str):
                 txt = value.get("content", "")
-            else:
-                txt = ""
             if isinstance(txt, str) and txt.strip():
                 sink.append(txt.strip())
             return
