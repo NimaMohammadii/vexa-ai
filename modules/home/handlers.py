@@ -322,6 +322,7 @@ def register(bot):
 
         _handle_referral(bot, msg, user, lang)
         _consume_pending_referral(bot, user, msg.chat.id, lang)
+        db.log_menu_usage(user["user_id"], "home")
         send_main_menu(
             bot,
             user["user_id"],
@@ -379,6 +380,7 @@ def register(bot):
         if not _ensure_force_sub(bot, user["user_id"], msg.chat.id, msg.message_id, lang):
             return
 
+        db.log_menu_usage(user["user_id"], "home")
         send_main_menu(
             bot,
             user["user_id"],
@@ -428,6 +430,8 @@ def register(bot):
 
         route = cq.data.split(":", 1)[1] if ":" in cq.data else ""
         _schedule_low_credit_warning(bot, user, cq.message.chat.id, LOW_CREDIT_DELAY)
+        menu_key = "home" if route in ("", "back") else route
+        db.log_menu_usage(user["user_id"], menu_key)
 
         if route in ("", "back"):
             send_main_menu(

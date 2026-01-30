@@ -116,6 +116,15 @@ def init_db():
             text TEXT,
             created_at INTEGER
         )""")
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS menu_usage(
+                user_id INTEGER NOT NULL,
+                menu_key TEXT NOT NULL,
+                count INTEGER DEFAULT 0,
+                last_used_at INTEGER DEFAULT 0,
+                PRIMARY KEY (user_id, menu_key)
+            )"""
+        )
         cur.execute("""CREATE TABLE IF NOT EXISTS gpt_messages(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
@@ -571,6 +580,42 @@ def log_message(user_id, direction, text):
         cur.execute("""INSERT INTO messages(user_id,direction,text,created_at)
                        VALUES(?,?,?,?)""", (user_id, direction, text[:4000], int(time.time())))
         con.commit()
+
+
+def log_menu_usage(user_id: int, menu_key: str) -> None:
+    menu_key = (menu_key or "").strip()
+    if not menu_key:
+        return
+    now = int(time.time())
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            """INSERT INTO menu_usage(user_id, menu_key, count, last_used_at)
+                   VALUES(?,?,1,?)
+                   ON CONFLICT(user_id, menu_key) DO UPDATE SET
+                       count=count+1,
+                       last_used_at=excluded.last_used_at
+            """,
+            (user_id, menu_key, now),
+        )
+        con.commit()
+
+
+def get_user_menu_usage(user_id: int) -> list[dict[str, int | str]]:
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            """SELECT menu_key, count, last_used_at
+                   FROM menu_usage
+                  WHERE user_id=?
+               ORDER BY count DESC, last_used_at DESC""",
+            (user_id,),
+        )
+        rows = cur.fetchall() or []
+    return [
+        {"menu_key": row[0] or "", "count": row[1] or 0, "last_used_at": row[2] or 0}
+        for row in rows
+    ]
 
 
 def log_image_generation(user_id: int, prompt: str, image_url: str) -> None:
