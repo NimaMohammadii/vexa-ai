@@ -15,7 +15,7 @@ DEFAULT_VOICE_NAME_BY_LANG = {
     "fa": "Liam",
     "en": "Ava",
     "ar": "Liam",
-    "tr": "Melis",
+    "tr": "Arda",
     "ru": "Алина",
     "es": "Valeria",
     "de": "Lena",
