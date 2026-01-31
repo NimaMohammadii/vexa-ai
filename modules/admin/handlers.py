@@ -26,6 +26,7 @@ from .texts import (
     ASK_FORMULA, STATE_FORMULA,
     ASK_TG_LANG, STATE_SET_TG_LANG,
     ASK_DEMO_LANG, ASK_DEMO_VOICE, ASK_DEMO_AUDIO, STATE_DEMO_AUDIO,
+    ASK_WELCOME_AUDIO_LANG, ASK_WELCOME_AUDIO, STATE_WELCOME_AUDIO,
 )
 from .keyboards import (
     admin_menu,
@@ -43,10 +44,13 @@ from .keyboards import (
     demo_languages_menu,
     demo_voices_menu,
     demo_voice_actions_menu,
+    welcome_audio_languages_menu,
+    welcome_audio_actions_menu,
 )
 from modules.lang.keyboards import LANGS
 from modules.i18n import t
 from modules.tts.settings import set_demo_audio, clear_demo_audio
+from modules.welcome_audio import set_welcome_audio, clear_welcome_audio
 
 LANG_LABELS = {code: label for label, code in LANGS}
 MENU_LABELS = {
@@ -583,6 +587,43 @@ def register(bot):
             edit_or_send(bot, cq.message.chat.id, cq.message.message_id, ASK_DEMO_LANG, demo_languages_menu())
             return
 
+        if action == "welcome_audio":
+            if len(p) >= 4 and p[2] == "lang":
+                lang_code = p[3]
+                db.clear_state(cq.from_user.id)
+                db.set_state(cq.from_user.id, f"{STATE_WELCOME_AUDIO}:{lang_code}")
+                label = LANG_LABELS.get(lang_code, lang_code)
+                edit_or_send(
+                    bot,
+                    cq.message.chat.id,
+                    cq.message.message_id,
+                    f"{ASK_WELCOME_AUDIO}\n\nزبان: <b>{label}</b>",
+                    welcome_audio_actions_menu(lang_code),
+                )
+                return
+            if len(p) >= 4 and p[2] == "delete":
+                lang_code = p[3]
+                clear_welcome_audio(lang_code)
+                db.clear_state(cq.from_user.id)
+                bot.answer_callback_query(cq.id, "🗑 پیام خوش‌آمد حذف شد.")
+                edit_or_send(
+                    bot,
+                    cq.message.chat.id,
+                    cq.message.message_id,
+                    ASK_WELCOME_AUDIO_LANG,
+                    welcome_audio_languages_menu(),
+                )
+                return
+            db.clear_state(cq.from_user.id)
+            edit_or_send(
+                bot,
+                cq.message.chat.id,
+                cq.message.message_id,
+                ASK_WELCOME_AUDIO_LANG,
+                welcome_audio_languages_menu(),
+            )
+            return
+
         if action == "features":
             edit_or_send(bot, cq.message.chat.id, cq.message.message_id, "🧩 مدیریت دسترسی بخش‌ها:", feature_access_menu())
             return
@@ -1079,3 +1120,46 @@ def register(bot):
         db.clear_state(msg.from_user.id)
         lang_label = LANG_LABELS.get(lang_code, lang_code)
         bot.reply_to(msg, f"{DONE}\n🎧 دمو برای <b>{voice_name}</b> ({lang_label}) ذخیره شد.")
+
+    @bot.message_handler(
+        func=lambda m: (db.get_state(m.from_user.id) or "").startswith(STATE_WELCOME_AUDIO),
+        content_types=['audio', 'voice', 'document'],
+    )
+    def s_set_welcome_audio(msg: types.Message):
+        if not _is_owner(msg.from_user): return
+        raw_state = db.get_state(msg.from_user.id) or ""
+        parts = raw_state.split(":")
+        if len(parts) < 2:
+            db.clear_state(msg.from_user.id)
+            bot.reply_to(msg, "⚠️ وضعیت نامعتبر.")
+            return
+        lang_code = parts[-1]
+        if not lang_code:
+            db.clear_state(msg.from_user.id)
+            bot.reply_to(msg, "⚠️ وضعیت نامعتبر.")
+            return
+
+        file_id = None
+        kind = "audio"
+        if getattr(msg, "audio", None):
+            file_id = msg.audio.file_id
+            kind = "audio"
+        elif getattr(msg, "voice", None):
+            file_id = msg.voice.file_id
+            kind = "voice"
+        elif getattr(msg, "document", None):
+            mime_type = getattr(msg.document, "mime_type", "") or ""
+            if mime_type and not mime_type.startswith("audio/"):
+                bot.reply_to(msg, "❌ فایل باید صوتی باشد.")
+                return
+            file_id = msg.document.file_id
+            kind = "document"
+
+        if not file_id:
+            bot.reply_to(msg, "❌ فایل صوتی ارسال کنید.")
+            return
+
+        set_welcome_audio(lang_code, file_id, kind=kind)
+        db.clear_state(msg.from_user.id)
+        lang_label = LANG_LABELS.get(lang_code, lang_code)
+        bot.reply_to(msg, f"{DONE}\n🎙 پیام خوش‌آمد ({lang_label}) ذخیره شد.")

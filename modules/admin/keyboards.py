@@ -5,6 +5,7 @@ from typing import Optional
 import db
 from modules.lang.keyboards import LANGS
 from modules.tts.settings import get_demo_audio, get_voices
+from modules.welcome_audio import get_welcome_audio
 
 FEATURE_TOGGLES = [
     ("GPT", "FEATURE_GPT"),
@@ -81,6 +82,7 @@ def settings_menu():
     kb.add(InlineKeyboardButton("🧩 دسترسی بخش‌ها", callback_data="admin:features"))
     kb.add(InlineKeyboardButton("🔐 عضویت اجباری بر اساس زبان", callback_data="admin:fs_lang:list"))
     kb.add(InlineKeyboardButton("🎧 دموهای صدا", callback_data="admin:demo"))
+    kb.add(InlineKeyboardButton("🎙 پیام صوتی خوش‌آمد", callback_data="admin:welcome_audio"))
     kb.add(InlineKeyboardButton("⬅️ بازگشت", callback_data="admin:menu"))
     return kb
 
@@ -126,6 +128,31 @@ def demo_voice_actions_menu(lang_code: str, voice_name: str):
     if has_demo:
         kb.add(InlineKeyboardButton("🗑 حذف دمو", callback_data=f"admin:demo:delete:{lang_code}:{voice_name}"))
     kb.add(InlineKeyboardButton("⬅️ بازگشت", callback_data=f"admin:demo:lang:{lang_code}"))
+    return kb
+
+
+def welcome_audio_languages_menu():
+    kb = InlineKeyboardMarkup(row_width=2)
+    row = []
+    for label, code in LANGS:
+        has_audio = bool(get_welcome_audio(code))
+        prefix = "✅ " if has_audio else ""
+        row.append(InlineKeyboardButton(f"{prefix}{label}", callback_data=f"admin:welcome_audio:lang:{code}"))
+        if len(row) == 2:
+            kb.row(*row)
+            row = []
+    if row:
+        kb.row(*row)
+    kb.add(InlineKeyboardButton("⬅️ بازگشت", callback_data="admin:settings"))
+    return kb
+
+
+def welcome_audio_actions_menu(lang_code: str):
+    has_audio = bool(get_welcome_audio(lang_code))
+    kb = InlineKeyboardMarkup()
+    if has_audio:
+        kb.add(InlineKeyboardButton("🗑 حذف پیام خوش‌آمد", callback_data=f"admin:welcome_audio:delete:{lang_code}"))
+    kb.add(InlineKeyboardButton("⬅️ بازگشت", callback_data="admin:welcome_audio"))
     return kb
 
 

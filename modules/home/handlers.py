@@ -16,6 +16,7 @@ from utils import (
     send_main_menu,
 )
 from modules.i18n import t
+from modules.welcome_audio import get_welcome_audio
 from .texts import MAIN, HELP
 from .keyboards import main_menu, _back_to_home_kb
 
@@ -227,6 +228,31 @@ def _trigger_onboarding(bot, user, chat_id: int) -> None:
     timer.start()
 
 
+def _maybe_send_welcome_audio(bot, user, chat_id: int, lang: str) -> None:
+    user_id = user["user_id"]
+    if not user.get("onboarding_pending"):
+        return
+    if db.get_welcome_audio_sent_at(user_id) > 0:
+        return
+    welcome_audio = get_welcome_audio(lang)
+    if not welcome_audio:
+        return
+    file_id = welcome_audio.get("file_id")
+    kind = welcome_audio.get("kind", "audio")
+    if not file_id:
+        return
+    try:
+        if kind == "voice":
+            bot.send_voice(chat_id, file_id)
+        elif kind == "document":
+            bot.send_document(chat_id, file_id)
+        else:
+            bot.send_audio(chat_id, file_id)
+    except Exception:
+        return
+    db.set_welcome_audio_sent_at(user_id, int(time.time()))
+
+
 def _apply_referral(bot, user, ref_code: str, chat_id: int, user_lang: str) -> None:
     ref_code = (ref_code or "").strip()
     if not ref_code:
@@ -320,9 +346,10 @@ def register(bot):
         if not _ensure_force_sub(bot, user["user_id"], msg.chat.id, msg.message_id, lang):
             return
 
+        db.log_menu_usage(user["user_id"], "home")
+        _maybe_send_welcome_audio(bot, user, msg.chat.id, lang)
         _handle_referral(bot, msg, user, lang)
         _consume_pending_referral(bot, user, msg.chat.id, lang)
-        db.log_menu_usage(user["user_id"], "home")
         send_main_menu(
             bot,
             user["user_id"],

@@ -91,7 +91,8 @@ def init_db():
             daily_bonus_reminded_at INTEGER DEFAULT 0,
             low_credit_prompted_at INTEGER DEFAULT 0,
             tts_creator_prompted_at INTEGER DEFAULT 0,
-            last_main_menu_id INTEGER DEFAULT 0
+            last_main_menu_id INTEGER DEFAULT 0,
+            welcome_audio_sent_at INTEGER DEFAULT 0
         )""")
         cur.execute("""CREATE TABLE IF NOT EXISTS kv_state(
             user_id INTEGER PRIMARY KEY,
@@ -1061,6 +1062,8 @@ def _migrate_users_table():
             cur.execute("ALTER TABLE users ADD COLUMN tts_creator_prompted_at INTEGER DEFAULT 0")
         if "last_main_menu_id" not in cols:
             cur.execute("ALTER TABLE users ADD COLUMN last_main_menu_id INTEGER DEFAULT 0")
+        if "welcome_audio_sent_at" not in cols:
+            cur.execute("ALTER TABLE users ADD COLUMN welcome_audio_sent_at INTEGER DEFAULT 0")
         con.commit()
 
 def get_or_create_user(u):
@@ -1134,7 +1137,8 @@ def get_user(user_id):
                 daily_bonus_reminded_at,
                 low_credit_prompted_at,
                 tts_creator_prompted_at,
-                last_main_menu_id
+                last_main_menu_id,
+                welcome_audio_sent_at
             FROM users WHERE user_id=?
             """,
             (user_id,),
@@ -1162,6 +1166,7 @@ def get_user(user_id):
             "low_credit_prompted_at",
             "tts_creator_prompted_at",
             "last_main_menu_id",
+            "welcome_audio_sent_at",
         ]
         return _normalize_user_dict(keys, row)
 
@@ -1200,12 +1205,40 @@ def get_welcome_sent_at(user_id: int) -> int:
             return 0
 
 
+def get_welcome_audio_sent_at(user_id: int) -> int:
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            "SELECT welcome_audio_sent_at FROM users WHERE user_id=?",
+            (user_id,),
+        )
+        row = cur.fetchone()
+        if not row:
+            return 0
+        value = row[0]
+        try:
+            return int(value or 0)
+        except (TypeError, ValueError):
+            return 0
+
+
 def set_welcome_sent_at(user_id: int, timestamp: int | None = None) -> None:
     ts = int(timestamp or time.time())
     with closing(sqlite3.connect(DB_PATH)) as con:
         cur = con.cursor()
         cur.execute(
             "UPDATE users SET welcome_sent_at=? WHERE user_id=?",
+            (ts, user_id),
+        )
+        con.commit()
+
+
+def set_welcome_audio_sent_at(user_id: int, timestamp: int | None = None) -> None:
+    ts = int(timestamp or time.time())
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            "UPDATE users SET welcome_audio_sent_at=? WHERE user_id=?",
             (ts, user_id),
         )
         con.commit()

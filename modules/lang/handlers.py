@@ -84,6 +84,14 @@ def register(bot):
             except ImportError:
                 _consume_pending_referral = None
 
+            try:
+                from modules.home.handlers import _maybe_send_welcome_audio
+            except ImportError:
+                _maybe_send_welcome_audio = None
+
+            if _maybe_send_welcome_audio:
+                _maybe_send_welcome_audio(bot, user, cq.message.chat.id, lang)
+
             if _consume_pending_referral:
                 _consume_pending_referral(bot, user, cq.message.chat.id, lang)
 
