@@ -289,7 +289,7 @@ def _prepare_chat_payload(
     top_p: Optional[float],
     max_tokens: Optional[int],
 ) -> Dict[str, Any]:
-    chosen_model = (model or GPT_MODEL or "gpt-5-mini").strip() or "gpt-5-mini"
+    chosen_model = (model or GPT_MODEL or "gpt-4o-mini").strip() or "gpt-4o-mini"
 
     def _supports_custom_temperature(value: Optional[float]) -> bool:
         if value is None:
@@ -322,7 +322,7 @@ def _prepare_assistant_payload(
     top_p: Optional[float],
     max_tokens: Optional[int],
 ) -> Dict[str, Any]:
-    chosen_model = (model or GPT_MODEL or "gpt-5-mini").strip() or "gpt-5-mini"
+    chosen_model = (model or GPT_MODEL or "gpt-4o-mini").strip() or "gpt-4o-mini"
 
     def _supports_custom_temperature(value: Optional[float]) -> bool:
         if value is None:

@@ -7,7 +7,7 @@
 - `GPT_API` یا `GPT_API_KEY` یا `OPENAI_API_KEY` — کلید دسترسی به سرویس GPT (الزامی).
 - `GPT_MODE` — نوع سرویس GPT؛ مقدار `assistant` از OpenAI Assistants/Responses استفاده می‌کند (پیش‌فرض `chat`).
 - `GPT_API_URL` — آدرس سرویس چت؛ برای حالت `assistant` به‌صورت پیش‌فرض `https://api.openai.com/v1/responses` است.
-- `GPT_MODEL` — نام مدل، پیش‌فرض `gpt-5-mini`.
+- `GPT_MODEL` — نام مدل، پیش‌فرض `gpt-4o-mini`.
 - `GPT_API_TIMEOUT` — زمان انتظار درخواست بر حسب ثانیه، پیش‌فرض `45`.
 - `GPT_API_KEY_HEADER` و `GPT_API_KEY_PREFIX` — در صورت نیاز به هدر سفارشی برای کلید.
 - `GPT_SYSTEM_PROMPT` — پیام سیستمی برای شروع هر مکالمه (پیش‌فرض: «You are Vexa GPT-5…»).
