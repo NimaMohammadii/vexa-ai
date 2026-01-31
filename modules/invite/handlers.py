@@ -1,6 +1,7 @@
 # modules/invite/handlers.py
 from __future__ import annotations
 
+import threading
 import time
 
 from telebot import TeleBot
@@ -78,6 +79,14 @@ def _claim_daily_reward(bot: TeleBot, cq: CallbackQuery, user_id: int, lang: str
             t("invite_daily_reward_success", lang).format(amount=amount_text),
             show_alert=True,
         )
+        if cq.message:
+            timer = threading.Timer(
+                2.0,
+                _delete_message,
+                args=(bot, cq.message.chat.id, cq.message.message_id),
+            )
+            timer.daemon = True
+            timer.start()
         return
 
     remaining = max(0, DAILY_REWARD_INTERVAL - (now - last_claim))
@@ -87,6 +96,13 @@ def _claim_daily_reward(bot: TeleBot, cq: CallbackQuery, user_id: int, lang: str
         t("invite_daily_reward_cooldown", lang).format(time=remaining_text),
         show_alert=True,
     )
+
+
+def _delete_message(bot: TeleBot, chat_id: int, message_id: int) -> None:
+    try:
+        bot.delete_message(chat_id, message_id)
+    except Exception:
+        pass
 
 
 def _format_remaining_time(seconds: int) -> str:

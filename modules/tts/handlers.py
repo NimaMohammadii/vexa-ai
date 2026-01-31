@@ -78,7 +78,7 @@ def safe_del(bot, chat_id, message_id):
     except Exception:
         pass
 
-_DEMO_AUTO_DELETE_SECONDS = 60
+_DEMO_AUTO_DELETE_SECONDS = 50
 
 def _demo_lock_key(user_id: int, voice_name: str) -> str:
     return f"tts_demo_lock:{user_id}:{voice_name}"
