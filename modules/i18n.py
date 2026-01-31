@@ -13,7 +13,7 @@ LABELS = {
         "de": "<b>📖 Vexa richtig nutzen</b>\n\n🔹 <b>Was sind Credits?</b>\nJeder Buchstabe, jedes Leerzeichen oder Zeichen = 1 Credit.\n\n🔹 <b>Gratis-Startguthaben</b>\nNach /start erhältst du <b>45 Credits</b>; genug für einen kurzen Test wie „Hi, ich bin Vexa“.\n\n🔹 <b>„Nicht genug Guthaben“?</b>\nSende einen kürzeren Text oder lade zuerst auf.\n\n🔹 <b>Tipps für eine natürliche Stimme</b>\nNutze Satzzeichen:\n• Trenne Sätze mit einem Punkt.\n• Verwende Kommas für kurze Pausen.\n• Fragen enden mit ?.\n• Für mehr Energie nutze !.\n\n✍️ <b>Beispiel</b>\n• ❌ „hallo wie gehts hoffe dir gehts gut“\n• ✅ „Hallo! Wie geht's? Hoffe, dir geht's gut.“",
         "fr": "<b>📖 Guide d'utilisation de Vexa</b>\n\n🔹 <b>Qu'est-ce qu'un crédit ?</b>\nChaque lettre, espace ou symbole = 1 crédit.\n\n🔹 <b>Crédits offerts au démarrage</b>\nAprès /start tu reçois <b>45 crédits</b>, de quoi tester « Salut, ici Vexa ».\n\n🔹 <b>Message « Crédits insuffisants » ?</b>\nEnvoie un texte plus court ou recharge d'abord.\n\n🔹 <b>Astuces pour une voix naturelle</b>\nUtilise la ponctuation :\n• Termine les phrases par un point.\n• Mets des virgules pour de courtes pauses.\n• Finis les questions par ?.\n• Ajoute ! pour l'énergie.\n\n✍️ <b>Exemple</b>\n• ❌ « salut ca va j'espère que tu vas bien »\n• ✅ « Salut ! Ça va ? J'espère que tu vas bien. »"
     },
-    "btn_gpt":    {"fa":"GPT-4o mini 🫧","en":"GPT-4o mini 🫧","ar":"GPT-4o mini 🫧","tr":"GPT-4o mini 🫧","ru":"GPT-4o mini 🫧","es":"GPT-4o mini 🫧","de":"GPT-4o mini 🎪","fr":"GPT-4o mini 🎪"},
+    "btn_gpt":    {"fa":"GPT-5 mini 🫧","en":"GPT-5 mini 🫧","ar":"GPT-5 mini 🫧","tr":"GPT-5 mini 🫧","ru":"GPT-5 mini 🫧","es":"GPT-5 mini 🫧","de":"GPT-5 mini 🎪","fr":"GPT-5 mini 🎪"},
     "btn_vexa_assistant": {
         "fa": "Vexa Assistant 🤖",
         "en": "Vexa Assistant 🤖",
@@ -1007,14 +1007,14 @@ def t(key: str, lang: str) -> str:
 
 LABELS.update({
     "gpt_open": {
-        "fa": "<b>GPT-5.2 آماده است 🙂</b>\n<b>پیامت رو پایین بنویس</b>",
-        "en": "<b>GPT-5.2 is ready 🙂</b>\n<b>Type your message below</b>",
-        "ar": "<b>GPT-5.2 جاهز 🙂</b>\n<b>اكتب رسالتك أدناه</b>",
-        "tr": "<b>GPT-5.2 hazır 🙂</b>\n<b>Mesajını aşağıya yaz</b>",
-        "ru": "<b>GPT-5.2 готов 🙂</b>\n<b>Напишите сообщение ниже</b>",
-        "es": "<b>GPT-5.2 está listo 🙂</b>\n<b>Escribe tu mensaje abajo</b>",
-        "de": "<b>GPT-5.2 ist bereit 🙂</b>\n<b>Gib deine Nachricht unten ein</b>",
-        "fr": "<b>GPT-5.2 est prêt 🙂</b>\n<b>Écris ton message ci-dessous</b>",
+        "fa": "<b>GPT-5 mini آماده است 🙂</b>\n<b>پیامت رو پایین بنویس</b>",
+        "en": "<b>GPT-5 mini is ready 🙂</b>\n<b>Type your message below</b>",
+        "ar": "<b>GPT-5 mini جاهز 🙂</b>\n<b>اكتب رسالتك أدناه</b>",
+        "tr": "<b>GPT-5 mini hazır 🙂</b>\n<b>Mesajını aşağıya yaz</b>",
+        "ru": "<b>GPT-5 mini готов 🙂</b>\n<b>Напишите сообщение ниже</b>",
+        "es": "<b>GPT-5 mini está listo 🙂</b>\n<b>Escribe tu mensaje abajo</b>",
+        "de": "<b>GPT-5 mini ist bereit 🙂</b>\n<b>Gib deine Nachricht unten ein</b>",
+        "fr": "<b>GPT-5 mini est prêt 🙂</b>\n<b>Écris ton message ci-dessous</b>",
     },
     "gpt_wait": {
         "fa": "🫧 <b>درحال فکر کردن...</b>",
