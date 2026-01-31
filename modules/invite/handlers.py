@@ -56,7 +56,14 @@ def open_invite(bot, cq):
     bonus = int(db.get_setting("BONUS_REFERRAL", "30") or 30)
     me = bot.get_me()
     ref_url = f"https://t.me/{me.username}?start={user['ref_code']}"
-    edit_or_send(bot, cq.message.chat.id, cq.message.message_id, INVITE_TEXT(lang, ref_url, bonus), invite_keyboard(lang))
+    invited_count = db.count_invited(user["ref_code"])
+    edit_or_send(
+        bot,
+        cq.message.chat.id,
+        cq.message.message_id,
+        INVITE_TEXT(lang, ref_url, bonus, user["user_id"], invited_count),
+        invite_keyboard(lang),
+    )
 
 
 def _claim_daily_reward(bot: TeleBot, cq: CallbackQuery, user_id: int, lang: str) -> None:

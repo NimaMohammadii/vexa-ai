@@ -919,7 +919,16 @@ LABELS = {
 
     # Invite
     "invite_title":   {"fa":"دعوت دوستان 🎁","en":"Invite Friends 🎁","ar":"دعوة الأصدقاء 🎁","tr":"Arkadaş Davet Et 🎁","ru":"Пригласить друзей 🎁","es":"Invitar amigos 🎁","de":"Freunde einladen 🎁","fr":"Inviter des amis 🎁"},
-    "invite_body":    {"fa":"لینک دعوت شما:\n<code>{ref}</code>\n\n<b>به ازای هر دعوت : +{bonus} کردیت</b>","en":"Your invite link:\n{ref}\nPer invite: {bonus} credits","ar":"رابط دعوتك:\n{ref}\nلكل دعوة: {bonus} رصيد","tr":"Davet bağlantın:\n{ref}\nDavet başına: {bonus} kredi","ru":"Ваша ссылка:\n{ref}\nЗа приглашение: {bonus} кредитов","es":"Tu enlace de invitación:\n{ref}\nPor invitación: {bonus} créditos","de":"Dein Einladungslink:\n{ref}\nPro Einladung: {bonus} Guthaben","fr":"Ton lien d'invitation :\n{ref}\nPar invitation : {bonus} crédits"},
+    "invite_body":    {
+        "fa":"شناسه عددی شما: <code>{user_id}</code>\nتعداد دعوت‌ها تا الان: <b>{invited}</b>\n\nلینک دعوت شما:\n<code>{ref}</code>\n\n<b>به ازای هر دعوت : +{bonus} کردیت</b>",
+        "en":"Your numeric ID: <code>{user_id}</code>\nInvites so far: <b>{invited}</b>\n\nYour invite link:\n<code>{ref}</code>\nPer invite: {bonus} credits",
+        "ar":"معرّفك الرقمي: <code>{user_id}</code>\nعدد الدعوات حتى الآن: <b>{invited}</b>\n\nرابط دعوتك:\n<code>{ref}</code>\nلكل دعوة: {bonus} رصيد",
+        "tr":"Sayısal kimliğin: <code>{user_id}</code>\nŞu ana kadar davet: <b>{invited}</b>\n\nDavet bağlantın:\n<code>{ref}</code>\nDavet başına: {bonus} kredi",
+        "ru":"Ваш числовой ID: <code>{user_id}</code>\nПриглашений на данный момент: <b>{invited}</b>\n\nВаша ссылка:\n<code>{ref}</code>\nЗа приглашение: {bonus} кредитов",
+        "es":"Tu ID numérico: <code>{user_id}</code>\nInvitaciones hasta ahora: <b>{invited}</b>\n\nTu enlace de invitación:\n<code>{ref}</code>\nPor invitación: {bonus} créditos",
+        "de":"Deine numerische ID: <code>{user_id}</code>\nEinladungen bisher: <b>{invited}</b>\n\nDein Einladungslink:\n<code>{ref}</code>\nPro Einladung: {bonus} Guthaben",
+        "fr":"Ton ID numérique : <code>{user_id}</code>\nInvitations jusqu’à présent : <b>{invited}</b>\n\nTon lien d'invitation :\n<code>{ref}</code>\nPar invitation : {bonus} crédits",
+    },
     "invite_daily_reward": {
         "fa": "دریافت پاداش روزانه 🎁",
         "en": "Claim daily reward 🎁",
