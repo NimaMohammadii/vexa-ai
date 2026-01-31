@@ -65,21 +65,25 @@ def keyboard(
         )
 
     voice_rows = list(_chunk(page_names, buttons_per_row))
-    nav_button = None
+    nav_buttons = []
+    if has_prev:
+        nav_buttons.append(
+            InlineKeyboardButton(t("tts_prev", lang), callback_data=f"{prefix}:page:prev")
+        )
     if has_next:
-        nav_button = InlineKeyboardButton(t("tts_next", lang), callback_data=f"{prefix}:page:next")
-    elif has_prev:
-        nav_button = InlineKeyboardButton(t("tts_prev", lang), callback_data=f"{prefix}:page:prev")
+        nav_buttons.append(
+            InlineKeyboardButton(t("tts_next", lang), callback_data=f"{prefix}:page:next")
+        )
 
-    if nav_button:
+    if nav_buttons:
         if voice_rows and len(voice_rows[-1]) == 1:
             for row in voice_rows[:-1]:
                 kb.row(*[_voice_button(n) for n in row])
-            kb.row(_voice_button(voice_rows[-1][0]), nav_button)
+            kb.row(_voice_button(voice_rows[-1][0]), *nav_buttons)
         else:
             for row in voice_rows:
                 kb.row(*[_voice_button(n) for n in row])
-            kb.row(InlineKeyboardButton(" ", callback_data=f"{prefix}:noop"), nav_button)
+            kb.row(*nav_buttons)
     else:
         for row in voice_rows:
             kb.row(*[_voice_button(n) for n in row])
