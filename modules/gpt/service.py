@@ -479,6 +479,10 @@ def extract_message_text(data: Dict[str, Any]) -> str:
                 sink.append(value.strip())
             return
         if isinstance(value, dict):
+            refusal_value = value.get("refusal")
+            if isinstance(refusal_value, str) and refusal_value.strip():
+                sink.append(refusal_value.strip())
+                return
             text_value = value.get("text")
             txt = ""
             if isinstance(text_value, str):
@@ -505,8 +509,14 @@ def extract_message_text(data: Dict[str, Any]) -> str:
     if isinstance(choices, list) and choices:
         first_choice = choices[0]
         if isinstance(first_choice, dict):
+            legacy_text = first_choice.get("text")
+            if isinstance(legacy_text, str) and legacy_text.strip():
+                return legacy_text.strip()
             message = first_choice.get("message")
             if isinstance(message, dict):
+                refusal = message.get("refusal")
+                if isinstance(refusal, str) and refusal.strip():
+                    return refusal.strip()
                 content = message.get("content")
                 texts: List[str] = []
                 _collect_text(content, texts)
