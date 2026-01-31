@@ -78,7 +78,7 @@ _DEFAULT_ASSISTANT_API_URL = "https://api.openai.com/v1/responses"
 _default_url = _DEFAULT_ASSISTANT_API_URL if GPT_MODE == "assistant" else _DEFAULT_CHAT_API_URL
 
 GPT_API_URL = (os.getenv("GPT_API_URL") or _default_url).strip() or _default_url
-GPT_MODEL = (os.getenv("GPT_MODEL") or "gpt-5-nano").strip() or "gpt-5-nano"
+GPT_MODEL = (os.getenv("GPT_MODEL") or "gpt-4o-mini").strip() or "gpt-4o-mini"
 GPT_API_TIMEOUT = _parse_float(os.getenv("GPT_API_TIMEOUT", "45"), 45.0)
 GPT_API_KEY_HEADER = (os.getenv("GPT_API_KEY_HEADER") or "Authorization").strip() or "Authorization"
 GPT_API_KEY_PREFIX = os.getenv("GPT_API_KEY_PREFIX")
@@ -106,8 +106,8 @@ VEXA_ASSISTANT_API_URL = (
 ).strip() or _DEFAULT_VEXA_ASSISTANT_API_URL
 
 VEXA_ASSISTANT_MODEL = (
-    os.getenv("VEXA_ASSISTANT_MODEL") or "gpt-5-nano"
-).strip() or "gpt-5-nano"
+    os.getenv("VEXA_ASSISTANT_MODEL") or "gpt-4o-mini"
+).strip() or "gpt-4o-mini"
 
 _DEFAULT_SYSTEM_PROMPT = (
     "You are Vexa , the built-in assistant of Vexa. Always reply in the user's language with concise answers that feel warm, caring, and emotionally aware. "
