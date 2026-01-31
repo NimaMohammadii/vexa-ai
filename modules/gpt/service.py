@@ -289,27 +289,18 @@ def _prepare_chat_payload(
     top_p: Optional[float],
     max_tokens: Optional[int],
 ) -> Dict[str, Any]:
-    chosen_model = (model or GPT_MODEL or "gpt-4o-mini").strip() or "gpt-4o-mini"
-
-    def _supports_custom_temperature(value: Optional[float]) -> bool:
-        if value is None:
-            return False
-        if chosen_model.startswith("gpt-5"):
-            return value == 1
-        return True
+    chosen_model = (model or GPT_MODEL or "gpt-5-nano").strip() or "gpt-5-nano"
 
     payload: Dict[str, Any] = {
         "model": chosen_model,
         "messages": normalised,
+        "temperature": temperature if temperature is not None else GPT_TEMPERATURE,
         "top_p": top_p if top_p is not None else GPT_TOP_P,
     }
-    resolved_temperature = temperature if temperature is not None else GPT_TEMPERATURE
-    if _supports_custom_temperature(resolved_temperature):
-        payload["temperature"] = resolved_temperature
 
     limit = max_tokens if max_tokens is not None else GPT_MAX_TOKENS
     if limit > 0:
-        payload["max_completion_tokens"] = limit
+        payload["max_tokens"] = limit
 
     return payload
 
@@ -322,23 +313,14 @@ def _prepare_assistant_payload(
     top_p: Optional[float],
     max_tokens: Optional[int],
 ) -> Dict[str, Any]:
-    chosen_model = (model or GPT_MODEL or "gpt-4o-mini").strip() or "gpt-4o-mini"
+    chosen_model = (model or GPT_MODEL or "gpt-5-nano").strip() or "gpt-5-nano"
 
-    def _supports_custom_temperature(value: Optional[float]) -> bool:
-        if value is None:
-            return False
-        if chosen_model.startswith("gpt-5"):
-            return value == 1
-        return True
-
-    def _normalise_assistant_content(content: Any, role: str) -> Any:
-        text_type = "output_text" if role == "assistant" else "input_text"
-
+    def _normalise_assistant_content(content: Any) -> Any:
         if isinstance(content, str):
             text = content.strip()
             if not text:
                 return ""
-            return [{"type": text_type, "text": text}]
+            return [{"type": "input_text", "text": text}]
 
         if isinstance(content, list):
             parts: List[Dict[str, Any]] = []
@@ -349,7 +331,7 @@ def _prepare_assistant_payload(
                 if part_type == "text":
                     text = item.get("text") or item.get("content") or item.get("value") or ""
                     if str(text).strip():
-                        parts.append({"type": text_type, "text": str(text)})
+                        parts.append({"type": "input_text", "text": str(text)})
                     continue
                 if part_type == "image_url":
                     image_url = item.get("image_url")
@@ -361,7 +343,7 @@ def _prepare_assistant_payload(
                     if url:
                         parts.append({"type": "input_image", "image_url": url})
                     continue
-                if part_type in {"input_text", "input_image", "output_text"}:
+                if part_type in {"input_text", "input_image"}:
                     parts.append(item)
                     continue
                 parts.append(item)
@@ -375,18 +357,13 @@ def _prepare_assistant_payload(
         "input": [
             {
                 "role": item.get("role", "assistant"),
-                "content": _normalise_assistant_content(
-                    item.get("content", ""),
-                    str(item.get("role", "assistant")).strip().lower(),
-                ),
+                "content": _normalise_assistant_content(item.get("content", "")),
             }
             for item in normalised
         ],
+        "temperature": temperature if temperature is not None else GPT_TEMPERATURE,
         "top_p": top_p if top_p is not None else GPT_TOP_P,
     }
-    resolved_temperature = temperature if temperature is not None else GPT_TEMPERATURE
-    if _supports_custom_temperature(resolved_temperature):
-        payload["temperature"] = resolved_temperature
 
     limit = max_tokens if max_tokens is not None else GPT_MAX_TOKENS
     if limit > 0:
@@ -473,55 +450,16 @@ def extract_message_text(data: Dict[str, Any]) -> str:
     if not isinstance(data, dict):
         return ""
 
-    def _collect_text(value: Any, sink: List[str]) -> None:
-        if isinstance(value, str):
-            if value.strip():
-                sink.append(value.strip())
-            return
-        if isinstance(value, dict):
-            refusal_value = value.get("refusal")
-            if isinstance(refusal_value, str) and refusal_value.strip():
-                sink.append(refusal_value.strip())
-                return
-            text_value = value.get("text")
-            txt = ""
-            if isinstance(text_value, str):
-                txt = text_value
-            elif isinstance(text_value, dict):
-                for key in ("value", "content", "text"):
-                    nested = text_value.get(key)
-                    if isinstance(nested, str):
-                        txt = nested
-                        break
-            elif isinstance(value.get("value"), str):
-                txt = value.get("value", "")
-            elif isinstance(value.get("content"), str):
-                txt = value.get("content", "")
-            if isinstance(txt, str) and txt.strip():
-                sink.append(txt.strip())
-            return
-        if isinstance(value, list):
-            for item in value:
-                _collect_text(item, sink)
-
     # Legacy chat-completions format
     choices = data.get("choices")
     if isinstance(choices, list) and choices:
         first_choice = choices[0]
         if isinstance(first_choice, dict):
-            legacy_text = first_choice.get("text")
-            if isinstance(legacy_text, str) and legacy_text.strip():
-                return legacy_text.strip()
             message = first_choice.get("message")
             if isinstance(message, dict):
-                refusal = message.get("refusal")
-                if isinstance(refusal, str) and refusal.strip():
-                    return refusal.strip()
                 content = message.get("content")
-                texts: List[str] = []
-                _collect_text(content, texts)
-                if texts:
-                    return "\n".join(texts).strip()
+                if isinstance(content, str) and content.strip():
+                    return content
 
     # Responses API helpers
     output_text = data.get("output_text")
@@ -536,7 +474,18 @@ def extract_message_text(data: Dict[str, Any]) -> str:
         for block in blocks:
             if not isinstance(block, dict):
                 continue
-            _collect_text(block, texts)
+            if isinstance(block.get("text"), str):
+                txt = block.get("text", "")
+            elif isinstance(block.get("value"), str):
+                txt = block.get("value", "")
+            elif isinstance(block.get("content"), str):
+                txt = block.get("content", "")
+            else:
+                txt = ""
+            if not txt and block.get("type") == "output_text" and isinstance(block.get("text"), str):
+                txt = block.get("text", "")
+            if isinstance(txt, str) and txt.strip():
+                texts.append(txt.strip())
 
     output = data.get("output")
     if isinstance(output, list):
@@ -544,18 +493,21 @@ def extract_message_text(data: Dict[str, Any]) -> str:
             if not isinstance(item, dict):
                 continue
             content = item.get("content")
-            _collect_text(content, texts)
+            if isinstance(content, str) and content.strip():
+                texts.append(content.strip())
             _extract_from_blocks(content)
             message = item.get("message")
             if isinstance(message, dict):
                 msg_content = message.get("content")
-                _collect_text(msg_content, texts)
+                if isinstance(msg_content, str) and msg_content.strip():
+                    texts.append(msg_content.strip())
                 _extract_from_blocks(msg_content)
 
     message = data.get("message")
     if isinstance(message, dict):
         msg_content = message.get("content")
-        _collect_text(msg_content, texts)
+        if isinstance(msg_content, str) and msg_content.strip():
+            texts.append(msg_content.strip())
         _extract_from_blocks(msg_content)
 
     if texts:
