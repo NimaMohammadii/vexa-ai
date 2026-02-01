@@ -1,5 +1,7 @@
 # modules/admin/handlers.py
 from html import escape
+from io import BytesIO
+import datetime
 
 from telebot import types
 
@@ -19,6 +21,7 @@ from .texts import (
     ASK_UID_MSG, ASK_TXT_MSG, STATE_MSG_UID, STATE_MSG_TXT,
     ASK_LANG_CAST, ASK_TXT_CAST, STATE_CAST_LANG, STATE_CAST_TXT,
     ASK_UID_LOOKUP, STATE_USER_LOOKUP,
+    ASK_CLONE_TTS, STATE_CLONE_TTS,
     ASK_BONUS, STATE_SET_BONUS,
     ASK_FREE,  STATE_SET_FREE,
     ASK_TG,    STATE_SET_TG,
@@ -46,9 +49,12 @@ from .keyboards import (
     demo_voice_actions_menu,
     welcome_audio_languages_menu,
     welcome_audio_actions_menu,
+    voice_clone_menu,
+    voice_clone_actions_menu,
 )
 from modules.lang.keyboards import LANGS
 from modules.i18n import t
+from modules.tts.service import synthesize
 from modules.tts.settings import set_demo_audio, clear_demo_audio
 from modules.welcome_audio import set_welcome_audio, clear_welcome_audio
 
@@ -330,11 +336,19 @@ def register(bot):
                 daily_reward_users = 0
                 daily_reward_users_24h = 0
                 daily_reward_users_7d = 0
+            try:
+                clone_users = db.count_voice_clone_users()
+                clone_total = db.count_voice_clones()
+            except AttributeError:
+                clone_users = 0
+                clone_total = 0
             txt = (f"📊 <b>آمار</b>\n\n"
                    f"👥 کل کاربران: <b>{total}</b>\n"
                    f"⚡️ فعال ۲۴ساعت: <b>{active24}</b>\n"
                    f"🖼️ کاربران تولید تصویر: <b>{image_users}</b>\n"
                    f"🤖 کاربران GPT: <b>{gpt_users}</b>\n"
+                   f"🧬 کاربران Voice Clone: <b>{clone_users}</b>\n"
+                   f"🎙 تعداد صداهای کلون: <b>{clone_total}</b>\n"
                    f"🎁 پاداش روزانه (کل): <b>{daily_reward_users}</b>\n"
                    f"   ├ ۲۴ ساعت گذشته: <b>{daily_reward_users_24h}</b>\n"
                    f"   └ ۷ روز گذشته: <b>{daily_reward_users_7d}</b>")
@@ -349,6 +363,78 @@ def register(bot):
                 edit_or_send(bot, cq.message.chat.id, cq.message.message_id, "👥 لیست کاربران:", users_menu(page))
             else:
                 edit_or_send(bot, cq.message.chat.id, cq.message.message_id, "👥 لیست کاربران:", users_menu())
+            return
+
+        if action == "clone":
+            if len(p) >= 4 and p[2] in ("prev", "next"):
+                page = int(p[3])
+                page = max(0, page - 1) if p[2] == "prev" else page + 1
+                clone_users = db.count_voice_clone_users()
+                clone_total = db.count_voice_clones()
+                txt = (
+                    "🧬 <b>Voice Clone</b>\n\n"
+                    f"👥 کاربران دارای Voice Clone: <b>{clone_users}</b>\n"
+                    f"🎙 تعداد صداها: <b>{clone_total}</b>\n\n"
+                    "برای مشاهده جزئیات هر صدا روی آن بزنید."
+                )
+                edit_or_send(bot, cq.message.chat.id, cq.message.message_id, txt, voice_clone_menu(page))
+                return
+            if len(p) >= 4 and p[2] == "voice":
+                voice_id = p[3]
+                info = db.get_voice_clone_by_id(voice_id)
+                if not info:
+                    bot.answer_callback_query(cq.id, "صدا یافت نشد.")
+                    return
+                username = info.get("username") or ""
+                first_name = info.get("first_name") or "-"
+                created_at = info.get("created_at") or 0
+                created_text = "-"
+                if created_at:
+                    created_text = datetime.datetime.fromtimestamp(created_at).strftime("%Y-%m-%d %H:%M")
+                username_line = f"@{escape(username)}" if username else "-"
+                txt = (
+                    "🧬 <b>جزئیات Voice Clone</b>\n\n"
+                    f"🎙 صدا: <b>{escape(info.get('voice_name') or '-')}</b>\n"
+                    f"👤 کاربر: <b>{info.get('user_id')}</b>\n"
+                    f"🔗 یوزرنیم: {username_line}\n"
+                    f"🧾 نام: {escape(first_name)}\n"
+                    f"🕒 زمان ثبت: <b>{created_text}</b>\n"
+                    f"🆔 Voice ID: <code>{escape(info.get('voice_id') or '')}</code>"
+                )
+                edit_or_send(
+                    bot,
+                    cq.message.chat.id,
+                    cq.message.message_id,
+                    txt,
+                    voice_clone_actions_menu(info["voice_id"], info["user_id"]),
+                )
+                return
+            if len(p) >= 4 and p[2] == "use":
+                voice_id = p[3]
+                info = db.get_voice_clone_by_id(voice_id)
+                if not info:
+                    bot.answer_callback_query(cq.id, "صدا یافت نشد.")
+                    return
+                db.clear_state(cq.from_user.id)
+                db.set_state(cq.from_user.id, f"{STATE_CLONE_TTS}:{voice_id}")
+                txt = f"{ASK_CLONE_TTS}\n\n🎙 صدا: <b>{escape(info.get('voice_name') or '-') }</b>"
+                edit_or_send(
+                    bot,
+                    cq.message.chat.id,
+                    cq.message.message_id,
+                    txt,
+                    voice_clone_actions_menu(info["voice_id"], info["user_id"]),
+                )
+                return
+            clone_users = db.count_voice_clone_users()
+            clone_total = db.count_voice_clones()
+            txt = (
+                "🧬 <b>Voice Clone</b>\n\n"
+                f"👥 کاربران دارای Voice Clone: <b>{clone_users}</b>\n"
+                f"🎙 تعداد صداها: <b>{clone_total}</b>\n\n"
+                "برای مشاهده جزئیات هر صدا روی آن بزنید."
+            )
+            edit_or_send(bot, cq.message.chat.id, cq.message.message_id, txt, voice_clone_menu())
             return
 
         if action == "lang_users":
@@ -1025,6 +1111,38 @@ def register(bot):
                 pass
         db.clear_state(msg.from_user.id)
         bot.reply_to(msg, f"{DONE}\n📣 ارسال شد به {sent} کاربر.")
+
+    @bot.message_handler(func=lambda m: (db.get_state(m.from_user.id) or "").startswith(STATE_CLONE_TTS), content_types=['text'])
+    def s_clone_tts(msg: types.Message):
+        if not _is_owner(msg.from_user): return
+        state_raw = db.get_state(msg.from_user.id) or ""
+        parts = state_raw.split(":")
+        voice_id = parts[-1] if len(parts) >= 4 else ""
+        text = (msg.text or "").strip()
+        if not voice_id:
+            db.clear_state(msg.from_user.id)
+            bot.reply_to(msg, "⚠️ وضعیت نامعتبر.")
+            return
+        if not text:
+            bot.reply_to(msg, "❌ متن خالی است.")
+            return
+
+        status = bot.reply_to(msg, "⏳ در حال ساخت صدا...")
+        try:
+            audio_data = synthesize(text, voice_id, "audio/mpeg")
+            bio = BytesIO(audio_data)
+            bio.name = "Vexa-Admin-Clone.mp3"
+            bot.send_document(msg.chat.id, document=bio)
+            bot.reply_to(msg, DONE)
+            db.clear_state(msg.from_user.id)
+        except Exception:
+            print("Error generating clone audio:", traceback.format_exc())
+            bot.reply_to(msg, "❌ خطا در ساخت صدا.")
+        finally:
+            try:
+                bot.delete_message(status.chat.id, status.message_id)
+            except Exception:
+                pass
 
     # تنظیمات
     @bot.message_handler(func=lambda m: db.get_state(m.from_user.id) == STATE_SET_BONUS, content_types=['text', 'photo', 'document'])

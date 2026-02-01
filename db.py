@@ -313,6 +313,81 @@ def delete_user_voice_by_voice_id(voice_id:str):
         con.commit()
         return cur.rowcount > 0
 
+def count_voice_clone_users() -> int:
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute("SELECT COUNT(DISTINCT user_id) FROM user_voices")
+        row = cur.fetchone()
+        return row[0] if row else 0
+
+def count_voice_clones() -> int:
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute("SELECT COUNT(*) FROM user_voices")
+        row = cur.fetchone()
+        return row[0] if row else 0
+
+def list_voice_clones(limit: int = 20, offset: int = 0):
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            """
+            SELECT uv.user_id,
+                   uv.voice_name,
+                   uv.voice_id,
+                   uv.created_at,
+                   u.username,
+                   u.first_name
+              FROM user_voices AS uv
+         LEFT JOIN users AS u ON u.user_id = uv.user_id
+          ORDER BY uv.created_at DESC, uv.id DESC
+             LIMIT ? OFFSET ?
+            """,
+            (limit, offset),
+        )
+        rows = cur.fetchall() or []
+    return [
+        {
+            "user_id": row[0],
+            "voice_name": row[1] or "",
+            "voice_id": row[2] or "",
+            "created_at": row[3] or 0,
+            "username": row[4] or "",
+            "first_name": row[5] or "",
+        }
+        for row in rows
+    ]
+
+def get_voice_clone_by_id(voice_id: str):
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            """
+            SELECT uv.user_id,
+                   uv.voice_name,
+                   uv.voice_id,
+                   uv.created_at,
+                   u.username,
+                   u.first_name
+              FROM user_voices AS uv
+         LEFT JOIN users AS u ON u.user_id = uv.user_id
+             WHERE uv.voice_id=?
+             LIMIT 1
+            """,
+            (voice_id,),
+        )
+        row = cur.fetchone()
+    if not row:
+        return None
+    return {
+        "user_id": row[0],
+        "voice_name": row[1] or "",
+        "voice_id": row[2] or "",
+        "created_at": row[3] or 0,
+        "username": row[4] or "",
+        "first_name": row[5] or "",
+    }
+
 # 🟡 (بقیه توابع قبلی بدون تغییر می‌مونن)
 def get_setting(key, default=None):
     with closing(sqlite3.connect(DB_PATH)) as con:
