@@ -30,6 +30,7 @@ def admin_menu():
         InlineKeyboardButton("🖼️ کاربران تصویر", callback_data="admin:image_users"),
         InlineKeyboardButton("🤖 کاربران GPT", callback_data="admin:gpt_users"),
     )
+    kb.add(InlineKeyboardButton("🧬 کاربران Voice Clone", callback_data="admin:clone"))
     kb.add(InlineKeyboardButton("🎁 پاداش روزانه", callback_data="admin:daily_reward_users"))
     kb.row(
         InlineKeyboardButton("➕ افزودن کردیت", callback_data="admin:add"),
@@ -61,6 +62,40 @@ def cast_lang_menu():
     if row:
         kb.row(*row)
     kb.add(InlineKeyboardButton("⬅️ بازگشت", callback_data="admin:menu"))
+    return kb
+
+
+def voice_clone_menu(page: int = 0, page_size: int = 8):
+    page = max(0, int(page))
+    offset = page * page_size
+    rows = db.list_voice_clones(limit=page_size, offset=offset)
+
+    kb = InlineKeyboardMarkup()
+    if not rows:
+        kb.add(InlineKeyboardButton("— صدای کلونی ثبت نشده —", callback_data="admin:noop"))
+    else:
+        for item in rows:
+            label = f"🎙 {item['voice_name']} · {item['user_id']}"
+            if item["username"]:
+                label += f" · @{item['username']}"
+            kb.add(InlineKeyboardButton(label, callback_data=f"admin:clone:voice:{item['voice_id']}"))
+
+    nav = []
+    if page > 0:
+        nav.append(InlineKeyboardButton("◀️ قبلی", callback_data=f"admin:clone:prev:{page}"))
+    if len(rows) == page_size:
+        nav.append(InlineKeyboardButton("بعدی ▶️", callback_data=f"admin:clone:next:{page}"))
+    if nav:
+        kb.row(*nav)
+    kb.add(InlineKeyboardButton("⬅️ بازگشت", callback_data="admin:menu"))
+    return kb
+
+
+def voice_clone_actions_menu(voice_id: str, user_id: int):
+    kb = InlineKeyboardMarkup()
+    kb.add(InlineKeyboardButton("🎙 استفاده از صدا", callback_data=f"admin:clone:use:{voice_id}"))
+    kb.add(InlineKeyboardButton("👤 پروفایل کاربر", callback_data=f"admin:user:{user_id}"))
+    kb.add(InlineKeyboardButton("⬅️ بازگشت", callback_data="admin:clone"))
     return kb
 
 # ————— منوی تنظیمات —————
