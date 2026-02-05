@@ -124,6 +124,7 @@ def settings_menu():
     kb.add(InlineKeyboardButton(f"🔐 عضویت اجباری: {mode_label}", callback_data="admin:toggle:fs"))
     kb.add(InlineKeyboardButton("🧩 دسترسی بخش‌ها", callback_data="admin:features"))
     kb.add(InlineKeyboardButton("🔐 عضویت اجباری بر اساس زبان", callback_data="admin:fs_lang:list"))
+    kb.add(InlineKeyboardButton("🎛 مدیریت صداهای ربات", callback_data="admin:global_voices"))
     kb.add(InlineKeyboardButton("🎧 دموهای صدا", callback_data="admin:demo"))
     kb.add(InlineKeyboardButton("🎙 پیام صوتی خوش‌آمد", callback_data="admin:welcome_audio"))
     kb.add(InlineKeyboardButton(f"🔊 صدای ربات: {sound_label}", callback_data="admin:toggle:sound"))
@@ -498,6 +499,80 @@ def user_voice_list_menu(uid: int, lang_code: str, page: int = 0, page_size: int
         InlineKeyboardButton(
             "⬅️ بازگشت",
             callback_data=f"admin:user_voices:{uid}",
+        )
+    )
+    return kb
+
+def global_voice_languages_menu():
+    kb = InlineKeyboardMarkup()
+    for row in _chunk(LANGS, 2):
+        kb.row(
+            *[
+                InlineKeyboardButton(
+                    label,
+                    callback_data=f"admin:global_voices:lang:{code}",
+                )
+                for label, code in row
+            ]
+        )
+    kb.add(
+        InlineKeyboardButton(
+            "🎧 صداهای OpenAI",
+            callback_data="admin:global_voices:lang:openai",
+        )
+    )
+    kb.add(InlineKeyboardButton("⬅️ بازگشت", callback_data="admin:settings"))
+    return kb
+
+
+def global_voice_list_menu(lang_code: str, page: int = 0, page_size: int = 10):
+    page = max(0, int(page))
+    disabled = db.list_global_disabled_voices(lang_code)
+
+    if lang_code == "openai":
+        voices = list(OPENAI_VOICES.keys())
+    else:
+        voices = list(get_voices(lang_code).keys())
+
+    voices.sort()
+    offset = page * page_size
+    page_items = voices[offset : offset + page_size]
+
+    kb = InlineKeyboardMarkup()
+    if not voices:
+        kb.add(InlineKeyboardButton("— صدایی یافت نشد —", callback_data="admin:noop"))
+    else:
+        for name in page_items:
+            status = "🚫" if name in disabled else "✅"
+            kb.add(
+                InlineKeyboardButton(
+                    f"{status} {name}",
+                    callback_data=f"admin:global_voices:toggle:{lang_code}:{name}",
+                )
+            )
+
+    nav = []
+    if page > 0:
+        nav.append(
+            InlineKeyboardButton(
+                "◀️ قبلی",
+                callback_data=f"admin:global_voices:page:{lang_code}:{page - 1}",
+            )
+        )
+    if len(page_items) == page_size:
+        nav.append(
+            InlineKeyboardButton(
+                "بعدی ▶️",
+                callback_data=f"admin:global_voices:page:{lang_code}:{page + 1}",
+            )
+        )
+    if nav:
+        kb.row(*nav)
+
+    kb.add(
+        InlineKeyboardButton(
+            "⬅️ بازگشت",
+            callback_data="admin:global_voices",
         )
     )
     return kb

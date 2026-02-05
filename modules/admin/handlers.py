@@ -53,6 +53,8 @@ from .keyboards import (
     voice_clone_actions_menu,
     user_voice_languages_menu,
     user_voice_list_menu,
+    global_voice_languages_menu,
+    global_voice_list_menu,
 )
 from modules.lang.keyboards import LANGS
 from modules.i18n import t
@@ -617,6 +619,60 @@ def register(bot):
                 cq.message.message_id,
                 "🎙 زبان صدا را انتخاب کنید:",
                 user_voice_languages_menu(uid),
+            )
+            return
+
+        if action == "global_voices":
+            if len(p) >= 4 and p[2] == "lang":
+                lang_code = p[3]
+                label = "صداهای OpenAI" if lang_code == "openai" else LANG_LABELS.get(lang_code, lang_code)
+                edit_or_send(
+                    bot,
+                    cq.message.chat.id,
+                    cq.message.message_id,
+                    f"🎙 مدیریت صداهای ربات ({label})",
+                    global_voice_list_menu(lang_code),
+                )
+                return
+            if len(p) >= 4 and p[2] == "toggle":
+                lang_code = p[3]
+                voice_name = ":".join(p[4:]).strip()
+                if not voice_name:
+                    bot.answer_callback_query(cq.id, "❌ نامعتبر")
+                    return
+                disabled = db.list_global_disabled_voices(lang_code)
+                if voice_name in disabled:
+                    db.enable_global_voice(lang_code, voice_name)
+                    bot.answer_callback_query(cq.id, "✅ فعال شد.")
+                else:
+                    db.disable_global_voice(lang_code, voice_name)
+                    bot.answer_callback_query(cq.id, "🚫 غیرفعال شد.")
+                edit_or_send(
+                    bot,
+                    cq.message.chat.id,
+                    cq.message.message_id,
+                    "🎙 مدیریت صداهای ربات",
+                    global_voice_list_menu(lang_code),
+                )
+                return
+            if len(p) >= 4 and p[2] == "page":
+                lang_code = p[3]
+                page = int(p[4]) if len(p) >= 5 and p[4].isdigit() else 0
+                edit_or_send(
+                    bot,
+                    cq.message.chat.id,
+                    cq.message.message_id,
+                    "🎙 مدیریت صداهای ربات",
+                    global_voice_list_menu(lang_code, page=page),
+                )
+                return
+
+            edit_or_send(
+                bot,
+                cq.message.chat.id,
+                cq.message.message_id,
+                "🎙 زبان صدا را انتخاب کنید:",
+                global_voice_languages_menu(),
             )
             return
 

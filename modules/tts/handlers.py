@@ -85,6 +85,10 @@ def _get_disabled_voice_sets(user_id: int, lang: str) -> tuple[set[str], set[str
     except Exception:
         disabled_default = set()
     try:
+        disabled_default |= db.list_global_disabled_voices(lang)
+    except Exception:
+        disabled_default = disabled_default
+    try:
         disabled_custom = db.list_disabled_voices(user_id, "custom")
     except Exception:
         disabled_custom = set()

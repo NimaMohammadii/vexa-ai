@@ -160,6 +160,14 @@ def init_db():
             )"""
         )
         cur.execute(
+            """CREATE TABLE IF NOT EXISTS global_voice_disabled(
+                lang TEXT NOT NULL,
+                voice_name TEXT NOT NULL,
+                disabled_at INTEGER NOT NULL,
+                PRIMARY KEY (lang, voice_name)
+            )"""
+        )
+        cur.execute(
             """CREATE TABLE IF NOT EXISTS image_generations(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
@@ -440,6 +448,54 @@ def enable_user_voice(user_id: int, lang: str, voice_name: str) -> None:
         cur.execute(
             "DELETE FROM user_voice_disabled WHERE user_id=? AND lang=? AND voice_name=?",
             (user_id, lang, voice_name),
+        )
+        con.commit()
+
+
+# -------------------
+# Global Voice Access
+# -------------------
+def list_global_disabled_voices(lang: str) -> set[str]:
+    lang = (lang or "").strip()
+    if not lang:
+        return set()
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            "SELECT voice_name FROM global_voice_disabled WHERE lang=?",
+            (lang,),
+        )
+        rows = cur.fetchall() or []
+    return {row[0] for row in rows if row and row[0]}
+
+
+def disable_global_voice(lang: str, voice_name: str) -> None:
+    lang = (lang or "").strip()
+    voice_name = (voice_name or "").strip()
+    if not lang or not voice_name:
+        return
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            """INSERT INTO global_voice_disabled(lang, voice_name, disabled_at)
+               VALUES(?,?,?)
+               ON CONFLICT(lang, voice_name)
+               DO UPDATE SET disabled_at=excluded.disabled_at""",
+            (lang, voice_name, int(time.time())),
+        )
+        con.commit()
+
+
+def enable_global_voice(lang: str, voice_name: str) -> None:
+    lang = (lang or "").strip()
+    voice_name = (voice_name or "").strip()
+    if not lang or not voice_name:
+        return
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            "DELETE FROM global_voice_disabled WHERE lang=? AND voice_name=?",
+            (lang, voice_name),
         )
         con.commit()
 

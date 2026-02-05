@@ -63,8 +63,20 @@ def _parse_state(raw: str):
 def _make_state(menu_id: int, voice_name: str) -> str:
     return f"{STATE_WAIT_TEXT}:{menu_id}:{voice_name}"
 
+def _get_disabled_openai_voices(user_id: int) -> set[str]:
+    try:
+        disabled = db.list_disabled_voices(user_id, "openai")
+    except Exception:
+        disabled = set()
+    try:
+        disabled |= db.list_global_disabled_voices("openai")
+    except Exception:
+        disabled = disabled
+    return disabled
+
+
 def _resolve_openai_voice(user_id: int, desired_voice: str) -> str | None:
-    disabled = db.list_disabled_voices(user_id, "openai")
+    disabled = _get_disabled_openai_voices(user_id)
     if desired_voice in VOICES and desired_voice not in disabled:
         return desired_voice
     for name in VOICES.keys():
@@ -135,7 +147,7 @@ def register(bot):
             if name not in VOICES:
                 bot.answer_callback_query(cq.id, t("tts_voice_not_found", lang))
                 return
-            if name in db.list_disabled_voices(user["user_id"], "openai"):
+            if name in _get_disabled_openai_voices(user["user_id"]):
                 bot.answer_callback_query(cq.id, t("tts_voice_disabled", lang))
                 return
 

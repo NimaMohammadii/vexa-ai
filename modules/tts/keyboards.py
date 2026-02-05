@@ -55,7 +55,12 @@ def keyboard(
         except Exception:
             disabled_default = set()
             disabled_custom = set()
+    try:
+        global_disabled = db.list_global_disabled_voices(filter_lang)
+    except Exception:
+        global_disabled = set()
 
+    disabled_default = disabled_default | global_disabled
     default_names = [name for name in default_names if name not in disabled_default]
     custom_names = [voice[0] for voice in custom_voices] if allow_custom else []
     custom_names = [name for name in custom_names if name not in disabled_custom]
