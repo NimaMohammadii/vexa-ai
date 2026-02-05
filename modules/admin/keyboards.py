@@ -108,6 +108,9 @@ def settings_menu():
     s = db.get_settings()
     mode = (s.get("FORCE_SUB_MODE") or "none").lower()
     mode_label = {"none": "خاموش", "new": "فقط جدیدها", "all": "همه"}.get(mode, mode)
+    sound_raw = (s.get("SOUND_ENABLED") or "1").strip().lower()
+    sound_enabled = sound_raw in {"1", "true", "yes", "on", "enabled"}
+    sound_label = "✅ فعال" if sound_enabled else "❌ غیرفعال"
 
     kb = InlineKeyboardMarkup()
     kb.row(
@@ -123,6 +126,7 @@ def settings_menu():
     kb.add(InlineKeyboardButton("🔐 عضویت اجباری بر اساس زبان", callback_data="admin:fs_lang:list"))
     kb.add(InlineKeyboardButton("🎧 دموهای صدا", callback_data="admin:demo"))
     kb.add(InlineKeyboardButton("🎙 پیام صوتی خوش‌آمد", callback_data="admin:welcome_audio"))
+    kb.add(InlineKeyboardButton(f"🔊 صدای ربات: {sound_label}", callback_data="admin:toggle:sound"))
     kb.add(InlineKeyboardButton("⬅️ بازگشت", callback_data="admin:menu"))
     return kb
 

@@ -13,6 +13,7 @@ from utils import (
     ensure_force_sub,
     feature_disabled_text,
     is_feature_enabled,
+    is_sound_enabled,
     send_main_menu,
 )
 from modules.i18n import t
@@ -231,6 +232,8 @@ def _trigger_onboarding(bot, user, chat_id: int) -> None:
 def _maybe_send_welcome_audio(bot, user, chat_id: int, lang: str) -> None:
     user_id = user["user_id"]
     if not user.get("onboarding_pending"):
+        return
+    if not is_sound_enabled():
         return
     if db.get_welcome_audio_sent_at(user_id) > 0:
         return

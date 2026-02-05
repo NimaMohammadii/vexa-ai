@@ -7,7 +7,7 @@ import math
 import time
 
 import db
-from utils import edit_or_send, ensure_force_sub
+from utils import edit_or_send, ensure_force_sub, is_sound_enabled
 from modules.i18n import t
 from modules.tts.texts import ask_text, PROCESSING, NO_CREDIT, ERROR, BANNED
 from modules.tts.keyboards import no_credit_keyboard
@@ -90,6 +90,9 @@ def register(bot):
 
         if not ensure_force_sub(bot, user["user_id"], cq.message.chat.id, cq.message.message_id, lang):
             bot.answer_callback_query(cq.id)
+            return
+        if not is_sound_enabled():
+            bot.answer_callback_query(cq.id, t("audio_disabled", lang), show_alert=True)
             return
 
         route = cq.data.split(":", 1)[1]
@@ -174,6 +177,11 @@ def register(bot):
             lang = db.get_user_lang(user_id, "fa")
 
             if not ensure_force_sub(bot, user_id, msg.chat.id, msg.message_id, lang):
+                return
+            if not is_sound_enabled():
+                bot.send_message(msg.chat.id, t("audio_disabled", lang))
+                last_menu_id, voice_name = _parse_state(current_state)
+                db.set_state(user_id, _make_state(last_menu_id or msg.message_id, voice_name))
                 return
 
             last_menu_id, voice_name = _parse_state(current_state)
@@ -277,6 +285,15 @@ def register(bot):
 def open_tts(bot, cq, voice_name: str | None = None):
     user = db.get_or_create_user(cq.from_user)
     lang = db.get_user_lang(user["user_id"], "fa")
+    if not is_sound_enabled():
+        edit_or_send(
+            bot,
+            cq.message.chat.id,
+            cq.message.message_id,
+            t("audio_disabled", lang),
+            None,
+        )
+        return
     sel = voice_name if voice_name in VOICES else DEFAULT_VOICE_NAME
     edit_or_send(
         bot,

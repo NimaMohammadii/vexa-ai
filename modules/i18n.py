@@ -446,6 +446,16 @@ LABELS = {
         "de": "Diese Stimme ist für dich deaktiviert.",
         "fr": "Cette voix est désactivée pour vous.",
     },
+    "audio_disabled": {
+        "fa": "🔇 صداها برای همه کاربران غیرفعال شده‌اند.",
+        "en": "🔇 Sounds have been disabled for all users.",
+        "ar": "🔇 تم تعطيل الأصوات لجميع المستخدمين.",
+        "tr": "🔇 Tüm kullanıcılar için sesler devre dışı bırakıldı.",
+        "ru": "🔇 Звуки отключены для всех пользователей.",
+        "es": "🔇 Los sonidos se han desactivado para todos los usuarios.",
+        "de": "🔇 Sounds wurden für alle Nutzer deaktiviert.",
+        "fr": "🔇 Les sons ont été désactivés pour tous les utilisateurs.",
+    },
     "tts_processing": {"fa":"👀 <b>در حال تبدیل...</b>","en":"⏳ Converting...","ar":"⏳ جارٍ التحويل...","tr":"⏳ Dönüştürülüyor...","ru":"⏳ Конвертация...","es":"⏳ Convirtiendo...","de":"⏳ Wird konvertiert...","fr":"⏳ Conversion..."},
     "tts_no_credit":  {
         "fa": "⚠️ <b>کردیت کافی نیست</b>\n<b>موجودی شما: {credits} کردیت</b>\n<b>کردیت لازم: {required}</b>\n<b>می‌تونی کردیت بخری یا متن رو کوتاه‌تر کنی /help</b>",

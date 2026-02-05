@@ -201,6 +201,7 @@ def ensure_default_settings():
         "FORCE_SUB_MODE": "none",
         "TG_CHANNEL": "",
         "IG_URL": "",
+        "SOUND_ENABLED": "1",
         "FEATURE_GPT": "1",
         "FEATURE_TTS": "1",
         "FEATURE_CLONE": "1",

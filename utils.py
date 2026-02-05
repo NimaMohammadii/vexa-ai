@@ -22,6 +22,11 @@ def is_feature_enabled(feature_key: str, default: str = "1") -> bool:
     return value in _FEATURE_ENABLED_VALUES
 
 
+def is_sound_enabled(default: str = "1") -> bool:
+    value = (db.get_setting("SOUND_ENABLED", default) or default).strip().lower()
+    return value in _FEATURE_ENABLED_VALUES
+
+
 def feature_label(feature_key: str, lang: str) -> str:
     label_key = _FEATURE_LABEL_KEYS.get(feature_key)
     return t(label_key, lang) if label_key else feature_key
