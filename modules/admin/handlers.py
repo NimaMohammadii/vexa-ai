@@ -860,13 +860,20 @@ def register(bot):
                 db.set_state(cq.from_user.id, STATE_SET_IG)
                 edit_or_send(bot, cq.message.chat.id, cq.message.message_id, ASK_IG, settings_menu()); return
 
-        if action == "toggle" and len(p) >= 3 and p[2] == "fs":
-            cur = (db.get_setting("FORCE_SUB_MODE", "none") or "none").lower()
-            order = ["none", "new", "all"]
-            nxt = order[(order.index(cur) + 1) % len(order)] if cur in order else "none"
-            db.set_setting("FORCE_SUB_MODE", nxt)
-            edit_or_send(bot, cq.message.chat.id, cq.message.message_id, "✅ اعمال شد.", settings_menu())
-            return
+        if action == "toggle" and len(p) >= 3:
+            if p[2] == "fs":
+                cur = (db.get_setting("FORCE_SUB_MODE", "none") or "none").lower()
+                order = ["none", "new", "all"]
+                nxt = order[(order.index(cur) + 1) % len(order)] if cur in order else "none"
+                db.set_setting("FORCE_SUB_MODE", nxt)
+                edit_or_send(bot, cq.message.chat.id, cq.message.message_id, "✅ اعمال شد.", settings_menu())
+                return
+            if p[2] == "sound":
+                cur = (db.get_setting("SOUND_ENABLED", "1") or "1").strip().lower()
+                enabled = cur in ("1", "true", "yes", "on", "enabled")
+                db.set_setting("SOUND_ENABLED", "0" if enabled else "1")
+                edit_or_send(bot, cq.message.chat.id, cq.message.message_id, "✅ اعمال شد.", settings_menu())
+                return
 
         # خروجی کلی
         if action == "exp":

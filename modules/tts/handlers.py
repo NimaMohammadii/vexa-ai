@@ -3,7 +3,14 @@ from io import BytesIO
 import threading
 import time
 import db
-from utils import edit_or_send, ensure_force_sub, feature_disabled_text, is_feature_enabled, send_main_menu
+from utils import (
+    edit_or_send,
+    ensure_force_sub,
+    feature_disabled_text,
+    is_feature_enabled,
+    is_sound_enabled,
+    send_main_menu,
+)
 from config import DEBUG
 from modules.i18n import t
 from .texts import TITLE, ask_text, PROCESSING, NO_CREDIT, ERROR, BANNED
@@ -208,6 +215,9 @@ def register(bot):
             return
 
         route = cq.data.split(":", 1)[1]
+        if route != "back" and not is_sound_enabled():
+            bot.answer_callback_query(cq.id, t("audio_disabled", lang), show_alert=True)
+            return
 
         if route == "back":
             from modules.home.texts import MAIN
@@ -445,6 +455,14 @@ def register(bot):
 
             if not ensure_force_sub(bot, user_id, msg.chat.id, msg.message_id, lang):
                 return
+            if not is_sound_enabled():
+                bot.send_message(msg.chat.id, t("audio_disabled", lang))
+                voices = get_voices(lang)
+                default_voice_name = get_default_voice_name(lang)
+                last_menu_id, voice_name = _parse_state(current_state, default_voice_name)
+                voice_name, _, _ = _resolve_voice_selection(user_id, lang, voice_name, voices)
+                db.set_state(user_id, _make_state(last_menu_id or msg.message_id, voice_name))
+                return
 
             voices = get_voices(lang)
             default_voice_name = get_default_voice_name(lang)
@@ -567,6 +585,15 @@ def open_tts(bot, cq):
             cq.message.chat.id,
             cq.message.message_id,
             feature_disabled_text("FEATURE_TTS", lang),
+            None,
+        )
+        return
+    if not is_sound_enabled():
+        edit_or_send(
+            bot,
+            cq.message.chat.id,
+            cq.message.message_id,
+            t("audio_disabled", lang),
             None,
         )
         return
