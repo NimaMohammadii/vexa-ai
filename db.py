@@ -151,6 +151,15 @@ def init_db():
             created_at INTEGER
         )""")
         cur.execute(
+            """CREATE TABLE IF NOT EXISTS user_voice_disabled(
+                user_id INTEGER NOT NULL,
+                lang TEXT NOT NULL,
+                voice_name TEXT NOT NULL,
+                disabled_at INTEGER NOT NULL,
+                PRIMARY KEY (user_id, lang, voice_name)
+            )"""
+        )
+        cur.execute(
             """CREATE TABLE IF NOT EXISTS image_generations(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
@@ -387,6 +396,51 @@ def get_voice_clone_by_id(voice_id: str):
         "username": row[4] or "",
         "first_name": row[5] or "",
     }
+
+# -------------------
+# User Voice Access
+# -------------------
+def list_disabled_voices(user_id: int, lang: str) -> set[str]:
+    lang = (lang or "").strip()
+    if not lang:
+        return set()
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            "SELECT voice_name FROM user_voice_disabled WHERE user_id=? AND lang=?",
+            (user_id, lang),
+        )
+        rows = cur.fetchall() or []
+    return {row[0] for row in rows if row and row[0]}
+
+def disable_user_voice(user_id: int, lang: str, voice_name: str) -> None:
+    lang = (lang or "").strip()
+    voice_name = (voice_name or "").strip()
+    if not lang or not voice_name:
+        return
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            """INSERT INTO user_voice_disabled(user_id, lang, voice_name, disabled_at)
+               VALUES(?,?,?,?)
+               ON CONFLICT(user_id, lang, voice_name)
+               DO UPDATE SET disabled_at=excluded.disabled_at""",
+            (user_id, lang, voice_name, int(time.time())),
+        )
+        con.commit()
+
+def enable_user_voice(user_id: int, lang: str, voice_name: str) -> None:
+    lang = (lang or "").strip()
+    voice_name = (voice_name or "").strip()
+    if not lang or not voice_name:
+        return
+    with closing(sqlite3.connect(DB_PATH)) as con:
+        cur = con.cursor()
+        cur.execute(
+            "DELETE FROM user_voice_disabled WHERE user_id=? AND lang=? AND voice_name=?",
+            (user_id, lang, voice_name),
+        )
+        con.commit()
 
 # 🟡 (بقیه توابع قبلی بدون تغییر می‌مونن)
 def get_setting(key, default=None):

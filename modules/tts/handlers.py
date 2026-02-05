@@ -72,6 +72,43 @@ def _get_page(user_id: int) -> int:
 def _set_page(user_id: int, page: int) -> None:
     db.set_setting(_page_key(user_id), max(0, page))
 
+def _get_disabled_voice_sets(user_id: int, lang: str) -> tuple[set[str], set[str]]:
+    try:
+        disabled_default = db.list_disabled_voices(user_id, lang)
+    except Exception:
+        disabled_default = set()
+    try:
+        disabled_custom = db.list_disabled_voices(user_id, "custom")
+    except Exception:
+        disabled_custom = set()
+    return disabled_default, disabled_custom
+
+def _resolve_voice_selection(
+    user_id: int,
+    lang: str,
+    desired_voice: str,
+    voices: dict[str, str],
+) -> tuple[str, str | None, bool]:
+    disabled_default, disabled_custom = _get_disabled_voice_sets(user_id, lang)
+    custom_voices = db.list_user_voices(user_id)
+    custom_names = [voice[0] for voice in custom_voices]
+
+    if desired_voice in voices and desired_voice not in disabled_default:
+        return desired_voice, voices.get(desired_voice), False
+
+    if desired_voice in custom_names and desired_voice not in disabled_custom:
+        return desired_voice, db.get_user_voice(user_id, desired_voice), True
+
+    for name in voices.keys():
+        if name not in disabled_default:
+            return name, voices.get(name), False
+
+    for name in custom_names:
+        if name not in disabled_custom:
+            return name, db.get_user_voice(user_id, name), True
+
+    return desired_voice, voices.get(desired_voice), False
+
 def safe_del(bot, chat_id, message_id):
     try:
         bot.delete_message(chat_id, message_id)
@@ -229,6 +266,12 @@ def register(bot):
             if name not in voices and not custom_voice_id:
                 bot.answer_callback_query(cq.id, t("tts_voice_not_found", lang))
                 return
+            disabled_default, disabled_custom = _get_disabled_voice_sets(user["user_id"], lang)
+            if (name in voices and name in disabled_default) or (
+                custom_voice_id and name in disabled_custom
+            ):
+                bot.answer_callback_query(cq.id, t("tts_voice_disabled", lang))
+                return
 
             # منوی «متن را بفرست» با صدای انتخابی
             edit_or_send(
@@ -258,8 +301,12 @@ def register(bot):
             default_voice_name = get_default_voice_name(lang)
             state = db.get_state(cq.from_user.id) or ""
             _, voice_name = _parse_state(state, default_voice_name)
-            if voice_name not in voices:
-                voice_name = default_voice_name
+            voice_name, _, _ = _resolve_voice_selection(
+                user["user_id"],
+                lang,
+                voice_name,
+                voices,
+            )
             _set_page(user["user_id"], next_page)
             edit_or_send(
                 bot,
@@ -302,8 +349,12 @@ def register(bot):
             default_voice_name = get_default_voice_name(lang)
             state = db.get_state(cq.from_user.id) or ""
             _, voice_name = _parse_state(state, default_voice_name)
-            if voice_name not in voices:
-                voice_name = default_voice_name
+            voice_name, _, _ = _resolve_voice_selection(
+                user["user_id"],
+                lang,
+                voice_name,
+                voices,
+            )
             output_mode = get_output_mode(user["user_id"])
             edit_or_send(
                 bot,
@@ -398,15 +449,16 @@ def register(bot):
             voices = get_voices(lang)
             default_voice_name = get_default_voice_name(lang)
             last_menu_id, voice_name = _parse_state(current_state, default_voice_name)
-            
-            # بررسی صدای پیش‌فرض یا کاستوم
-            voice_id = voices.get(voice_name)
+            voice_name, voice_id, _ = _resolve_voice_selection(
+                user_id,
+                lang,
+                voice_name,
+                voices,
+            )
             if not voice_id:
-                # اگر صدای پیش‌فرض نبود، از صداهای کاستوم کاربر بگیر
-                voice_id = db.get_user_voice(user_id, voice_name)
-                if not voice_id:
-                    voice_id = voices[default_voice_name]
-                    voice_name = default_voice_name
+                bot.send_message(msg.chat.id, t("tts_voice_disabled", lang))
+                db.set_state(user_id, _make_state(last_menu_id or msg.message_id, voice_name))
+                return
 
             text = (msg.text or "").strip()
             if not text:
@@ -520,6 +572,7 @@ def open_tts(bot, cq):
         return
     voices = get_voices(lang)
     sel = get_default_voice_name(lang)
+    sel, _, _ = _resolve_voice_selection(user["user_id"], lang, sel, voices)
     output_mode = get_output_mode(user["user_id"])
     _set_page(user["user_id"], 0)
     edit_or_send(
