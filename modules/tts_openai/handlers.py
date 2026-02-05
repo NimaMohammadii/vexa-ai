@@ -63,6 +63,15 @@ def _parse_state(raw: str):
 def _make_state(menu_id: int, voice_name: str) -> str:
     return f"{STATE_WAIT_TEXT}:{menu_id}:{voice_name}"
 
+def _resolve_openai_voice(user_id: int, desired_voice: str) -> str | None:
+    disabled = db.list_disabled_voices(user_id, "openai")
+    if desired_voice in VOICES and desired_voice not in disabled:
+        return desired_voice
+    for name in VOICES.keys():
+        if name not in disabled:
+            return name
+    return None
+
 
 def safe_del(bot, chat_id, message_id):
     if not chat_id or not message_id:
@@ -88,8 +97,11 @@ def register(bot):
         if route == "quality:medium":
             state = db.get_state(cq.from_user.id) or ""
             _, voice_name = _parse_state(state)
-            if voice_name not in VOICES:
-                voice_name = DEFAULT_VOICE_NAME
+            resolved = _resolve_openai_voice(user["user_id"], voice_name)
+            if not resolved:
+                bot.answer_callback_query(cq.id, t("tts_voice_disabled", lang))
+                return
+            voice_name = resolved
 
             edit_or_send(
                 bot,
@@ -119,6 +131,9 @@ def register(bot):
             name = route.split(":", 1)[1]
             if name not in VOICES:
                 bot.answer_callback_query(cq.id, t("tts_voice_not_found", lang))
+                return
+            if name in db.list_disabled_voices(user["user_id"], "openai"):
+                bot.answer_callback_query(cq.id, t("tts_voice_disabled", lang))
                 return
 
             edit_or_send(
@@ -162,10 +177,13 @@ def register(bot):
                 return
 
             last_menu_id, voice_name = _parse_state(current_state)
+            resolved = _resolve_openai_voice(user_id, voice_name)
+            if not resolved:
+                bot.send_message(msg.chat.id, t("tts_voice_disabled", lang))
+                db.set_state(user_id, _make_state(last_menu_id or msg.message_id, voice_name))
+                return
+            voice_name = resolved
             voice_id = VOICES.get(voice_name)
-            if not voice_id:
-                voice_name = DEFAULT_VOICE_NAME
-                voice_id = VOICES[voice_name]
 
             text = (msg.text or "").strip()
             if not text:

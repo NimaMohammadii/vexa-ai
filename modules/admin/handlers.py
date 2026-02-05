@@ -51,6 +51,8 @@ from .keyboards import (
     welcome_audio_actions_menu,
     voice_clone_menu,
     voice_clone_actions_menu,
+    user_voice_languages_menu,
+    user_voice_list_menu,
 )
 from modules.lang.keyboards import LANGS
 from modules.i18n import t
@@ -543,6 +545,79 @@ def register(bot):
                 bot.answer_callback_query(cq.id, "کاربر یافت نشد."); return
             txt = _format_user_details(uid, u)
             edit_or_send(bot, cq.message.chat.id, cq.message.message_id, txt, user_actions(uid))
+            return
+
+        if action == "user_voices":
+            if len(p) >= 4 and p[2] == "lang":
+                uid = int(p[3])
+                lang_code = p[4] if len(p) >= 5 else "fa"
+                label = LANG_LABELS.get(lang_code, lang_code)
+                edit_or_send(
+                    bot,
+                    cq.message.chat.id,
+                    cq.message.message_id,
+                    f"🎙 مدیریت صداهای کاربر ({label})",
+                    user_voice_list_menu(uid, lang_code),
+                )
+                return
+            if len(p) >= 4 and p[2] in ("custom", "openai"):
+                uid = int(p[3])
+                lang_code = p[2]
+                label = "صداهای شخصی" if lang_code == "custom" else "صداهای OpenAI"
+                edit_or_send(
+                    bot,
+                    cq.message.chat.id,
+                    cq.message.message_id,
+                    f"🎙 مدیریت {label}",
+                    user_voice_list_menu(uid, lang_code),
+                )
+                return
+            if len(p) >= 5 and p[2] == "toggle":
+                uid = int(p[3])
+                lang_code = p[4]
+                voice_name = ":".join(p[5:]).strip()
+                if not voice_name:
+                    bot.answer_callback_query(cq.id, "❌ نامعتبر")
+                    return
+                disabled = db.list_disabled_voices(uid, lang_code)
+                if voice_name in disabled:
+                    db.enable_user_voice(uid, lang_code, voice_name)
+                    bot.answer_callback_query(cq.id, "✅ فعال شد.")
+                else:
+                    db.disable_user_voice(uid, lang_code, voice_name)
+                    bot.answer_callback_query(cq.id, "🚫 غیرفعال شد.")
+                edit_or_send(
+                    bot,
+                    cq.message.chat.id,
+                    cq.message.message_id,
+                    "🎙 مدیریت صداهای کاربر",
+                    user_voice_list_menu(uid, lang_code),
+                )
+                return
+            if len(p) >= 5 and p[2] == "page":
+                uid = int(p[3])
+                lang_code = p[4]
+                page = int(p[5]) if len(p) >= 6 and p[5].isdigit() else 0
+                edit_or_send(
+                    bot,
+                    cq.message.chat.id,
+                    cq.message.message_id,
+                    "🎙 مدیریت صداهای کاربر",
+                    user_voice_list_menu(uid, lang_code, page=page),
+                )
+                return
+
+            uid = int(p[2]) if len(p) >= 3 and p[2].isdigit() else None
+            if uid is None:
+                bot.answer_callback_query(cq.id, "❌ آی‌دی نامعتبر")
+                return
+            edit_or_send(
+                bot,
+                cq.message.chat.id,
+                cq.message.message_id,
+                "🎙 زبان صدا را انتخاب کنید:",
+                user_voice_languages_menu(uid),
+            )
             return
 
         # بن/آن‌بن

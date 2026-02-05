@@ -436,6 +436,16 @@ LABELS = {
         "de": "Stimme nicht gefunden",
         "fr": "Voix introuvable",
     },
+    "tts_voice_disabled": {
+        "fa": "این صدا برای شما غیرفعال است.",
+        "en": "This voice is disabled for you.",
+        "ar": "هذا الصوت معطّل لك.",
+        "tr": "Bu ses sizin için devre dışı.",
+        "ru": "Этот голос для вас отключён.",
+        "es": "Esta voz está desactivada para ti.",
+        "de": "Diese Stimme ist für dich deaktiviert.",
+        "fr": "Cette voix est désactivée pour vous.",
+    },
     "tts_processing": {"fa":"👀 <b>در حال تبدیل...</b>","en":"⏳ Converting...","ar":"⏳ جارٍ التحويل...","tr":"⏳ Dönüştürülüyor...","ru":"⏳ Конвертация...","es":"⏳ Convirtiendo...","de":"⏳ Wird konvertiert...","fr":"⏳ Conversion..."},
     "tts_no_credit":  {
         "fa": "⚠️ <b>کردیت کافی نیست</b>\n<b>موجودی شما: {credits} کردیت</b>\n<b>کردیت لازم: {required}</b>\n<b>می‌تونی کردیت بخری یا متن رو کوتاه‌تر کنی /help</b>",

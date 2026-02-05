@@ -25,6 +25,7 @@ def keyboard(
     show_demo_button: bool = True,
     output_mode: str = "mp3",
     page: int = 0,
+    voice_filter_lang: str | None = None,
 ):
     kb = InlineKeyboardMarkup(row_width=2)
 
@@ -44,7 +45,22 @@ def keyboard(
     else:
         allow_custom = False
 
-    all_names = default_names + ([voice[0] for voice in custom_voices] if allow_custom else [])
+    filter_lang = voice_filter_lang or lang
+    disabled_default = set()
+    disabled_custom = set()
+    if user_id is not None:
+        try:
+            disabled_default = db.list_disabled_voices(user_id, filter_lang)
+            disabled_custom = db.list_disabled_voices(user_id, "custom")
+        except Exception:
+            disabled_default = set()
+            disabled_custom = set()
+
+    default_names = [name for name in default_names if name not in disabled_default]
+    custom_names = [voice[0] for voice in custom_voices] if allow_custom else []
+    custom_names = [name for name in custom_names if name not in disabled_custom]
+
+    all_names = default_names + (custom_names if allow_custom else [])
 
     buttons_per_row = 2
     max_voice_buttons = 10

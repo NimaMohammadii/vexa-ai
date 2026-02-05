@@ -19,4 +19,5 @@ def keyboard(selected_voice: str, lang: str = "fa", user_id: int | None = None):
         quality="medium",
         show_demo_button=False,
         output_mode=output_mode,
+        voice_filter_lang="openai",
     )

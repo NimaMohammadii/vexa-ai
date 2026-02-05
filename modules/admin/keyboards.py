@@ -6,6 +6,7 @@ import db
 from modules.lang.keyboards import LANGS
 from modules.tts.settings import get_demo_audio, get_voices
 from modules.welcome_audio import get_welcome_audio
+from modules.tts_openai.settings import VOICES as OPENAI_VOICES
 
 FEATURE_TOGGLES = [
     ("GPT", "FEATURE_GPT"),
@@ -15,6 +16,10 @@ FEATURE_TOGGLES = [
     ("تولید ویدیو", "FEATURE_VIDEO"),
     ("Sora 2", "FEATURE_SORA2"),
 ]
+
+def _chunk(seq, n):
+    for i in range(0, len(seq), n):
+        yield seq[i : i + n]
 
 # ————— منوی اصلی ادمین —————
 def admin_menu():
@@ -403,7 +408,94 @@ def user_actions(uid: int):
             callback_data=f"admin:exp_user_images:{uid}"
         )
     )
+    kb.add(
+        InlineKeyboardButton(
+            "🎛 مدیریت صداهای کاربر",
+            callback_data=f"admin:user_voices:{uid}",
+        )
+    )
     kb.add(InlineKeyboardButton("⬅️ بازگشت", callback_data="admin:users"))
+    return kb
+
+def user_voice_languages_menu(uid: int):
+    kb = InlineKeyboardMarkup()
+    for row in _chunk(LANGS, 2):
+        kb.row(
+            *[
+                InlineKeyboardButton(
+                    label,
+                    callback_data=f"admin:user_voices:lang:{uid}:{code}",
+                )
+                for label, code in row
+            ]
+        )
+    kb.add(
+        InlineKeyboardButton(
+            "🎙 صداهای شخصی",
+            callback_data=f"admin:user_voices:custom:{uid}",
+        )
+    )
+    kb.add(
+        InlineKeyboardButton(
+            "🎧 صداهای OpenAI",
+            callback_data=f"admin:user_voices:openai:{uid}",
+        )
+    )
+    kb.add(InlineKeyboardButton("⬅️ بازگشت", callback_data=f"admin:user:{uid}"))
+    return kb
+
+def user_voice_list_menu(uid: int, lang_code: str, page: int = 0, page_size: int = 10):
+    page = max(0, int(page))
+    disabled = db.list_disabled_voices(uid, lang_code)
+
+    if lang_code == "custom":
+        voices = [voice[0] for voice in db.list_user_voices(uid)]
+    elif lang_code == "openai":
+        voices = list(OPENAI_VOICES.keys())
+    else:
+        voices = list(get_voices(lang_code).keys())
+
+    voices.sort()
+    offset = page * page_size
+    page_items = voices[offset : offset + page_size]
+
+    kb = InlineKeyboardMarkup()
+    if not voices:
+        kb.add(InlineKeyboardButton("— صدایی یافت نشد —", callback_data="admin:noop"))
+    else:
+        for name in page_items:
+            status = "🚫" if name in disabled else "✅"
+            kb.add(
+                InlineKeyboardButton(
+                    f"{status} {name}",
+                    callback_data=f"admin:user_voices:toggle:{uid}:{lang_code}:{name}",
+                )
+            )
+
+    nav = []
+    if page > 0:
+        nav.append(
+            InlineKeyboardButton(
+                "◀️ قبلی",
+                callback_data=f"admin:user_voices:page:{uid}:{lang_code}:{page - 1}",
+            )
+        )
+    if len(page_items) == page_size:
+        nav.append(
+            InlineKeyboardButton(
+                "بعدی ▶️",
+                callback_data=f"admin:user_voices:page:{uid}:{lang_code}:{page + 1}",
+            )
+        )
+    if nav:
+        kb.row(*nav)
+
+    kb.add(
+        InlineKeyboardButton(
+            "⬅️ بازگشت",
+            callback_data=f"admin:user_voices:{uid}",
+        )
+    )
     return kb
 
 # ————— منوی خروجی‌ها —————
