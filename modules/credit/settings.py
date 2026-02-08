@@ -1,13 +1,13 @@
 # پلن‌های نمونه به تومان (صرفاً برای نمایش؛ ملاک نهایی، رسید پرداخت است)
 PAYMENT_PLANS = [
-    {"title": " 800 → 110,000T", "amount_toman": 110_000, "credits": 800},
-    {"title": " 2899 → 230,000T", "amount_toman": 230_000, "credits": 2899},
-    {"title": " 6100 → 390,000T", "amount_toman": 390_000, "credits": 6100},
-    {"title": " 9200 → 550,000T", "amount_toman": 550_000, "credits": 9200},
-    {"title": " 15K → 880,000T", "amount_toman": 880_000, "credits": 15000},
+    {"title": " 800 → 150,000T", "amount_toman": 150_000, "credits": 800},
+    {"title": " 2899 → 310,000T", "amount_toman": 310_000, "credits": 2899},
+    {"title": " 6100 → 510,000T", "amount_toman": 510_000, "credits": 6100},
+    {"title": " 9200 → 720,000T", "amount_toman": 720_000, "credits": 9200},
+    {"title": " 12K + 1k → 999,000T", "amount_toman": 999_000, "credits": 13000},
 
-    {"title": " 21K → 1,300,000T", "amount_toman": 1_300_000, "credits": 21000},
-    {"title": " 46K → 2,600,000T", "amount_toman": 2_600_000, "credits": 46000},
+    {"title": " 21K → 1,650,000T", "amount_toman": 1_650_000, "credits": 21000},
+    {"title": " 46K → 3,150,000T", "amount_toman": 3_150_000, "credits": 46000},
     {"title": " 88K → 4,999,000T", "amount_toman": 4_999_000, "credits": 88000},
 
     {"title": " 120K → 6,700,000T", "amount_toman": 6_700_000, "credits": 120000},
