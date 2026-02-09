@@ -218,8 +218,9 @@ def _trigger_onboarding(bot, user, chat_id: int) -> None:
         _maybe_send_pending_daily_bonus_unlock(bot, user_id, chat_id)
         return
     lang = db.get_user_lang(user_id, "fa")
+    free_credits = db.format_credit_amount(db.get_setting("FREE_CREDIT", "80") or 80)
     try:
-        bot.send_message(chat_id, t("onboarding_welcome", lang))
+        bot.send_message(chat_id, t("onboarding_welcome", lang).format(credits=free_credits))
     except Exception:
         return
     db.set_welcome_sent_at(user_id, int(time.time()))
