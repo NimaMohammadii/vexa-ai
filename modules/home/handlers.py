@@ -152,14 +152,8 @@ def _schedule_daily_bonus_reminder(
     chat_id: int,
     delay: float | None = None,
 ) -> None:
-    if delay is None:
-        delay = _seconds_until_daily_reward(user_id)
-        if delay <= 0:
-            _send_daily_bonus_reminder(bot, user_id, chat_id)
-            return
-    timer = threading.Timer(delay, _send_daily_bonus_reminder, args=(bot, user_id, chat_id))
-    timer.daemon = True
-    timer.start()
+    # Daily reward reminder messages are intentionally disabled.
+    return
 
 
 def _send_daily_bonus_ready(bot, user_id: int, chat_id: int) -> None:
