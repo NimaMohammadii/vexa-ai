@@ -10,7 +10,7 @@ PAYMENT_PLANS = [
     {"title": " 46K → 3,150,000T", "amount_toman": 3_150_000, "credits": 46000},
     {"title": " 88K → 4,999,000T", "amount_toman": 4_999_000, "credits": 88000},
 
-    {"title": " 120K → 6,700,000T", "amount_toman": 6_700_000, "credits": 120000},
+    {"title": " 120K → 7,100,000T", "amount_toman": 7_100_000, "credits": 120000},
     {"title": " 150K → 8,500,000T", "amount_toman": 8_500_000, "credits": 150000},
 ]
 
