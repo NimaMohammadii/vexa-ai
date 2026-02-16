@@ -256,7 +256,7 @@ def register(bot):
 
             bio = BytesIO(audio_data)
             bio.name = "Vexa.mp3"
-            bot.send_document(msg.chat.id, document=bio)
+            bot.send_audio(msg.chat.id, audio=bio)
 
             new_menu = bot.send_message(
                 msg.chat.id,

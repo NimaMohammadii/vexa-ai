@@ -543,7 +543,7 @@ def register(bot):
             if output_mode == "voice":
                 bot.send_voice(msg.chat.id, voice=bio)
             else:
-                bot.send_document(msg.chat.id, document=bio)
+                bot.send_audio(msg.chat.id, audio=bio)
 
             # بازگرداندن منوی TTS با صدای فعلی
             new_menu = bot.send_message(
