@@ -7,11 +7,11 @@ PAYMENT_PLANS = [
     {"title": " 12K + 1k → 999,000T", "amount_toman": 999_000, "credits": 13000},
 
     {"title": " 21K → 1,650,000T", "amount_toman": 1_650_000, "credits": 21000},
-    {"title": " 46K → 3,150,000T", "amount_toman": 3_150_000, "credits": 46000},
-    {"title": " 88K → 4,999,000T", "amount_toman": 4_999_000, "credits": 88000},
+    {"title": " 46K → 3,420,000T", "amount_toman": 3_420_000, "credits": 46000},
+    {"title": " 88K → 5,990,000T", "amount_toman": 5_990_000, "credits": 88000},
 
-    {"title": " 120K → 7,100,000T", "amount_toman": 7_100_000, "credits": 120000},
-    {"title": " 150K → 8,500,000T", "amount_toman": 8_500_000, "credits": 150000},
+    {"title": " 120K → 8,100,000T", "amount_toman": 8_100_000, "credits": 120000},
+    {"title": " 150K → 9,999,000T", "amount_toman": 9_999_000, "credits": 150000},
 ]
 
 # بسته‌های Telegram Stars
