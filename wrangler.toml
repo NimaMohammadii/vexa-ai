@@ -8,7 +8,9 @@ SESSION_TTL_SECONDS = "2592000"
 [[d1_databases]]
 binding = "DB"
 database_name = "vexa"
-database_id = "REPLACE_WITH_D1_ID"
+database_id = "__REPLACE_WITH_D1_DATABASE_ID__"
+# Replace with the real ID from: wrangler d1 create vexa
+# Deploy and remote migrations will fail until this value is updated.
 migrations_dir = "migrations"
 
 [[durable_objects.bindings]]

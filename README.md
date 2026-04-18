@@ -53,20 +53,49 @@ npm run d1:migrate:local
 npm run dev
 ```
 
-## Infrastructure setup
+## D1 setup (required before deploy)
+
+Create D1 once:
 
 ```bash
 wrangler d1 create vexa
 ```
 
-Copy the returned `database_id` into `wrangler.toml` under `[[d1_databases]]`.
+Then copy the returned `database_id` into `wrangler.toml` under `[[d1_databases]]`:
 
-Set secrets/vars:
+- Replace `__REPLACE_WITH_D1_DATABASE_ID__` with your real D1 ID.
+- `npm run deploy` and `npm run d1:migrate:remote` will fail until this is replaced.
+
+## D1 migrations
+
+Apply local migrations:
+
+```bash
+npm run d1:migrate:local
+# equivalent:
+# wrangler d1 migrations apply vexa --local
+```
+
+Apply remote (production) migrations:
+
+```bash
+npm run d1:migrate:remote
+# equivalent:
+# wrangler d1 migrations apply vexa --remote
+```
+
+## Required secrets
+
+Set required secrets:
 
 ```bash
 wrangler secret put TELEGRAM_BOT_TOKEN
 wrangler secret put TELEGRAM_WEBHOOK_SECRET
-# optional owner escalation destination
+```
+
+Optional secret for owner escalation notifications:
+
+```bash
 wrangler secret put OWNER_TELEGRAM_CHAT_ID
 ```
 
@@ -86,3 +115,12 @@ npm run check
 npm run d1:migrate:remote
 npm run deploy
 ```
+
+## Pre-deploy checklist (minimum)
+
+- [ ] D1 database created (`wrangler d1 create vexa`)
+- [ ] `wrangler.toml` updated with real `database_id`
+- [ ] Migrations applied locally and remotely
+- [ ] Required secrets set (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`)
+- [ ] Optional `OWNER_TELEGRAM_CHAT_ID` set if owner notifications are needed
+- [ ] `npm run deploy` executed
