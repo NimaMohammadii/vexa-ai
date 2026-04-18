@@ -53,3 +53,37 @@ X-API-Key: <TOKEN>
 | GET  | `/v1/voices` | فهرست صداهای قابل استفاده | ۰ |
 
 خروجی `POST /v1/image` لینک مستقیم تصویر است. خروجی `POST /v1/tts` شامل محتوای صوتی base64 و موجودی باقی‌ماندهٔ کاربر می‌شود. تمام هزینه‌ها از همان موجودی کردیت حساب تلگرام کسر خواهد شد.
+
+---
+
+## Staged Cloudflare migration (new)
+
+A new Workers-based shared backend scaffold has been added under `workers-backend/`.
+
+### Why
+
+To support all three clients on one backend:
+1. Telegram bot (webhook)
+2. Telegram Mini App
+3. Website
+
+### What is included now
+
+- Worker entrypoint and route layout: `workers-backend/src/index.ts`
+- Storage abstraction and D1-backed repositories:
+  - `workers-backend/src/storage/contracts.ts`
+  - `workers-backend/src/storage/d1-repositories.ts`
+- Durable Object for per-user strongly consistent state:
+  - `workers-backend/src/storage/user-state-do.ts`
+- Telegram Mini App init data validation:
+  - `workers-backend/src/auth/telegram.ts`
+- Telegram webhook transport handler:
+  - `workers-backend/src/telegram/webhook.ts`
+- Initial D1 schema:
+  - `workers-backend/migrations/0001_initial.sql`
+- Migration phase notes:
+  - `docs/migration/staged-workers-migration.md`
+
+### Current status
+
+This is phase-0 scaffolding for a staged migration. The polling Python bot remains as legacy runtime until feature-by-feature cutover is complete.
