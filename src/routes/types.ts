@@ -1,10 +1,21 @@
-import type { ApiTokenService, AssetService, CreditService, FeatureService, GptHistoryService, SessionService, UserService } from "../services/user-services";
+import type {
+  ApiTokenService,
+  AssetService,
+  CreditService,
+  FeatureService,
+  GptHistoryService,
+  OwnerNotificationService,
+  SessionService,
+  TelegramWebhookService,
+  UserService,
+} from "../services/user-services";
 
 export interface Env {
   DB: D1Database;
   USER_STATE: DurableObjectNamespace;
   TELEGRAM_BOT_TOKEN: string;
   TELEGRAM_WEBHOOK_SECRET: string;
+  OWNER_TELEGRAM_CHAT_ID?: string;
   SESSION_TTL_SECONDS?: string;
 }
 
@@ -16,6 +27,8 @@ export interface Services {
   history: GptHistoryService;
   assets: AssetService;
   features: FeatureService;
+  telegramEvents: TelegramWebhookService;
+  ownerNotifications: OwnerNotificationService;
 }
 
 export interface RouteCtx {

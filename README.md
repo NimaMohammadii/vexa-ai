@@ -1,42 +1,43 @@
-# Vexa AI (Hard Cutover): Cloudflare Workers as the only production runtime
+# Vexa AI: Cloudflare-native production backend
 
-This repository has been hard-cut over to a **Cloudflare-native backend**.
+This repository is hard-cut over to **Cloudflare Workers** as the only production runtime.
 
-## Production runtime (authoritative)
+## Production architecture (authoritative)
 
-- **Primary backend:** Cloudflare Workers (`workers-backend/`)
-- **Data storage:** Cloudflare D1
-- **State coordination:** Cloudflare Durable Objects
-- **Telegram bot transport:** webhook-only (no polling)
-- **Client surfaces:** Telegram bot + Telegram Mini App + Website on one shared backend
+- **Runtime:** Cloudflare Workers (`src/index.ts`)
+- **Persistent relational data:** Cloudflare D1 (`migrations/*.sql`)
+- **Per-user flow state:** Durable Objects (`src/storage/user-state-do.ts`)
+- **Clients on one backend:** Telegram bot (webhook), Telegram Mini App, Website
+- **Shared services:** user/profile, credits, API tokens, GPT history, assets, features, bot flow, owner notifications
 
-## Legacy Python status
+## Python status
 
-The previous Python production stack has been archived under `legacy/` and is no longer the deployment target.
+Legacy Python code is archived under `legacy/` for reference only.
 
-- Deprecated bot runtime: `legacy/main.py`
-- Deprecated API runtime: `legacy/api_server.py`
-- Deprecated sqlite layer: `legacy/db.py`
+- `legacy/main.py` (old polling bot runtime)
+- `legacy/api_server.py` (old FastAPI backend)
+- `legacy/db.py` (old sqlite/local-filesystem persistence)
 
-Do **not** deploy from root Python files. Deploy only the Worker in `workers-backend/`.
+Python is **not** part of the active production path.
 
-## Shared backend routes
+## API routes
 
 ### Telegram
 - `POST /telegram/webhook/<TELEGRAM_WEBHOOK_SECRET>`
 - `GET /v1/telegram/webhook-info`
 
-### Mini App / Website auth
+### Auth (Mini App + Website)
 - `POST /miniapp/auth/telegram`
 
-### Public APIs
+### Public
 - `GET /v1/health`
 - `GET /v1/features`
 - `GET /v1/public/features`
 
-### Authenticated APIs
+### Authenticated
 - `GET /v1/me`
 - `GET /v1/me/credits`
+- `GET /v1/me/credits/ledger`
 - `GET /v1/me/api-token`
 - `POST /v1/me/api-token/rotate`
 - `GET /v1/me/gpt-history`
@@ -46,56 +47,42 @@ Do **not** deploy from root Python files. Deploy only the Worker in `workers-bac
 ## Local development
 
 ```bash
-cd workers-backend
 npm install
 npm run check
+npm run d1:migrate:local
 npm run dev
 ```
 
-## One-time infrastructure setup
+## Infrastructure setup
 
 ```bash
-cd workers-backend
 wrangler d1 create vexa
 ```
 
-Copy the returned `database_id` into `workers-backend/wrangler.toml` under `[[d1_databases]]`.
+Copy the returned `database_id` into `wrangler.toml` under `[[d1_databases]]`.
 
-Apply schema:
+Set secrets/vars:
 
 ```bash
-npm run d1:migrate:local
-npm run d1:migrate:remote
+wrangler secret put TELEGRAM_BOT_TOKEN
+wrangler secret put TELEGRAM_WEBHOOK_SECRET
+# optional owner escalation destination
+wrangler secret put OWNER_TELEGRAM_CHAT_ID
 ```
 
 ## Telegram webhook setup
 
-1. Set Worker secrets:
-   ```bash
-   cd workers-backend
-   wrangler secret put TELEGRAM_BOT_TOKEN
-   wrangler secret put TELEGRAM_WEBHOOK_SECRET
-   ```
-2. Deploy Worker:
-   ```bash
-   npm run deploy
-   ```
-3. Register webhook:
-   ```bash
-   curl "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setWebhook?url=<WORKER_BASE_URL>/telegram/webhook/<TELEGRAM_WEBHOOK_SECRET>"
-   ```
-4. Verify:
-   ```bash
-   curl "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/getWebhookInfo"
-   ```
+```bash
+npm run deploy
+curl "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setWebhook?url=<WORKER_BASE_URL>/telegram/webhook/<TELEGRAM_WEBHOOK_SECRET>"
+curl "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/getWebhookInfo"
+```
 
-## Production deploy
+## Deploy (production)
 
 ```bash
-cd workers-backend
 npm install
 npm run check
 npm run d1:migrate:remote
 npm run deploy
 ```
-

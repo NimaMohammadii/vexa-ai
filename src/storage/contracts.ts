@@ -1,4 +1,4 @@
-import type { AssetSummary, ClientType, CreditLedgerEntry, FeatureFlag, GptMessage, SessionRecord, UserProfile } from "../domain/types";
+import type { AssetSummary, ClientType, CreditLedgerEntry, FeatureFlag, GptMessage, OwnerNotification, SessionRecord, UserProfile } from "../domain/types";
 
 export interface UserRepository {
   upsertTelegramUser(input: { userId: number; username?: string | null; firstName?: string | null }): Promise<UserProfile>;
@@ -36,4 +36,20 @@ export interface FeatureRepository {
 export interface CreditLedgerRepository {
   append(input: { userId: number; amount: number; reason: string; source: ClientType }): Promise<void>;
   listByUser(userId: number, limit: number): Promise<CreditLedgerEntry[]>;
+}
+
+export interface TelegramWebhookEventRepository {
+  isProcessed(updateId: number): Promise<boolean>;
+  markProcessed(input: { updateId: number; telegramUserId?: number | null; eventType: string }): Promise<void>;
+}
+
+export interface OwnerNotificationRepository {
+  create(input: {
+    userId?: number | null;
+    source: ClientType | "system";
+    category: string;
+    message: string;
+    status?: "queued" | "sent" | "failed";
+    deliveredAt?: number | null;
+  }): Promise<OwnerNotification>;
 }
