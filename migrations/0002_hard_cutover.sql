@@ -23,11 +23,24 @@ CREATE TABLE IF NOT EXISTS website_sessions (
   expires_at INTEGER NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS owner_notifications (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER REFERENCES users(user_id) ON DELETE SET NULL,
+  source TEXT NOT NULL,
+  category TEXT NOT NULL,
+  message TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'queued',
+  created_at INTEGER NOT NULL,
+  delivered_at INTEGER
+);
+
 INSERT OR IGNORE INTO feature_flags(feature_key, enabled, description, updated_at) VALUES
 ('credit_ledger', 1, 'User credit ledger APIs', strftime('%s','now')),
 ('telegram_prompt_mode', 1, 'Telegram prompt capture flow over webhook + Durable Object state', strftime('%s','now')),
-('miniapp_auth', 1, 'Telegram Mini App authentication and session issuance', strftime('%s','now'));
+('miniapp_auth', 1, 'Telegram Mini App authentication and session issuance', strftime('%s','now')),
+('owner_notifications', 1, 'Owner notification and handoff foundations', strftime('%s','now'));
 
 CREATE INDEX IF NOT EXISTS idx_feature_access_user ON feature_access(user_id);
 CREATE INDEX IF NOT EXISTS idx_telegram_webhook_events_user ON telegram_webhook_events(telegram_user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_website_sessions_user ON website_sessions(user_id, expires_at DESC);
+CREATE INDEX IF NOT EXISTS idx_owner_notifications_user ON owner_notifications(user_id, created_at DESC);

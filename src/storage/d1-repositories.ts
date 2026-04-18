@@ -1,5 +1,15 @@
-import type { AssetSummary, ClientType, CreditLedgerEntry, FeatureFlag, GptMessage, SessionRecord, UserProfile } from "../domain/types";
-import type { ApiTokenRepository, AssetRepository, CreditLedgerRepository, FeatureRepository, GptHistoryRepository, SessionRepository, UserRepository } from "./contracts";
+import type { AssetSummary, ClientType, CreditLedgerEntry, FeatureFlag, GptMessage, OwnerNotification, SessionRecord, UserProfile } from "../domain/types";
+import type {
+  ApiTokenRepository,
+  AssetRepository,
+  CreditLedgerRepository,
+  FeatureRepository,
+  GptHistoryRepository,
+  OwnerNotificationRepository,
+  SessionRepository,
+  TelegramWebhookEventRepository,
+  UserRepository,
+} from "./contracts";
 
 const now = () => Math.floor(Date.now() / 1000);
 
@@ -215,5 +225,58 @@ export class D1CreditLedgerRepository implements CreditLedgerRepository {
       source: row.source,
       createdAt: Number(row.created_at),
     }));
+  }
+}
+
+export class D1TelegramWebhookEventRepository implements TelegramWebhookEventRepository {
+  constructor(private db: D1Database) {}
+
+  async isProcessed(updateId: number): Promise<boolean> {
+    const row = await this.db.prepare(`SELECT 1 as seen FROM telegram_webhook_events WHERE update_id = ?1`).bind(updateId).first<any>();
+    return !!row?.seen;
+  }
+
+  async markProcessed(input: { updateId: number; telegramUserId?: number | null; eventType: string }): Promise<void> {
+    await this.db
+      .prepare(
+        `INSERT OR IGNORE INTO telegram_webhook_events (update_id, telegram_user_id, event_type, created_at)
+         VALUES (?1, ?2, ?3, ?4)`
+      )
+      .bind(input.updateId, input.telegramUserId ?? null, input.eventType, now())
+      .run();
+  }
+}
+
+export class D1OwnerNotificationRepository implements OwnerNotificationRepository {
+  constructor(private db: D1Database) {}
+
+  async create(input: {
+    userId?: number | null;
+    source: ClientType | "system";
+    category: string;
+    message: string;
+    status?: "queued" | "sent" | "failed";
+    deliveredAt?: number | null;
+  }): Promise<OwnerNotification> {
+    const ts = now();
+    await this.db
+      .prepare(
+        `INSERT INTO owner_notifications (user_id, source, category, message, status, created_at, delivered_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`
+      )
+      .bind(input.userId ?? null, input.source, input.category, input.message, input.status ?? "queued", ts, input.deliveredAt ?? null)
+      .run();
+
+    const row = await this.db.prepare(`SELECT * FROM owner_notifications WHERE id = last_insert_rowid()`).first<any>();
+    return {
+      id: Number(row.id),
+      userId: row.user_id === null ? null : Number(row.user_id),
+      source: row.source,
+      category: row.category,
+      message: row.message,
+      status: row.status,
+      createdAt: Number(row.created_at),
+      deliveredAt: row.delivered_at === null ? null : Number(row.delivered_at),
+    };
   }
 }

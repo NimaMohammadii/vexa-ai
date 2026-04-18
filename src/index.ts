@@ -1,7 +1,27 @@
 import { withCors, handleCorsPreflight } from "./http/cors";
 import { jsonError, HttpError } from "./http/response";
-import { AssetService, ApiTokenService, CreditService, FeatureService, GptHistoryService, SessionService, UserService } from "./services/user-services";
-import { D1ApiTokenRepository, D1AssetRepository, D1CreditLedgerRepository, D1FeatureRepository, D1GptHistoryRepository, D1SessionRepository, D1UserRepository } from "./storage/d1-repositories";
+import {
+  AssetService,
+  ApiTokenService,
+  CreditService,
+  FeatureService,
+  GptHistoryService,
+  OwnerNotificationService,
+  SessionService,
+  TelegramWebhookService,
+  UserService,
+} from "./services/user-services";
+import {
+  D1ApiTokenRepository,
+  D1AssetRepository,
+  D1CreditLedgerRepository,
+  D1FeatureRepository,
+  D1GptHistoryRepository,
+  D1OwnerNotificationRepository,
+  D1SessionRepository,
+  D1TelegramWebhookEventRepository,
+  D1UserRepository,
+} from "./storage/d1-repositories";
 import { UserStateDO } from "./storage/user-state-do";
 import { handleMeRoutes } from "./routes/me-routes";
 import { handlePublicRoutes } from "./routes/public-routes";
@@ -27,6 +47,12 @@ export default {
       history: new GptHistoryService(new D1GptHistoryRepository(env.DB)),
       assets: new AssetService(new D1AssetRepository(env.DB)),
       features: new FeatureService(new D1FeatureRepository(env.DB)),
+      telegramEvents: new TelegramWebhookService(new D1TelegramWebhookEventRepository(env.DB)),
+      ownerNotifications: new OwnerNotificationService(
+        new D1OwnerNotificationRepository(env.DB),
+        env.TELEGRAM_BOT_TOKEN,
+        env.OWNER_TELEGRAM_CHAT_ID
+      ),
     };
 
     try {

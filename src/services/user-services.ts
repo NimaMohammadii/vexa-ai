@@ -1,6 +1,16 @@
 import type { ClientType, GptMessage } from "../domain/types";
 import { HttpError } from "../http/response";
-import type { ApiTokenRepository, AssetRepository, CreditLedgerRepository, FeatureRepository, GptHistoryRepository, SessionRepository, UserRepository } from "../storage/contracts";
+import type {
+  ApiTokenRepository,
+  AssetRepository,
+  CreditLedgerRepository,
+  FeatureRepository,
+  GptHistoryRepository,
+  OwnerNotificationRepository,
+  SessionRepository,
+  TelegramWebhookEventRepository,
+  UserRepository,
+} from "../storage/contracts";
 
 export class UserService {
   constructor(private users: UserRepository) {}
@@ -109,5 +119,42 @@ export class FeatureService {
 
   list() {
     return this.features.list();
+  }
+}
+
+export class TelegramWebhookService {
+  constructor(private events: TelegramWebhookEventRepository) {}
+
+  async shouldSkipUpdate(updateId?: number | null): Promise<boolean> {
+    if (updateId === undefined || updateId === null) return false;
+    return this.events.isProcessed(updateId);
+  }
+
+  async markProcessed(updateId: number, telegramUserId: number | null, eventType: string) {
+    await this.events.markProcessed({ updateId, telegramUserId, eventType });
+  }
+}
+
+export class OwnerNotificationService {
+  constructor(private notifications: OwnerNotificationRepository, private botToken: string, private ownerChatId?: string) {}
+
+  async queue(input: { userId?: number | null; source: ClientType | "system"; category: string; message: string }) {
+    if (!this.ownerChatId) {
+      return this.notifications.create({ ...input, status: "queued" });
+    }
+
+    try {
+      const text = [`🔔 ${input.category}`, input.message, input.userId ? `user_id: ${input.userId}` : undefined]
+        .filter(Boolean)
+        .join("\n");
+      await fetch(`https://api.telegram.org/bot${this.botToken}/sendMessage`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ chat_id: this.ownerChatId, text }),
+      });
+      return this.notifications.create({ ...input, status: "sent", deliveredAt: Math.floor(Date.now() / 1000) });
+    } catch {
+      return this.notifications.create({ ...input, status: "failed" });
+    }
   }
 }

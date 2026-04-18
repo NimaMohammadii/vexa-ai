@@ -1,3 +1,4 @@
+import type { OwnerNotificationService, TelegramWebhookService } from "./user-services";
 import type { BotConversationState, UserStateRepository } from "../storage/user-state-repository";
 import type { ApiTokenService, CreditService, GptHistoryService, UserService } from "./user-services";
 
@@ -8,6 +9,7 @@ interface TelegramUser {
 }
 
 export interface TelegramWebhookUpdate {
+  update_id?: number;
   message?: {
     text?: string;
     from?: TelegramUser;
@@ -28,6 +30,8 @@ interface TelegramBotFlowDeps {
   tokens: ApiTokenService;
   history: GptHistoryService;
   userState: UserStateRepository;
+  telegramEvents: TelegramWebhookService;
+  ownerNotifications: OwnerNotificationService;
 }
 
 const nowTs = () => Math.floor(Date.now() / 1000);
@@ -36,13 +40,30 @@ export class TelegramBotFlowService {
   constructor(private deps: TelegramBotFlowDeps) {}
 
   async handleWebhook(update: TelegramWebhookUpdate): Promise<{ handled: string }> {
+    if (await this.deps.telegramEvents.shouldSkipUpdate(update.update_id)) {
+      return { handled: "duplicate_update" };
+    }
+
     if (update.callback_query?.id) {
+      const callbackData = update.callback_query.data ?? "unknown";
+      if (callbackData.startsWith("owner:")) {
+        await this.deps.ownerNotifications.queue({
+          userId: update.callback_query.from?.id,
+          source: "telegram_bot",
+          category: "callback_query",
+          message: `Owner callback requested: ${callbackData}`,
+        });
+      }
       await this.answerCallback(update.callback_query.id, "Action received ✅");
+      await this.markProcessed(update, update.callback_query.from?.id ?? null, "callback_query");
       return { handled: "callback_query" };
     }
 
     const msg = update.message;
-    if (!msg?.chat?.id || !msg.from?.id) return { handled: "ignored" };
+    if (!msg?.chat?.id || !msg.from?.id) {
+      await this.markProcessed(update, null, "ignored");
+      return { handled: "ignored" };
+    }
 
     const user = await this.deps.users.bootstrapTelegramUser({
       userId: msg.from.id,
@@ -54,7 +75,9 @@ export class TelegramBotFlowService {
     const text = (msg.text ?? "").trim();
 
     if (text.startsWith("/")) {
-      return this.handleCommand(user.userId, msg.chat.id, text);
+      const handled = await this.handleCommand(user.userId, msg.chat.id, text);
+      await this.markProcessed(update, user.userId, handled.handled);
+      return handled;
     }
 
     if (state.mode === "awaiting_prompt" && text) {
@@ -64,6 +87,13 @@ export class TelegramBotFlowService {
 
       await this.deps.userState.setBotState(user.userId, { mode: "idle", updatedAt: nowTs() });
       await this.sendMessage(msg.chat.id, "✅ Prompt stored in GPT history and 1 credit consumed.");
+      await this.deps.ownerNotifications.queue({
+        userId: user.userId,
+        source: "telegram_bot",
+        category: "prompt_captured",
+        message: `User submitted prompt (first 120 chars): ${text.slice(0, 120)}`,
+      });
+      await this.markProcessed(update, user.userId, "prompt_captured");
       return { handled: "prompt_captured" };
     }
 
@@ -72,9 +102,11 @@ export class TelegramBotFlowService {
         msg.chat.id,
         "I only process commands right now. Use /ask to submit a prompt, or /start to see all commands."
       );
+      await this.markProcessed(update, user.userId, "text_unmapped");
       return { handled: "text_unmapped" };
     }
 
+    await this.markProcessed(update, user.userId, "empty_message");
     return { handled: "empty_message" };
   }
 
@@ -94,6 +126,7 @@ export class TelegramBotFlowService {
             "/history - list GPT history",
             "/resethistory - clear GPT history",
             "/ask - enter prompt mode",
+            "/notifyowner - request human handoff",
             "/cancel - cancel prompt mode",
           ].join("\n")
         );
@@ -135,6 +168,15 @@ export class TelegramBotFlowService {
         await this.deps.history.clear(userId);
         await this.sendMessage(chatId, "🧹 GPT history reset.");
         return { handled: "history_reset" };
+      case "/notifyowner":
+        await this.deps.ownerNotifications.queue({
+          userId,
+          source: "telegram_bot",
+          category: "manual_handoff",
+          message: "User requested owner handoff from bot command /notifyowner",
+        });
+        await this.sendMessage(chatId, "✅ Owner has been notified. We'll follow up shortly.");
+        return { handled: "notify_owner" };
       case "/ask": {
         const state: BotConversationState = { mode: "awaiting_prompt", updatedAt: nowTs() };
         await this.deps.userState.setBotState(userId, state);
@@ -148,6 +190,12 @@ export class TelegramBotFlowService {
       default:
         await this.sendMessage(chatId, "Unknown command. Use /help.");
         return { handled: "unknown_command" };
+    }
+  }
+
+  private async markProcessed(update: TelegramWebhookUpdate, telegramUserId: number | null, eventType: string) {
+    if (typeof update.update_id === "number") {
+      await this.deps.telegramEvents.markProcessed(update.update_id, telegramUserId, eventType);
     }
   }
 

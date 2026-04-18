@@ -1,38 +1,17 @@
-# Hard-cutover migration complete: Python stack archived, Worker is primary
+# Hard-cutover migration complete: Workers-only production
 
 Date: 2026-04-18
 
-## Cutover outcome
+## Outcome
 
-The repository is no longer dual-primary.
+- Active production runtime is Cloudflare Workers (`src/index.ts`).
+- Python runtime is archived in `legacy/` and removed from deployment path.
+- Telegram bot runs webhook transport at `/telegram/webhook/<secret>`.
+- Telegram Mini App and website share the same backend and auth/session system.
 
-- Active production runtime is Cloudflare Workers in `workers-backend/`.
-- Python runtime has been moved to `legacy/` for reference only.
-- Telegram bot is webhook-based on Worker route `/telegram/webhook/<secret>`.
-- Telegram Mini App and Website both use shared Worker APIs and auth.
+## Runtime contracts
 
-## Auth model
-
-- Mini App auth endpoint: `POST /miniapp/auth/telegram`
-- Telegram `initData` is validated via official HMAC procedure.
-- Backend creates `user_sessions` token and returns Bearer credentials.
-- Authenticated routes use `Authorization: Bearer <token>` or `x-api-key`.
-
-## Shared domain coverage
-
-Implemented in Worker service layer:
-
-- users/profile bootstrap
-- credits balance and consumption/grant ledger
-- per-user API token lifecycle
-- GPT history list/append/clear
-- generated assets listing
-- feature discovery
-- Telegram bot interaction flow with Durable Object-backed prompt mode state
-
-## Required route coverage
-
-Implemented routes:
+### Required routes implemented
 
 - `POST /telegram/webhook/<TELEGRAM_WEBHOOK_SECRET>`
 - `POST /miniapp/auth/telegram`
@@ -45,11 +24,18 @@ Implemented routes:
 - `GET /v1/me/assets`
 - `GET /v1/features`
 
-No advertised route in `/v1/features` points to a missing handler.
+No route advertised in `/v1/features` points to a missing endpoint.
 
-## Storage updates
+## Auth/session model
 
-D1 migrations now include:
+- Mini App `initData` is validated via Telegram HMAC verification.
+- Backend upserts the user and creates a `user_sessions` record.
+- Returned bearer token works immediately for `/v1/me*` endpoints.
+- API tokens remain valid via Bearer or `x-api-key` for website/server callers.
+
+## D1 schema coverage
+
+Core tables:
 
 - `users`
 - `api_tokens`
@@ -61,17 +47,19 @@ D1 migrations now include:
 - `feature_access`
 - `telegram_webhook_events`
 - `website_sessions`
+- `owner_notifications`
 
-Durable Object class:
+## Durable Objects
 
-- `UserStateDO` for per-user bot flow state
+- `UserStateDO`: per-user Telegram bot conversational state only.
 
-## Remaining parity gaps
+## Shared services
 
-Some advanced generation/provider logic from the legacy Python modules remains to be ported:
-
-- deep provider-specific generation pipelines
-- legacy admin/referral/economics command surface breadth
-- niche command UX parity
-
-These are migration backlog items on top of a complete infrastructure/runtime cutover.
+- user/profile service
+- credits service
+- API token service
+- GPT history service
+- assets service
+- feature discovery service
+- bot interaction service
+- owner notification service

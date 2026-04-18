@@ -56,3 +56,14 @@ export interface TelegramMiniAppIdentity {
   firstName?: string | null;
   authDate: number;
 }
+
+export interface OwnerNotification {
+  id: number;
+  userId: number | null;
+  source: ClientType | "system";
+  category: string;
+  message: string;
+  status: "queued" | "sent" | "failed";
+  createdAt: number;
+  deliveredAt: number | null;
+}

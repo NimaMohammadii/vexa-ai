@@ -15,6 +15,8 @@ export async function handleTelegramRoutes(ctx: RouteCtx): Promise<Response | nu
       tokens: services.tokens,
       history: services.history,
       userState: new UserStateRepository(env.USER_STATE),
+      telegramEvents: services.telegramEvents,
+      ownerNotifications: services.ownerNotifications,
     });
     const result = await flow.handleWebhook(update);
     return jsonOk(result);
