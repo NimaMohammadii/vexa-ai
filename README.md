@@ -101,6 +101,14 @@ wrangler secret put OWNER_TELEGRAM_CHAT_ID
 
 ## Telegram webhook setup
 
+Run the helper (recommended):
+
+```bash
+TELEGRAM_BOT_TOKEN=... TELEGRAM_WEBHOOK_SECRET=... ./scripts/setup-telegram-webhook.sh
+```
+
+Or call Telegram API manually:
+
 ```bash
 npm run deploy
 curl "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setWebhook?url=<WORKER_BASE_URL>/telegram/webhook/<TELEGRAM_WEBHOOK_SECRET>"
