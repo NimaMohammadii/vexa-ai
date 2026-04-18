@@ -28,6 +28,12 @@ export class UserService {
   touchLastSeen(userId: number) {
     return this.users.touchLastSeen(userId);
   }
+
+  async ensureActiveUser(userId: number) {
+    const profile = await this.getProfile(userId);
+    if (profile.banned) throw new HttpError(403, "forbidden", "User is banned");
+    return profile;
+  }
 }
 
 export class CreditService {

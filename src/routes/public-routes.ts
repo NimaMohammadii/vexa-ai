@@ -1,5 +1,5 @@
 import { validateTelegramInitData } from "../auth/telegram";
-import { jsonOk, parseJsonBody } from "../http/response";
+import { HttpError, jsonOk, parseJsonBody } from "../http/response";
 import type { RouteCtx } from "./types";
 
 export async function handlePublicRoutes(ctx: RouteCtx): Promise<Response | null> {
@@ -14,10 +14,16 @@ export async function handlePublicRoutes(ctx: RouteCtx): Promise<Response | null
     return jsonOk({
       features: flags,
       routes: {
+        health: "/v1/health",
+        features: "/v1/features",
+        publicFeatures: "/v1/public/features",
+        telegramWebhookInfo: "/v1/telegram/webhook-info",
         telegramWebhook: "/telegram/webhook/<TELEGRAM_WEBHOOK_SECRET>",
         miniAppAuth: "/miniapp/auth/telegram",
+        telegramMiniAppAuthAlias: "/v1/auth/telegram-miniapp",
         me: "/v1/me",
         meCredits: "/v1/me/credits",
+        meCreditsLedger: "/v1/me/credits/ledger",
         meApiToken: "/v1/me/api-token",
         meApiTokenRotate: "/v1/me/api-token/rotate",
         meGptHistory: "/v1/me/gpt-history",
@@ -46,15 +52,16 @@ export async function handlePublicRoutes(ctx: RouteCtx): Promise<Response | null
     const body = await parseJsonBody<{ initData?: string }>(request);
     const identity = await validateTelegramInitData(body.initData ?? "", env.TELEGRAM_BOT_TOKEN);
 
-    await services.users.bootstrapTelegramUser({
+    const profile = await services.users.bootstrapTelegramUser({
       userId: identity.telegramUserId,
       username: identity.username,
       firstName: identity.firstName,
     });
+    if (profile.banned) throw new HttpError(403, "forbidden", "User is banned");
 
-    const ttlSeconds = Number(env.SESSION_TTL_SECONDS ?? "2592000");
+    const parsedTtlSeconds = Number(env.SESSION_TTL_SECONDS ?? "2592000");
+    const ttlSeconds = Number.isFinite(parsedTtlSeconds) && parsedTtlSeconds > 0 ? Math.floor(parsedTtlSeconds) : 2592000;
     const session = await services.sessions.createSession(identity.telegramUserId, "telegram_mini_app", ttlSeconds);
-    const profile = await services.users.getProfile(identity.telegramUserId);
 
     return jsonOk({
       accessToken: session.sessionToken,
