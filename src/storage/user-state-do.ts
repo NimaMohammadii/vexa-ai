@@ -1,8 +1,14 @@
+import { DurableObject } from "cloudflare:workers";
+
 /**
  * Per-user strongly consistent state.
  * Intended for flows like in-progress Telegram conversation/session state.
  */
 export class UserStateDO extends DurableObject {
+  constructor(ctx: DurableObjectState, env: unknown) {
+    super(ctx, env);
+  }
+
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
 
