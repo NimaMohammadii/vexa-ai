@@ -1,7 +1,7 @@
 import { withCors, handleCorsPreflight } from "./http/cors";
 import { jsonError, HttpError } from "./http/response";
 import { AssetService, ApiTokenService, CreditService, FeatureService, GptHistoryService, SessionService, UserService } from "./services/user-services";
-import { D1ApiTokenRepository, D1AssetRepository, D1FeatureRepository, D1GptHistoryRepository, D1SessionRepository, D1UserRepository } from "./storage/d1-repositories";
+import { D1ApiTokenRepository, D1AssetRepository, D1CreditLedgerRepository, D1FeatureRepository, D1GptHistoryRepository, D1SessionRepository, D1UserRepository } from "./storage/d1-repositories";
 import { UserStateDO } from "./storage/user-state-do";
 import { handleMeRoutes } from "./routes/me-routes";
 import { handlePublicRoutes } from "./routes/public-routes";
@@ -17,9 +17,11 @@ export default {
 
     const url = new URL(request.url);
 
+    const userRepo = new D1UserRepository(env.DB);
+
     const services = {
-      users: new UserService(new D1UserRepository(env.DB)),
-      credits: new CreditService(new D1UserRepository(env.DB)),
+      users: new UserService(userRepo),
+      credits: new CreditService(userRepo, new D1CreditLedgerRepository(env.DB)),
       tokens: new ApiTokenService(new D1ApiTokenRepository(env.DB)),
       sessions: new SessionService(new D1SessionRepository(env.DB)),
       history: new GptHistoryService(new D1GptHistoryRepository(env.DB)),

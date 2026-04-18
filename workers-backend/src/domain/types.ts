@@ -34,6 +34,14 @@ export interface FeatureFlag {
   description: string;
 }
 
+export interface CreditLedgerEntry {
+  id: number;
+  amount: number;
+  reason: string;
+  source: ClientType;
+  createdAt: number;
+}
+
 export interface SessionRecord {
   sessionToken: string;
   userId: number;

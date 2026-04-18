@@ -1,0 +1,11 @@
+{
+  "name": "vexa-ai",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix workers-backend run dev",
+    "check": "npm --prefix workers-backend run check",
+    "deploy": "npm --prefix workers-backend run deploy",
+    "d1:migrate:local": "npm --prefix workers-backend run d1:migrate:local",
+    "d1:migrate:remote": "npm --prefix workers-backend run d1:migrate:remote"
+  }
+}

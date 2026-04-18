@@ -1,10 +1,10 @@
-import type { AssetSummary, ClientType, FeatureFlag, GptMessage, SessionRecord, UserProfile } from "../domain/types";
+import type { AssetSummary, ClientType, CreditLedgerEntry, FeatureFlag, GptMessage, SessionRecord, UserProfile } from "../domain/types";
 
 export interface UserRepository {
   upsertTelegramUser(input: { userId: number; username?: string | null; firstName?: string | null }): Promise<UserProfile>;
   getById(userId: number): Promise<UserProfile | null>;
   touchLastSeen(userId: number): Promise<void>;
-  setCredits(userId: number, credits: number): Promise<void>;
+  incrementCredits(userId: number, delta: number): Promise<void>;
 }
 
 export interface ApiTokenRepository {
@@ -31,4 +31,9 @@ export interface AssetRepository {
 
 export interface FeatureRepository {
   list(): Promise<FeatureFlag[]>;
+}
+
+export interface CreditLedgerRepository {
+  append(input: { userId: number; amount: number; reason: string; source: ClientType }): Promise<void>;
+  listByUser(userId: number, limit: number): Promise<CreditLedgerEntry[]>;
 }
