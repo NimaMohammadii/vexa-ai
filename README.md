@@ -1,89 +1,133 @@
-# vexa-ai
+# Vexa AI — Cloudflare-native shared platform
 
-## تنظیم و استفاده از GPT
+Vexa is now migrated to a **Cloudflare Workers-first architecture** with one shared backend for:
 
-برای فعال‌سازی دستیار GPT داخل ربات تلگرام متغیرهای محیطی زیر را مقداردهی کنید:
+1. Telegram Bot (webhook)
+2. Telegram Mini App
+3. Website clients
 
-- `GPT_API` یا `GPT_API_KEY` یا `OPENAI_API_KEY` — کلید دسترسی به سرویس GPT (الزامی).
-- `GPT_MODE` — نوع سرویس GPT؛ مقدار `assistant` از OpenAI Assistants/Responses استفاده می‌کند (پیش‌فرض `chat`).
-- `GPT_API_URL` — آدرس سرویس چت؛ برای حالت `assistant` به‌صورت پیش‌فرض `https://api.openai.com/v1/responses` است.
-- `GPT_MODEL` — نام مدل، پیش‌فرض `gpt-4o-mini`.
-- `GPT_API_TIMEOUT` — زمان انتظار درخواست بر حسب ثانیه، پیش‌فرض `45`.
-- `GPT_API_KEY_HEADER` و `GPT_API_KEY_PREFIX` — در صورت نیاز به هدر سفارشی برای کلید.
-- `GPT_SYSTEM_PROMPT` — پیام سیستمی برای شروع هر مکالمه (پیش‌فرض: «You are Vexa GPT-5…»).
-- `GPT_HISTORY_LIMIT` — تعداد پیام‌های اخیر که در هر پاسخ به GPT ارسال می‌شود (پیش‌فرض `6`).
-- `GPT_TEMPERATURE` — میزان خلاقیت پاسخ‌ها (۰ تا ۲، پیش‌فرض `0.7`).
-- `GPT_TOP_P` — مقدار `top_p` برای نمونه‌گیری هسته‌ای (۰ تا ۱، پیش‌فرض `1`).
-- `GPT_MAX_TOKENS` — سقف توکن برای هر پاسخ (۰ یعنی بدون محدودیت جداگانه).
-- `GPT_ASSISTANT_ID` — در صورت استفاده از Assistants API می‌توانید شناسه دستیار از پیش ساخته‌شده را وارد کنید (اختیاری). در صورت تنظیم نشدن این متغیر، مقدار `ASSISTANT_ID` (در Secrets) یا `OPENAI_ASSISTANT_ID` نیز به‌صورت خودکار خوانده می‌شود.
+The old Python polling stack (`main.py`, `api_server.py`, `db.py`) is retained only as **legacy reference** and is no longer the production target.
 
-در صورتی که بخواهید ربات از OpenAI Assistant/Responses استفاده کند، کافی است متغیر `GPT_MODE=assistant` را تنظیم کنید. در این حالت، پیام‌ها همانند قبل از تاریخچه محلی ساخته شده و به اندپوینت جدید (`/v1/responses`) ارسال می‌شوند و در صورت وجود `GPT_ASSISTANT_ID` همان دستیار از پیش ساخته‌شده اجرا خواهد شد.
+## Architecture
 
-## امکانات ربات
+- **Runtime:** Cloudflare Workers (`workers-backend/src/index.ts`)
+- **Persistence:** Cloudflare D1 (relational data)
+- **Strong per-user flow state:** Durable Object (`UserStateDO`)
+- **Auth:**
+  - Telegram Mini App `initData` verification + issued session token
+  - Bearer session token and per-user API token auth
+- **Shared services:** user profile, credits, API token lifecycle, GPT history, assets, feature discovery
 
-- دستور `/gpt` برای شروع گفت‌وگوی مستقیم با GPT در همان چت تلگرام. با دستور `/endgpt` می‌توانید مکالمه را پایان دهید و دکمه «شروع چت جدید ♻️» تاریخچه را پاک می‌کند.
-- در منوی اصلی، دکمه GPT شما را به گفت‌وگوی درون ربات هدایت می‌کند.
+## Implemented API routes
 
-پس از مقداردهی متغیرها، ربات آماده است تا پیام‌های کاربران را به سرویس GPT ارسال کرده و پاسخ را داخل تلگرام نمایش دهد.
+### Public routes
+- `GET /v1/health`
+- `GET /v1/features`
+- `GET /v1/telegram/webhook-info`
+- `POST /v1/auth/telegram-miniapp`
 
-## API خارجی برای تولید عکس و صدا
+### Authenticated routes
+- `GET /v1/me`
+- `GET /v1/me/credits`
+- `GET /v1/me/api-token`
+- `POST /v1/me/api-token/rotate`
+- `GET /v1/me/gpt-history`
+- `DELETE /v1/me/gpt-history`
+- `GET /v1/me/assets`
 
-هر کاربر می‌تواند از داخل منوی اصلی ربات، بخش «API Token» را باز کند و کلید اختصاصی خودش را ببیند یا تعویض کند. این کلید برای احراز هویت درخواست‌های HTTP استفاده می‌شود.
+### Telegram webhook route
+- `POST /telegram/webhook/<TELEGRAM_WEBHOOK_SECRET>`
 
-### نحوه اجرا
+Implemented bot commands:
+- `/start`
+- `/profile`
+- `/credits`
+- `/apitoken`
+- `/rotatetoken`
+- `/history`
+- `/resethistory`
+
+`callback_query` is now acknowledged and preserved as an extension point for future interactive flows.
+
+## Storage model (D1)
+
+Core tables in `workers-backend/migrations/0001_initial.sql`:
+
+- `users`
+- `api_tokens`
+- `user_sessions`
+- `gpt_messages`
+- `generated_assets`
+- `user_state`
+- `credit_ledger`
+- `feature_flags`
+
+## Local development
 
 ```bash
-uvicorn api_server:app --host 0.0.0.0 --port 8000
+cd workers-backend
+npm install
+npm run check
+npm run dev
 ```
 
-### احراز هویت
+## D1 setup
 
-در هر درخواست هدر زیر را ارسال کنید:
+1. Create database:
+   ```bash
+   wrangler d1 create vexa
+   ```
+2. Copy resulting `database_id` into `workers-backend/wrangler.toml`.
+3. Run migrations locally:
+   ```bash
+   npm run d1:migrate:local
+   ```
+4. Run migrations remotely:
+   ```bash
+   npm run d1:migrate:remote
+   ```
 
+## Durable Object setup
+
+`wrangler.toml` already binds `USER_STATE` and includes the class migration tag.
+Deploy once after migration to register it in your Worker.
+
+## Telegram webhook setup
+
+1. Deploy Worker and copy base URL.
+2. Set secrets:
+   ```bash
+   wrangler secret put TELEGRAM_BOT_TOKEN
+   wrangler secret put TELEGRAM_WEBHOOK_SECRET
+   ```
+3. Set webhook:
+   ```bash
+   curl "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setWebhook?url=<WORKER_BASE_URL>/telegram/webhook/<TELEGRAM_WEBHOOK_SECRET>"
+   ```
+4. Verify:
+   ```bash
+   curl "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/getWebhookInfo"
+   ```
+
+## Telegram Mini App auth flow
+
+1. Mini App sends `initData` to `POST /v1/auth/telegram-miniapp`.
+2. Backend validates signature and `auth_date` freshness.
+3. Backend upserts user and issues a `Bearer` session token.
+4. Mini App uses `Authorization: Bearer <accessToken>` for `/v1/me*` APIs.
+
+## Production deploy
+
+```bash
+cd workers-backend
+npm install
+npm run check
+npm run d1:migrate:remote
+npm run deploy
 ```
-X-API-Key: <TOKEN>
-```
 
-### اندپوینت‌ها
+## Legacy status
 
-| متد | مسیر       | توضیح | هزینه |
-|-----|------------|-------|-------|
-| POST | `/v1/image` | تولید تصویر Vexa | ۵ کردیت |
-| POST | `/v1/tts`   | تبدیل متن به صدا (صداهای پیش‌فرض) | ۰٫۰۵ کردیت برای هر کاراکتر |
-| GET  | `/v1/voices` | فهرست صداهای قابل استفاده | ۰ |
-
-خروجی `POST /v1/image` لینک مستقیم تصویر است. خروجی `POST /v1/tts` شامل محتوای صوتی base64 و موجودی باقی‌ماندهٔ کاربر می‌شود. تمام هزینه‌ها از همان موجودی کردیت حساب تلگرام کسر خواهد شد.
-
----
-
-## Staged Cloudflare migration (new)
-
-A new Workers-based shared backend scaffold has been added under `workers-backend/`.
-
-### Why
-
-To support all three clients on one backend:
-1. Telegram bot (webhook)
-2. Telegram Mini App
-3. Website
-
-### What is included now
-
-- Worker entrypoint and route layout: `workers-backend/src/index.ts`
-- Storage abstraction and D1-backed repositories:
-  - `workers-backend/src/storage/contracts.ts`
-  - `workers-backend/src/storage/d1-repositories.ts`
-- Durable Object for per-user strongly consistent state:
-  - `workers-backend/src/storage/user-state-do.ts`
-- Telegram Mini App init data validation:
-  - `workers-backend/src/auth/telegram.ts`
-- Telegram webhook transport handler:
-  - `workers-backend/src/telegram/webhook.ts`
-- Initial D1 schema:
-  - `workers-backend/migrations/0001_initial.sql`
-- Migration phase notes:
-  - `docs/migration/staged-workers-migration.md`
-
-### Current status
-
-This is phase-0 scaffolding for a staged migration. The polling Python bot remains as legacy runtime until feature-by-feature cutover is complete.
+- Python polling bot is deprecated and not the active production architecture.
+- New production path is Cloudflare Workers + D1 + Durable Objects.
+- Legacy code is retained temporarily for behavior parity reference during final feature backfill.

@@ -1,4 +1,4 @@
-import type { AssetSummary, GptMessage, UserProfile } from "../domain/types";
+import type { AssetSummary, ClientType, FeatureFlag, GptMessage, SessionRecord, UserProfile } from "../domain/types";
 
 export interface UserRepository {
   upsertTelegramUser(input: { userId: number; username?: string | null; firstName?: string | null }): Promise<UserProfile>;
@@ -13,6 +13,12 @@ export interface ApiTokenRepository {
   getUserIdByToken(token: string): Promise<number | null>;
 }
 
+export interface SessionRepository {
+  create(input: { userId: number; clientType: ClientType; ttlSeconds: number }): Promise<SessionRecord>;
+  getByToken(token: string): Promise<SessionRecord | null>;
+  revoke(token: string): Promise<void>;
+}
+
 export interface GptHistoryRepository {
   list(userId: number, limit: number): Promise<GptMessage[]>;
   append(userId: number, role: GptMessage["role"], content: string): Promise<void>;
@@ -21,4 +27,8 @@ export interface GptHistoryRepository {
 
 export interface AssetRepository {
   listByUser(userId: number, limit: number): Promise<AssetSummary[]>;
+}
+
+export interface FeatureRepository {
+  list(): Promise<FeatureFlag[]>;
 }
