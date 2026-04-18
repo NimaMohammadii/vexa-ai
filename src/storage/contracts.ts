@@ -5,6 +5,7 @@ export interface UserRepository {
   getById(userId: number): Promise<UserProfile | null>;
   touchLastSeen(userId: number): Promise<void>;
   incrementCredits(userId: number, delta: number): Promise<void>;
+  setLanguage(userId: number, lang: string): Promise<void>;
 }
 
 export interface ApiTokenRepository {

@@ -1,5 +1,5 @@
 export interface BotConversationState {
-  mode: "idle" | "awaiting_prompt";
+  mode: "idle" | "awaiting_prompt" | "gpt:chat" | "tts:wait_text" | "image:wait_prompt" | "video:wait_image";
   updatedAt: number;
 }
 
@@ -26,7 +26,14 @@ export class UserStateRepository {
     try {
       const parsed = JSON.parse(payload.state) as Partial<BotConversationState>;
       return {
-        mode: parsed.mode === "awaiting_prompt" ? "awaiting_prompt" : "idle",
+        mode:
+          parsed.mode === "awaiting_prompt" ||
+          parsed.mode === "gpt:chat" ||
+          parsed.mode === "tts:wait_text" ||
+          parsed.mode === "image:wait_prompt" ||
+          parsed.mode === "video:wait_image"
+            ? parsed.mode
+            : "idle",
         updatedAt: Number(parsed.updatedAt ?? 0),
       };
     } catch {

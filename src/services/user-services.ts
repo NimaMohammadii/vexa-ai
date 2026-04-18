@@ -29,6 +29,10 @@ export class UserService {
     return this.users.touchLastSeen(userId);
   }
 
+  setLanguage(userId: number, lang: string) {
+    return this.users.setLanguage(userId, lang);
+  }
+
   async ensureActiveUser(userId: number) {
     const profile = await this.getProfile(userId);
     if (profile.banned) throw new HttpError(403, "forbidden", "User is banned");
