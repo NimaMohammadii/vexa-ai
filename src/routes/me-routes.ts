@@ -8,6 +8,7 @@ export async function handleMeRoutes(ctx: RouteCtx): Promise<Response | null> {
   if (!url.pathname.startsWith("/v1/me")) return null;
 
   const userId = await requireAuthedUserId(request, services);
+  await services.users.ensureActiveUser(userId);
   await services.users.touchLastSeen(userId);
 
   if (request.method === "GET" && url.pathname === "/v1/me") {
