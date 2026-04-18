@@ -8,6 +8,7 @@ export async function handleMeRoutes(ctx: RouteCtx): Promise<Response | null> {
   if (!url.pathname.startsWith("/v1/me")) return null;
 
   const userId = await requireAuthedUserId(request, services);
+  await services.users.touchLastSeen(userId);
 
   if (request.method === "GET" && url.pathname === "/v1/me") {
     return jsonOk(await services.users.getProfile(userId));
@@ -15,6 +16,10 @@ export async function handleMeRoutes(ctx: RouteCtx): Promise<Response | null> {
 
   if (request.method === "GET" && url.pathname === "/v1/me/credits") {
     return jsonOk(await services.credits.getCredits(userId));
+  }
+
+  if (request.method === "GET" && url.pathname === "/v1/me/credits/ledger") {
+    return jsonOk({ entries: await services.credits.listLedger(userId, 50) });
   }
 
   if (request.method === "GET" && url.pathname === "/v1/me/api-token") {

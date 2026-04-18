@@ -1,5 +1,5 @@
-import type { AssetSummary, ClientType, FeatureFlag, GptMessage, SessionRecord, UserProfile } from "../domain/types";
-import type { ApiTokenRepository, AssetRepository, FeatureRepository, GptHistoryRepository, SessionRepository, UserRepository } from "./contracts";
+import type { AssetSummary, ClientType, CreditLedgerEntry, FeatureFlag, GptMessage, SessionRecord, UserProfile } from "../domain/types";
+import type { ApiTokenRepository, AssetRepository, CreditLedgerRepository, FeatureRepository, GptHistoryRepository, SessionRepository, UserRepository } from "./contracts";
 
 const now = () => Math.floor(Date.now() / 1000);
 
@@ -11,7 +11,7 @@ export class D1UserRepository implements UserRepository {
     await this.db
       .prepare(
         `INSERT INTO users (user_id, username, first_name, lang, banned, credits, joined_at, last_seen_at)
-         VALUES (?1, ?2, ?3, 'fa', 0, 0, ?4, ?4)
+         VALUES (?1, ?2, ?3, 'fa', 0, 10, ?4, ?4)
          ON CONFLICT(user_id) DO UPDATE SET
            username = COALESCE(excluded.username, users.username),
            first_name = COALESCE(excluded.first_name, users.first_name),
@@ -48,8 +48,8 @@ export class D1UserRepository implements UserRepository {
     await this.db.prepare(`UPDATE users SET last_seen_at = ?1 WHERE user_id = ?2`).bind(now(), userId).run();
   }
 
-  async setCredits(userId: number, credits: number): Promise<void> {
-    await this.db.prepare(`UPDATE users SET credits = ?1 WHERE user_id = ?2`).bind(credits, userId).run();
+  async incrementCredits(userId: number, delta: number): Promise<void> {
+    await this.db.prepare(`UPDATE users SET credits = credits + ?1 WHERE user_id = ?2`).bind(delta, userId).run();
   }
 }
 
@@ -182,14 +182,38 @@ export class D1FeatureRepository implements FeatureRepository {
   constructor(private db: D1Database) {}
 
   async list(): Promise<FeatureFlag[]> {
-    const { results } = await this.db
-      .prepare(`SELECT feature_key, enabled, description FROM feature_flags ORDER BY feature_key`)
-      .all<any>();
+    const { results } = await this.db.prepare(`SELECT feature_key, enabled, description FROM feature_flags ORDER BY feature_key`).all<any>();
 
     return (results ?? []).map((row) => ({
       key: row.feature_key,
       enabled: !!row.enabled,
       description: row.description ?? "",
+    }));
+  }
+}
+
+export class D1CreditLedgerRepository implements CreditLedgerRepository {
+  constructor(private db: D1Database) {}
+
+  async append(input: { userId: number; amount: number; reason: string; source: ClientType }): Promise<void> {
+    await this.db
+      .prepare(`INSERT INTO credit_ledger (user_id, amount, reason, source, created_at) VALUES (?1, ?2, ?3, ?4, ?5)`)
+      .bind(input.userId, input.amount, input.reason, input.source, now())
+      .run();
+  }
+
+  async listByUser(userId: number, limit: number): Promise<CreditLedgerEntry[]> {
+    const { results } = await this.db
+      .prepare(`SELECT id, amount, reason, source, created_at FROM credit_ledger WHERE user_id = ?1 ORDER BY created_at DESC LIMIT ?2`)
+      .bind(userId, limit)
+      .all<any>();
+
+    return (results ?? []).map((row) => ({
+      id: Number(row.id),
+      amount: Number(row.amount),
+      reason: row.reason,
+      source: row.source,
+      createdAt: Number(row.created_at),
     }));
   }
 }

@@ -1,6 +1,6 @@
-import type { ClientType } from "../domain/types";
+import type { ClientType, GptMessage } from "../domain/types";
 import { HttpError } from "../http/response";
-import type { ApiTokenRepository, AssetRepository, FeatureRepository, GptHistoryRepository, SessionRepository, UserRepository } from "../storage/contracts";
+import type { ApiTokenRepository, AssetRepository, CreditLedgerRepository, FeatureRepository, GptHistoryRepository, SessionRepository, UserRepository } from "../storage/contracts";
 
 export class UserService {
   constructor(private users: UserRepository) {}
@@ -14,15 +14,39 @@ export class UserService {
   async bootstrapTelegramUser(input: { userId: number; username?: string | null; firstName?: string | null }) {
     return this.users.upsertTelegramUser(input);
   }
+
+  touchLastSeen(userId: number) {
+    return this.users.touchLastSeen(userId);
+  }
 }
 
 export class CreditService {
-  constructor(private users: UserRepository) {}
+  constructor(private users: UserRepository, private ledger: CreditLedgerRepository) {}
 
   async getCredits(userId: number) {
     const profile = await this.users.getById(userId);
     if (!profile) throw new HttpError(404, "not_found", "User not found");
     return { credits: profile.credits };
+  }
+
+  async consume(userId: number, amount: number, reason: string, source: ClientType) {
+    if (amount <= 0) throw new HttpError(400, "invalid_amount", "amount must be > 0");
+    const existing = await this.users.getById(userId);
+    if (!existing) throw new HttpError(404, "not_found", "User not found");
+    if (existing.credits < amount) throw new HttpError(402, "insufficient_credits", "Insufficient credits");
+
+    await this.users.incrementCredits(userId, -amount);
+    await this.ledger.append({ userId, amount: -amount, reason, source });
+  }
+
+  async grant(userId: number, amount: number, reason: string, source: ClientType) {
+    if (amount <= 0) throw new HttpError(400, "invalid_amount", "amount must be > 0");
+    await this.users.incrementCredits(userId, amount);
+    await this.ledger.append({ userId, amount, reason, source });
+  }
+
+  listLedger(userId: number, limit = 20) {
+    return this.ledger.listByUser(userId, limit);
   }
 }
 
@@ -67,6 +91,9 @@ export class GptHistoryService {
   }
   clear(userId: number) {
     return this.history.clear(userId);
+  }
+  append(userId: number, role: GptMessage["role"], content: string) {
+    return this.history.append(userId, role, content);
   }
 }
 

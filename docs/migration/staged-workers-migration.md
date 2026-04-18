@@ -1,40 +1,41 @@
-# Migration status: Python polling stack ➜ Cloudflare Workers shared backend
+# Hard-cutover migration complete: Python stack archived, Worker is primary
 
-## Completed cutover decisions
+Date: 2026-04-18
 
-- Primary backend runtime is now **Cloudflare Workers**.
-- Telegram bot transport is now **webhook-based** (no polling in the new architecture).
-- Shared APIs are now available for Telegram Mini App and Website clients.
-- D1 is now the persistent source of truth for shared entities.
-- Durable Object support is retained for strongly consistent per-user state workflows.
+## Cutover outcome
 
-## Shared domain concepts carried forward
+The repository is no longer dual-primary.
 
-The Workers data model and services preserve these repository concepts:
+- Active production runtime is Cloudflare Workers in `workers-backend/`.
+- Python runtime has been moved to `legacy/` for reference only.
+- Telegram bot is webhook-based on Worker route `/telegram/webhook/<secret>`.
+- Telegram Mini App and Website both use shared Worker APIs and auth.
 
-- users/profile + bootstrap from Telegram identity
-- credits/balance representation
-- API token lifecycle (read + rotate)
-- GPT history listing/reset
+## Auth model
+
+- Mini App auth endpoint: `POST /miniapp/auth/telegram`
+- Telegram `initData` is validated via official HMAC procedure.
+- Backend creates `user_sessions` token and returns Bearer credentials.
+- Authenticated routes use `Authorization: Bearer <token>` or `x-api-key`.
+
+## Shared domain coverage
+
+Implemented in Worker service layer:
+
+- users/profile bootstrap
+- credits balance and consumption/grant ledger
+- per-user API token lifecycle
+- GPT history list/append/clear
 - generated assets listing
-- feature discovery for clients
+- feature discovery
+- Telegram bot interaction flow with Durable Object-backed prompt mode state
 
-## What is intentionally left as parity backlog
+## Required route coverage
 
-The following advanced generation/provider workflows from legacy Python are not yet fully ported:
+Implemented routes:
 
-- image/video/tts generation provider execution pipelines
-- referral/purchase/admin commands and economics edge cases
-- legacy module-specific conversational flows
-
-These are now explicit backlog items and are no longer hidden behind scaffold routes.
-
-## New backend route map (implemented)
-
-- `GET /v1/health`
-- `GET /v1/features`
-- `GET /v1/telegram/webhook-info`
-- `POST /v1/auth/telegram-miniapp`
+- `POST /telegram/webhook/<TELEGRAM_WEBHOOK_SECRET>`
+- `POST /miniapp/auth/telegram`
 - `GET /v1/me`
 - `GET /v1/me/credits`
 - `GET /v1/me/api-token`
@@ -42,8 +43,35 @@ These are now explicit backlog items and are no longer hidden behind scaffold ro
 - `GET /v1/me/gpt-history`
 - `DELETE /v1/me/gpt-history`
 - `GET /v1/me/assets`
-- `POST /telegram/webhook/<secret>`
+- `GET /v1/features`
 
-## Operational note
+No advertised route in `/v1/features` points to a missing handler.
 
-Do not run `main.py` polling as primary production runtime after this migration stage. Python code is now legacy reference only.
+## Storage updates
+
+D1 migrations now include:
+
+- `users`
+- `api_tokens`
+- `user_sessions`
+- `gpt_messages`
+- `generated_assets`
+- `credit_ledger`
+- `feature_flags`
+- `feature_access`
+- `telegram_webhook_events`
+- `website_sessions`
+
+Durable Object class:
+
+- `UserStateDO` for per-user bot flow state
+
+## Remaining parity gaps
+
+Some advanced generation/provider logic from the legacy Python modules remains to be ported:
+
+- deep provider-specific generation pipelines
+- legacy admin/referral/economics command surface breadth
+- niche command UX parity
+
+These are migration backlog items on top of a complete infrastructure/runtime cutover.

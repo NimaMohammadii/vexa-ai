@@ -9,18 +9,24 @@ export async function handlePublicRoutes(ctx: RouteCtx): Promise<Response | null
     return jsonOk({ status: "ok", runtime: "cloudflare-workers" });
   }
 
-  if (request.method === "GET" && url.pathname === "/v1/features") {
+  if (request.method === "GET" && (url.pathname === "/v1/features" || url.pathname === "/v1/public/features")) {
     const flags = await services.features.list();
     return jsonOk({
       features: flags,
-      entrypoints: {
-        authTelegramMiniApp: "/v1/auth/telegram-miniapp",
+      routes: {
+        telegramWebhook: "/telegram/webhook/<TELEGRAM_WEBHOOK_SECRET>",
+        miniAppAuth: "/miniapp/auth/telegram",
         me: "/v1/me",
-        credits: "/v1/me/credits",
-        apiToken: "/v1/me/api-token",
-        rotateApiToken: "/v1/me/api-token/rotate",
-        gptHistory: "/v1/me/gpt-history",
-        assets: "/v1/me/assets",
+        meCredits: "/v1/me/credits",
+        meApiToken: "/v1/me/api-token",
+        meApiTokenRotate: "/v1/me/api-token/rotate",
+        meGptHistory: "/v1/me/gpt-history",
+        meAssets: "/v1/me/assets",
+      },
+      clients: {
+        telegramBot: { transport: "webhook", route: "/telegram/webhook/<TELEGRAM_WEBHOOK_SECRET>" },
+        telegramMiniApp: { authRoute: "/miniapp/auth/telegram", tokenType: "Bearer" },
+        website: { authRoute: "/miniapp/auth/telegram", publicRoute: "/v1/public/features" },
       },
     });
   }
@@ -36,7 +42,7 @@ export async function handlePublicRoutes(ctx: RouteCtx): Promise<Response | null
     });
   }
 
-  if (request.method === "POST" && url.pathname === "/v1/auth/telegram-miniapp") {
+  if (request.method === "POST" && (url.pathname === "/miniapp/auth/telegram" || url.pathname === "/v1/auth/telegram-miniapp")) {
     const body = await parseJsonBody<{ initData?: string }>(request);
     const identity = await validateTelegramInitData(body.initData ?? "", env.TELEGRAM_BOT_TOKEN);
 
@@ -55,6 +61,10 @@ export async function handlePublicRoutes(ctx: RouteCtx): Promise<Response | null
       tokenType: "Bearer",
       expiresAt: session.expiresAt,
       profile,
+      routes: {
+        me: "/v1/me",
+        meCredits: "/v1/me/credits",
+      },
     });
   }
 
