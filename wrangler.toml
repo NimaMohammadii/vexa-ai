@@ -8,7 +8,7 @@ SESSION_TTL_SECONDS = "2592000"
 [[d1_databases]]
 binding = "DB"
 database_name = "vexa-ai"
-database_id = "__REPLACE_WITH_D1_DATABASE_ID__"
+database_id = "236bff75-0a10-43cb-86dd-9f32a9cc1285"
 # Replace with the real ID from: wrangler d1 create vexa
 # Deploy and remote migrations will fail until this value is updated.
 migrations_dir = "migrations"
