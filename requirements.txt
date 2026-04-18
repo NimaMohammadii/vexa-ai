@@ -1,18 +1,8 @@
-pyTelegramBotAPI==4.14.0
-requests==2.31.0
-python-dotenv==1.0.0
-modules
-pytelegrambotapi
-pyTelegramBotAPI==4.14.0
-python-dotenv==1.0.0
-requests==2.31.0
-fastapi==0.111.0
-uvicorn[standard]==0.30.1
-pydub==0.25.1
-ffmpeg-python
-fastapi
-pydantic
+# Legacy-only Python dependencies.
+# This file is kept for reference during migration parity work.
+# Primary production runtime is now Cloudflare Workers (see workers-backend/).
+
 pyTelegramBotAPI
-python-dotenv
-requests
+fastapi
 uvicorn
+requests
