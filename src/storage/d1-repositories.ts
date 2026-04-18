@@ -61,6 +61,10 @@ export class D1UserRepository implements UserRepository {
   async incrementCredits(userId: number, delta: number): Promise<void> {
     await this.db.prepare(`UPDATE users SET credits = credits + ?1 WHERE user_id = ?2`).bind(delta, userId).run();
   }
+
+  async setLanguage(userId: number, lang: string): Promise<void> {
+    await this.db.prepare(`UPDATE users SET lang = ?1 WHERE user_id = ?2`).bind(lang, userId).run();
+  }
 }
 
 export class D1ApiTokenRepository implements ApiTokenRepository {
