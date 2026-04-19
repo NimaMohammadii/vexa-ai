@@ -9,6 +9,7 @@ export async function handleTelegramRoutes(ctx: RouteCtx): Promise<Response | nu
   if (request.method === "POST" && url.pathname === `/telegram/webhook/${env.TELEGRAM_WEBHOOK_SECRET}`) {
     const update = await parseJsonBody<TelegramWebhookUpdate>(request);
     const flow = new TelegramBotFlowService({
+      db: env.DB,
       botToken: env.TELEGRAM_BOT_TOKEN,
       botUsername: env.TELEGRAM_BOT_USERNAME,
       forceSubMode: env.FORCE_SUB_MODE,

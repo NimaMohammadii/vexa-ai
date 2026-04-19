@@ -7,7 +7,18 @@ export interface BotConversationState {
     | "image:wait_prompt"
     | "video:wait_image"
     | "clone:wait_audio"
-    | "clone:wait_name";
+    | "clone:wait_name"
+    | "admin:lookup_user"
+    | "admin:add_user"
+    | "admin:add_amount"
+    | "admin:sub_user"
+    | "admin:sub_amount"
+    | "admin:reset_user"
+    | "admin:dm_user"
+    | "admin:dm_content"
+    | "admin:cast_content"
+    | "admin:formula"
+    | "admin:set_setting";
   updatedAt: number;
   ttsVoice?: string;
   ttsOutput?: "mp3" | "voice";
@@ -28,6 +39,9 @@ export interface BotConversationState {
   waitingReceipt?: boolean;
   selectedPlanIndex?: number;
   ttsDemoLocks?: Record<string, { messageId: number; expiresAt: number }>;
+  adminTargetUserId?: number;
+  adminCastLang?: string;
+  adminSettingKey?: string;
 }
 
 const DEFAULT_STATE: BotConversationState = {
@@ -60,7 +74,18 @@ export class UserStateRepository {
           parsed.mode === "image:wait_prompt" ||
           parsed.mode === "video:wait_image" ||
           parsed.mode === "clone:wait_audio" ||
-          parsed.mode === "clone:wait_name"
+          parsed.mode === "clone:wait_name" ||
+          parsed.mode === "admin:lookup_user" ||
+          parsed.mode === "admin:add_user" ||
+          parsed.mode === "admin:add_amount" ||
+          parsed.mode === "admin:sub_user" ||
+          parsed.mode === "admin:sub_amount" ||
+          parsed.mode === "admin:reset_user" ||
+          parsed.mode === "admin:dm_user" ||
+          parsed.mode === "admin:dm_content" ||
+          parsed.mode === "admin:cast_content" ||
+          parsed.mode === "admin:formula" ||
+          parsed.mode === "admin:set_setting"
             ? parsed.mode
             : "idle",
         updatedAt: Number(parsed.updatedAt ?? 0),
@@ -99,6 +124,9 @@ export class UserStateRepository {
                   .filter((entry): entry is [string, { messageId: number; expiresAt: number }] => !!entry)
               )
             : undefined,
+        adminTargetUserId: Number(parsed.adminTargetUserId ?? 0) > 0 ? Number(parsed.adminTargetUserId) : undefined,
+        adminCastLang: typeof parsed.adminCastLang === "string" ? parsed.adminCastLang : undefined,
+        adminSettingKey: typeof parsed.adminSettingKey === "string" ? parsed.adminSettingKey : undefined,
       };
     } catch {
       return DEFAULT_STATE;
