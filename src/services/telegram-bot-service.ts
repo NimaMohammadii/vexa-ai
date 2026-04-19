@@ -60,6 +60,9 @@ type ReplyKeyboard = {
 
 const nowTs = () => Math.floor(Date.now() / 1000);
 const DAILY_REWARD_SECONDS = 24 * 60 * 60;
+const ONBOARDING_DAILY_BONUS_DELAY = 15;
+const ONBOARDING_DAILY_BONUS_UNLOCK_DELAY = 10 * 60;
+const LOW_CREDIT_DELAY_SECONDS = 15;
 const LOW_CREDIT_THRESHOLD = 15;
 const REFERRAL_BONUS = 30;
 const SORA2_COST = 259;
@@ -99,6 +102,9 @@ const LABELS = {
   inviteDailyReward: "دریافت پاداش روزانه 🎁",
   lowCreditWarning: "کردیت‌ت رو به اتمامه.\nهر وقت خواستی شارژ کن تا راحت‌تر ادامه بدی.",
   lowCreditButton: "خرید کردیت",
+  onboardingWelcome: "🎁 45 کردیت رایگان گرفتی\n≈ ۱۵ ثانیه صدای هوش مصنوعی\nالان امتحانش کن 👇",
+  onboardingDailyReady: "🎁 پاداش روزانه آماده است!\nبرای دریافت کردیت رایگان روی دکمه زیر بزن.",
+  onboardingDailyUnlocked: "🎉 جایزه روزانه فعال شد!\nحالا می‌تونی از بخش دعوت دوستان، هر روز جایزه بگیری.",
 };
 
 export class TelegramBotFlowService {
@@ -201,7 +207,8 @@ export class TelegramBotFlowService {
 
     if (data === "home:back") {
       await this.sendMainMenu(chatId, messageId, lang);
-      await this.maybeSendLowCreditWarning(chatId, user.userId, lang);
+      await this.maybeSendLowCreditWarning(chatId, user.userId, lang, true);
+      await this.maybeAdvanceOnboardingMilestones(chatId, user.userId, lang);
       await this.answerCallback(callback.id);
       return { handled: "home_back" };
     }
@@ -271,16 +278,23 @@ export class TelegramBotFlowService {
       const code = data.split(":")[2] || "fa";
       await this.deps.users.setLanguage(user.userId, code);
       const nextState = await this.deps.userState.getBotState(user.userId);
-      await this.deps.userState.setBotState(user.userId, { ...nextState, langSelected: true, updatedAt: nowTs() });
+      await this.deps.userState.setBotState(user.userId, {
+        ...nextState,
+        langSelected: true,
+        onboardingPending: nextState.welcomeSentAt ? nextState.onboardingPending : true,
+        updatedAt: nowTs(),
+      });
+      const langState = await this.deps.userState.getBotState(user.userId);
       await this.answerCallback(callback.id, LABELS.langSaved);
       if (!(await this.ensureForceSub(chatId, user.userId, code, messageId))) {
         return { handled: "lang_set_force_sub" };
       }
       await this.consumePendingReferral(user.userId, chatId, code);
-      await this.maybeSendWelcomeAudio(chatId, user.userId, code, nextState);
+      await this.maybeSendWelcomeAudio(chatId, user.userId, code, langState);
       await this.sendMainMenu(chatId, messageId, code);
-      await this.maybeSendLowCreditWarning(chatId, user.userId, code);
+      await this.maybeSendLowCreditWarning(chatId, user.userId, code, true);
       await this.triggerOnboarding(chatId, user.userId, code);
+      await this.maybeAdvanceOnboardingMilestones(chatId, user.userId, code);
       return { handled: "lang_set" };
     }
     if (data === "home:gpt_chat") {
@@ -439,7 +453,8 @@ export class TelegramBotFlowService {
         return { handled: "help" };
       case "/menu":
         await this.sendMainMenu(chatId, undefined, lang);
-        await this.maybeSendLowCreditWarning(chatId, userId, lang);
+        await this.maybeSendLowCreditWarning(chatId, userId, lang, true);
+        await this.maybeAdvanceOnboardingMilestones(chatId, userId, lang);
         return { handled: "menu" };
       case "/profile": {
         const credits = await this.deps.credits.getCredits(userId);
@@ -597,6 +612,11 @@ export class TelegramBotFlowService {
         [{ text: LABELS.tts, callback_data: "home:tts" }],
         [{ text: LABELS.gpt, callback_data: "home:gpt_chat" }],
         [
+          { text: LABELS.image, callback_data: "home:image" },
+          { text: LABELS.video, callback_data: "home:video" },
+        ],
+        [{ text: "Sora 2 🎬", callback_data: "home:sora2" }],
+        [
           { text: LABELS.lang, callback_data: "home:lang" },
           { text: LABELS.invite, callback_data: "home:invite" },
         ],
@@ -682,11 +702,16 @@ export class TelegramBotFlowService {
       await this.sendLanguageMenu(chatId, "en", undefined, true);
       return;
     }
+    if (!state.welcomeSentAt && !state.onboardingPending) {
+      await this.deps.userState.setBotState(userId, { ...state, onboardingPending: true, updatedAt: nowTs() });
+      state = await this.deps.userState.getBotState(userId);
+    }
     await this.maybeSendWelcomeAudio(chatId, userId, lang, state);
     await this.consumePendingReferral(userId, chatId, lang);
     await this.sendMainMenu(chatId, undefined, lang);
-    await this.maybeSendLowCreditWarning(chatId, userId, lang);
+    await this.maybeSendLowCreditWarning(chatId, userId, lang, true);
     await this.triggerOnboarding(chatId, userId, lang);
+    await this.maybeAdvanceOnboardingMilestones(chatId, userId, lang);
   }
 
   private async handleMediaDrivenMessage(userId: number, chatId: number, msg: NonNullable<TelegramWebhookUpdate["message"]>, state: BotConversationState): Promise<boolean> {
@@ -776,33 +801,71 @@ export class TelegramBotFlowService {
     await this.sendOrEditMessage(chatId, text, { inline_keyboard: [[{ text: "خرید کد دعوت 🎟️", callback_data: "sora2:buy" }], [{ text: LABELS.homeBack, callback_data: "home:back" }]] }, messageId, "HTML");
   }
 
-  private async maybeSendLowCreditWarning(chatId: number, userId?: number, _lang = "fa") {
+  private async maybeSendLowCreditWarning(chatId: number, userId?: number, _lang = "fa", scheduleIfNeeded = false) {
     if (!userId) return;
     const profile = await this.deps.users.getProfile(userId);
     const state = await this.deps.userState.getBotState(userId);
     if (profile.credits >= LOW_CREDIT_THRESHOLD) {
-      if (state.lowCreditPromptedAt) {
-        await this.deps.userState.setBotState(userId, { ...state, lowCreditPromptedAt: undefined, updatedAt: nowTs() });
+      if (state.lowCreditPromptedAt || state.lowCreditScheduledAt) {
+        await this.deps.userState.setBotState(userId, {
+          ...state,
+          lowCreditPromptedAt: undefined,
+          lowCreditScheduledAt: undefined,
+          updatedAt: nowTs(),
+        });
       }
       return;
     }
     if (state.lowCreditPromptedAt) return;
+    const now = nowTs();
+    if (scheduleIfNeeded && !state.lowCreditScheduledAt) {
+      await this.deps.userState.setBotState(userId, { ...state, lowCreditScheduledAt: now + LOW_CREDIT_DELAY_SECONDS, updatedAt: now });
+      return;
+    }
+    if (state.lowCreditScheduledAt && now < state.lowCreditScheduledAt) return;
     await this.sendMessage(chatId, LABELS.lowCreditWarning, "HTML", { inline_keyboard: [[{ text: LABELS.lowCreditButton, callback_data: "credit:menu" }]] });
-    await this.deps.userState.setBotState(userId, { ...state, lowCreditPromptedAt: nowTs(), updatedAt: nowTs() });
+    await this.deps.userState.setBotState(userId, {
+      ...state,
+      lowCreditPromptedAt: now,
+      lowCreditScheduledAt: undefined,
+      updatedAt: now,
+    });
   }
 
   private async triggerOnboarding(chatId: number, userId: number, _lang: string) {
     const state = await this.deps.userState.getBotState(userId);
-    if (state.welcomeSentAt) return;
-    await this.sendMessage(chatId, "🎁 45 کردیت رایگان گرفتی\n≈ ۱۵ ثانیه صدای هوش مصنوعی\nالان امتحانش کن 👇", "HTML");
-    await this.sendMessage(chatId, "🎁 پاداش روزانه آماده است!\nبرای دریافت کردیت رایگان روی دکمه زیر بزن.", "HTML", {
-      inline_keyboard: [[{ text: "🎁", callback_data: "onboarding:daily_reward" }]],
+    if (!state.onboardingPending || state.welcomeSentAt) return;
+    const now = nowTs();
+    await this.sendMessage(chatId, LABELS.onboardingWelcome, "HTML");
+    await this.deps.userState.setBotState(userId, {
+      ...state,
+      welcomeSentAt: now,
+      onboardingPending: false,
+      updatedAt: now,
     });
-    await this.deps.userState.setBotState(userId, { ...state, welcomeSentAt: nowTs(), updatedAt: nowTs() });
+  }
+
+  private async maybeAdvanceOnboardingMilestones(chatId: number, userId: number, _lang: string) {
+    const state = await this.deps.userState.getBotState(userId);
+    const now = nowTs();
+    if (state.welcomeSentAt && !state.dailyBonusPromptedAt && now - state.welcomeSentAt >= ONBOARDING_DAILY_BONUS_DELAY) {
+      await this.sendMessage(chatId, LABELS.onboardingDailyReady, "HTML", {
+        inline_keyboard: [[{ text: "🎁", callback_data: "onboarding:daily_reward" }]],
+      });
+      await this.deps.userState.setBotState(userId, { ...state, dailyBonusPromptedAt: now, updatedAt: now });
+      return;
+    }
+
+    if (state.dailyBonusPromptedAt && !state.dailyBonusUnlockedAt && now - state.dailyBonusPromptedAt >= ONBOARDING_DAILY_BONUS_UNLOCK_DELAY) {
+      await this.sendMessage(chatId, LABELS.onboardingDailyUnlocked, "HTML", {
+        inline_keyboard: [[{ text: "🎁", callback_data: "onboarding:invite" }]],
+      });
+      await this.deps.userState.setBotState(userId, { ...state, dailyBonusUnlockedAt: now, updatedAt: now });
+    }
   }
 
   private async maybeSendWelcomeAudio(chatId: number, userId: number, _lang: string, state: BotConversationState) {
-    if (!this.deps.welcomeAudioFileId || state.welcomeAudioSentAt) return;
+    if (!this.deps.welcomeAudioFileId || state.welcomeAudioSentAt || !state.onboardingPending) return;
     const method = this.deps.welcomeAudioKind === "voice" ? "sendVoice" : this.deps.welcomeAudioKind === "document" ? "sendDocument" : "sendAudio";
     const mediaKey = this.deps.welcomeAudioKind === "voice" ? "voice" : this.deps.welcomeAudioKind === "document" ? "document" : "audio";
     const body: Record<string, unknown> = { chat_id: chatId, [mediaKey]: this.deps.welcomeAudioFileId };
@@ -833,27 +896,53 @@ export class TelegramBotFlowService {
     const mode = (this.deps.forceSubMode || "none").trim();
     if (mode === "none") return true;
     const tgChannel = (this.deps.forceSubChannel || "").trim();
-    if (!tgChannel) return true;
+    const igUrl = (this.deps.forceSubInstagramUrl || "").trim();
     const normalized = tgChannel.replace(/^https?:\/\/t\.me\//, "").replace(/^t\.me\//, "").replace(/^@/, "");
-    const channelRef = `@${normalized}`;
-    const response = await fetch(`https://api.telegram.org/bot${this.deps.botToken}/getChatMember`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ chat_id: channelRef, user_id: userId }),
-    });
-    if (response.ok) {
-      const data = (await response.json()) as { result?: { status?: string; is_member?: boolean } };
-      const status = data.result?.status || "";
-      const isMember = status === "creator" || status === "administrator" || status === "member" || (status === "restricted" && data.result?.is_member);
-      if (isMember) return true;
+    const hasTg = normalized.length > 0;
+    const hasIg = igUrl.length > 0;
+    let needsTgCheck = hasTg;
+    if (mode === "instagram") needsTgCheck = false;
+    if (mode === "telegram") needsTgCheck = hasTg;
+
+    if (needsTgCheck) {
+      const channelRef = `@${normalized}`;
+      const response = await fetch(`https://api.telegram.org/bot${this.deps.botToken}/getChatMember`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ chat_id: channelRef, user_id: userId }),
+      });
+      if (response.ok) {
+        const data = (await response.json()) as { result?: { status?: string; is_member?: boolean } };
+        const status = data.result?.status || "";
+        const isMember = status === "creator" || status === "administrator" || status === "member" || (status === "restricted" && data.result?.is_member);
+        if (isMember) return true;
+      } else {
+        const failed = (await response.json().catch(() => ({}))) as { description?: string };
+        const description = (failed.description || "").toLowerCase();
+        const isPermissionBlocked =
+          description.includes("chat not found") ||
+          description.includes("bot is not a member") ||
+          description.includes("not enough rights") ||
+          description.includes("chat_admin_required") ||
+          description.includes("have no rights");
+        if (isPermissionBlocked) return true;
+      }
+    } else if (!hasIg) {
+      return true;
     }
+
     const keyboard: InlineKeyboard = {
       inline_keyboard: [
-        [{ text: "عضویت در کانال 🚀", url: `https://t.me/${normalized}` }],
+        ...(hasTg ? [[{ text: "عضویت در کانال 🚀", url: `https://t.me/${normalized}` }]] : []),
+        ...(hasIg ? [[{ text: "دنبال‌کردن اینستاگرام 📸", url: igUrl }]] : []),
         [{ text: "عضو شدم ✅", callback_data: "fs:recheck" }],
       ],
     };
-    const text = "<b>برای ادامه عضو کانال شو</b>\n• کانال تلگرام\n\nبعد از عضویت روی دکمه «عضو شدم» بزن.";
+    const lines = ["<b>برای ادامه عضو کانال شو</b>"];
+    if (hasTg) lines.push("• کانال تلگرام");
+    if (hasIg) lines.push("• اینستاگرام");
+    lines.push("", "بعد از عضویت روی دکمه «عضو شدم» بزن.");
+    const text = lines.join("\n");
     if (messageId) await this.sendOrEditMessage(chatId, text, keyboard, messageId, "HTML");
     else await this.sendMessage(chatId, text, "HTML", keyboard);
     return false;
@@ -870,6 +959,11 @@ export class TelegramBotFlowService {
     if (await this.ensureForceSub(chatId, userId, lang, messageId)) {
       await this.sendMainMenu(chatId, messageId, lang);
       await this.consumePendingReferral(userId, chatId, lang);
+      const state = await this.deps.userState.getBotState(userId);
+      await this.maybeSendWelcomeAudio(chatId, userId, lang, state);
+      await this.triggerOnboarding(chatId, userId, lang);
+      await this.maybeAdvanceOnboardingMilestones(chatId, userId, lang);
+      await this.maybeSendLowCreditWarning(chatId, userId, lang, true);
       await this.answerCallback(callbackId, "✅ عضویت تایید شد!");
       return { handled: "force_sub_confirmed" };
     }
