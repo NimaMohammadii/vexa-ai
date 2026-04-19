@@ -27,6 +27,7 @@ export interface BotConversationState {
   ttsPage?: number;
   waitingReceipt?: boolean;
   selectedPlanIndex?: number;
+  ttsDemoLocks?: Record<string, { messageId: number; expiresAt: number }>;
 }
 
 const DEFAULT_STATE: BotConversationState = {
@@ -84,6 +85,20 @@ export class UserStateRepository {
         ttsPage: Number(parsed.ttsPage ?? 0) || undefined,
         waitingReceipt: parsed.waitingReceipt === undefined ? undefined : !!parsed.waitingReceipt,
         selectedPlanIndex: Number(parsed.selectedPlanIndex ?? -1) >= 0 ? Number(parsed.selectedPlanIndex) : undefined,
+        ttsDemoLocks:
+          parsed.ttsDemoLocks && typeof parsed.ttsDemoLocks === "object"
+            ? Object.fromEntries(
+                Object.entries(parsed.ttsDemoLocks)
+                  .map(([key, value]) => {
+                    if (!value || typeof value !== "object") return null;
+                    const messageId = Number((value as { messageId?: number }).messageId ?? 0);
+                    const expiresAt = Number((value as { expiresAt?: number }).expiresAt ?? 0);
+                    if (messageId <= 0 || expiresAt <= 0) return null;
+                    return [key, { messageId, expiresAt }] as const;
+                  })
+                  .filter((entry): entry is [string, { messageId: number; expiresAt: number }] => !!entry)
+              )
+            : undefined,
       };
     } catch {
       return DEFAULT_STATE;

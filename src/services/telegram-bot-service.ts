@@ -27,7 +27,7 @@ export interface TelegramWebhookUpdate {
     id: string;
     data?: string;
     from?: TelegramUser;
-    message?: { message_id?: number; chat?: { id: number } };
+    message?: { message_id?: number; chat?: { id: number }; caption?: string };
   };
 }
 
@@ -41,6 +41,7 @@ interface TelegramBotFlowDeps {
   welcomeAudioKind?: "audio" | "voice" | "document";
   ownerTelegramChatId?: string;
   cardNumber?: string;
+  ttsDemoAudiosJson?: string;
   users: UserService;
   credits: CreditService;
   tokens: ApiTokenService;
@@ -69,6 +70,7 @@ const ONBOARDING_DAILY_BONUS_UNLOCK_DELAY = 10 * 60;
 const LOW_CREDIT_DELAY_SECONDS = 15;
 const LOW_CREDIT_THRESHOLD = 15;
 const REFERRAL_BONUS = 30;
+const TTS_DEMO_AUTO_DELETE_SECONDS = 50;
 const SORA2_COST = 259;
 const SORA2_QUEUE_START = 22;
 const LANGS: Array<{ label: string; code: string }> = [
@@ -89,25 +91,41 @@ const I18N: Record<string, Record<string, string>> = {
   btn_profile: { fa: "موجودی شما", en: "Your Balance", ar: "رصيدك", tr: "Bakiyeniz", ru: "Ваш баланс", es: "Tu saldo", de: "Dein Guthaben", fr: "Ton solde" },
   btn_credit: { fa: "خرید کردیـت 🛒", en: "Buy Credit 🛒", ar: "شراء الرصيد 🛒", tr: "Kredi Satın Al 🛒", ru: "Купить кредит 🛒", es: "Comprar crédito 🛒", de: "Guthaben kaufen 🛒", fr: "Acheter du crédit 🛒" },
   btn_tts: { fa: "تبدیل متن به صدا 🎧", en: "Text to Speech 🎧", ar: "تحويل النص إلى صوت 🎧", tr: "Metinden Sese 🎧", ru: "Текст в речь 🎧", es: "Texto a voz 🎧", de: "Text zu Sprache 🎧", fr: "Texte en voix 🎧" },
+  btn_clone: { fa: "ساخت صدای شخصی 🧬", en: "Voice Clone 🧬", ar: "إنشاء صوت شخصي 🧬", tr: "Kişisel Ses Oluştur 🧬", ru: "Личный голос 🧬", es: "Voz personal 🧬", de: "Eigene Stimme 🧬", fr: "Voix perso 🧬" },
   btn_lang: { fa: "Language 📚", en: "Language 📚", ar: "اللغة 📚", tr: "Dil 📚", ru: "Язык 📚", es: "Idioma 📚", de: "Sprache 📚", fr: "Langue 📚" },
   btn_invite: { fa: "🎁", en: "🎁", ar: "دعوة الأصدقاء 🎁", tr: "🎁", ru: "🎁", es: "🎁", de: "🎁", fr: "🎁" },
   back: { fa: "🔙 بازگشت", en: "🔙 Back", ar: "🔙 رجوع", tr: "🔙 Geri", ru: "🔙 Назад", es: "🔙 Volver", de: "🔙 Zurück", fr: "🔙 Retour" },
   home_back_to_menu: { fa: "🏠 منوی اصلی", en: "🏠 Main menu", ar: "🏠 القائمة الرئيسية", tr: "🏠 Ana menü", ru: "🏠 Главное меню", es: "🏠 Menú principal", de: "🏠 Hauptmenü", fr: "🏠 Menu principal" },
-  lang_title: { fa: "انتخاب زبان", en: "Choose language", ar: "اختر اللغة", tr: "Dil seçimi", ru: "Выбор языка", es: "Elige idioma", de: "Sprache wählen", fr: "Choisir la langue" },
-  lang_hint: { fa: "یکی از زبان‌های زیر را انتخاب کن.", en: "Select one of the languages below.", ar: "اختر إحدى اللغات التالية.", tr: "Aşağıdaki dillerden birini seç.", ru: "Выберите один из языков ниже.", es: "Elige uno de los idiomas a continuación.", de: "Wähle eine der folgenden Sprachen.", fr: "Choisissez une langue ci-dessous." },
+  lang_title: { fa: "انتخاب زبان", en: "Choose language", ar: "اختر اللغة", tr: "Dil seç", ru: "Выберите язык", es: "Elige idioma", de: "Sprache wählen", fr: "Choisir la langue" },
+  lang_hint: { fa: "یکی از زبان‌های زیر را انتخاب کن.", en: "Select one of the languages below.", ar: "اختر إحدى اللغات أدناه.", tr: "Aşağıdaki dillerden birini seç.", ru: "Выберите один из языков ниже.", es: "Elige uno de los idiomas de abajo.", de: "Wähle eine der folgenden Sprachen.", fr: "Choisis l'une des langues ci-dessous." },
   lang_saved: { fa: "✅ زبان ذخیره شد.", en: "✅ Language saved.", ar: "✅ تم حفظ اللغة.", tr: "✅ Dil kaydedildi.", ru: "✅ Язык сохранён.", es: "✅ Idioma guardado.", de: "✅ Sprache gespeichert.", fr: "✅ Langue enregistrée." },
-  tts_title: { fa: "تبدیل متن به صدا", en: "Text to Speech", ar: "تحويل النص إلى صوت", tr: "Metinden Sese", ru: "Текст в речь", es: "Texto a voz", de: "Text zu Sprache", fr: "Texte en voix" },
-  tts_prompt: { fa: "متن را بفرست. هر کاراکتر = {credit} کردیت", en: "Send your text. Each character = {credit} credit", ar: "أرسل النص. كل حرف = {credit} رصيد", tr: "Metni gönder. Her karakter = {credit} kredi", ru: "Отправьте текст. Каждый символ = {credit} кредит", es: "Envía el texto. Cada carácter = {credit} crédito", de: "Sende den Text. Jedes Zeichen = {credit} Credit", fr: "Envoie le texte. Chaque caractère = {credit} crédit" },
-  tts_demo: { fa: "دمو 🎧", en: "Demo 🎧", ar: "تجربة 🎧", tr: "Demo 🎧", ru: "Демо 🎧", es: "Demo 🎧", de: "Demo 🎧", fr: "Démo 🎧" },
+  tts_title: { fa: "تبدیل متن به صدا 🎧", en: "AI Text to Speech ", ar: "تحويل النص إلى صوت 🎧", tr: "Metinden Sese 🎧", ru: "Текст в речь 🎧", es: "Texto a voz 🎧", de: "Text zu Sprache 🎧", fr: "Texte en voix 🎧" },
+  tts_prompt: { fa: "✨ <b>متن رو بفرست (هر کاراکتر = {credit} Credit)</b>", en: "✍🏼 Send your text (1 character = {credit} credit)", ar: "✍🏼 أرسل النص (كل حرف = {credit} رصيد)", tr: "✍🏼 Metni gönder (her karakter = {credit} kredi)", ru: "✍🏼 Отправьте текст (каждый символ = {credit} кредит)", es: "✍🏼 Envía tu texto (cada carácter = {credit} crédito)", de: "✍🏼 Sende deinen Text (jedes Zeichen = {credit} Kredit)", fr: "✍🏼 Envoie ton texte (chaque caractère = {credit} crédit)" },
+  tts_demo: { fa: "▶︎ دمو", en: "▶︎ Demo", ar: "▶︎ عرض تجريبي", tr: "▶︎ Demo", ru: "▶︎ Демо", es: "▶︎ Demo", de: "▶︎ Demo", fr: "▶︎ Démo" },
+  tts_demo_caption: { fa: "🎧 دمو: {voice}\n⏳ حذف خودکار پس از {seconds} ثانیه", en: "🎧 Demo: {voice}\n⏳ Auto delete in {seconds} seconds", ar: "🎧 عرض تجريبي: {voice}\n⏳ الحذف التلقائي خلال {seconds} ثانية", tr: "🎧 Demo: {voice}\n⏳ Otomatik silme {seconds} saniye içinde", ru: "🎧 Демо: {voice}\n⏳ Автоудаление через {seconds} секунд", es: "🎧 Demo: {voice}\n⏳ Eliminación automática en {seconds} segundos", de: "🎧 Demo: {voice}\n⏳ Automatisches Löschen in {seconds} Sekunden", fr: "🎧 Démo : {voice}\n⏳ Suppression automatique dans {seconds} secondes" },
+  tts_demo_wait: { fa: "⏳ دموی این صدا ارسال شده. لطفاً تا حذف شدنش صبر کنید.", en: "⏳ Demo already sent. Please wait for it to be deleted.", ar: "⏳ تم إرسال العرض التجريبي بالفعل. يرجى الانتظار حتى يتم حذفه.", tr: "⏳ Demo zaten gönderildi. Silinmesini bekleyin.", ru: "⏳ Демо уже отправлено. Подождите, пока оно будет удалено.", es: "⏳ La demo ya fue enviada. Espera a que se elimine.", de: "⏳ Demo bereits gesendet. Bitte warten, bis sie gelöscht wird.", fr: "⏳ Démo déjà envoyée. Merci d’attendre sa suppression." },
+  tts_demo_missing: { fa: "❌ دموی این صدا هنوز تنظیم نشده است.", en: "❌ Demo for this voice is not available yet.", ar: "❌ العرض التجريبي لهذا الصوت غير متوفر بعد.", tr: "❌ Bu ses için demo henüz mevcut değil.", ru: "❌ Демоверсия для этого голоса пока недоступна.", es: "❌ La demo de esta voz aún no está disponible.", de: "❌ Für diese Stimme ist noch keine Demo verfügbar.", fr: "❌ La démo de cette voix n'est pas encore disponible." },
+  tts_output_saved: { fa: "✅ خروجی روی <b>{mode}</b> تنظیم شد.", en: "✅ Output set to <b>{mode}</b>.", ar: "✅ تم ضبط المخرج على <b>{mode}</b>.", tr: "✅ Çıktı <b>{mode}</b> olarak ayarlandı.", ru: "✅ Формат вывода: <b>{mode}</b>.", es: "✅ Salida configurada en <b>{mode}</b>.", de: "✅ Ausgabe auf <b>{mode}</b> gesetzt.", fr: "✅ Sortie définie sur <b>{mode}</b>." },
+  tts_request_saved: { fa: "✅ متن صوتی ثبت شد.\n\n🎙 صدا: <b>{voice}</b>\n📦 خروجی: <b>{output}</b>", en: "✅ Your TTS text has been queued.\n\n🎙 Voice: <b>{voice}</b>\n📦 Output: <b>{output}</b>", ar: "✅ تم تسجيل النص الصوتي.\n\n🎙 الصوت: <b>{voice}</b>\n📦 المخرج: <b>{output}</b>", tr: "✅ TTS metnin sıraya alındı.\n\n🎙 Ses: <b>{voice}</b>\n📦 Çıktı: <b>{output}</b>", ru: "✅ Текст для TTS сохранён.\n\n🎙 Голос: <b>{voice}</b>\n📦 Вывод: <b>{output}</b>", es: "✅ Tu texto TTS fue registrado.\n\n🎙 Voz: <b>{voice}</b>\n📦 Salida: <b>{output}</b>", de: "✅ Dein TTS-Text wurde übernommen.\n\n🎙 Stimme: <b>{voice}</b>\n📦 Ausgabe: <b>{output}</b>", fr: "✅ Ton texte TTS a été pris en compte.\n\n🎙 Voix : <b>{voice}</b>\n📦 Sortie : <b>{output}</b>" },
   tts_next: { fa: "بعدی ➜", en: "Next ➜", ar: "التالي ➜", tr: "Sonraki ➜", ru: "Далее ➜", es: "Siguiente ➜", de: "Weiter ➜", fr: "Suivant ➜" },
   tts_prev: { fa: "⬅︎ قبل", en: "⬅︎ Previous", ar: "⬅︎ السابق", tr: "⬅︎ Önceki", ru: "⬅︎ Назад", es: "⬅︎ Anterior", de: "⬅︎ Zurück", fr: "⬅︎ Précédent" },
   tts_output_mp3: { fa: "MP3 📁", en: "MP3 📁", ar: "MP3 📁", tr: "MP3 📁", ru: "MP3 📁", es: "MP3 📁", de: "MP3 📁", fr: "MP3 📁" },
   tts_output_voice: { fa: "Voice 🎙️", en: "Voice 🎙️", ar: "Voice 🎙️", tr: "Voice 🎙️", ru: "Voice 🎙️", es: "Voice 🎙️", de: "Voice 🎙️", fr: "Voice 🎙️" },
-  credit_title: { fa: "خرید کردیت", en: "Buy Credit", ar: "شراء الرصيد", tr: "Kredi Satın Al", ru: "Покупка кредитов", es: "Comprar crédito", de: "Credits kaufen", fr: "Acheter du crédit" },
-  credit_header: { fa: "برای استفاده از ربات، کردیت لازم دارید.\nیکی از بسته‌های زیر را انتخاب کنید:", en: "You need credits to use the bot.\nChoose one package:", ar: "تحتاج رصيدًا لاستخدام البوت.\nاختر إحدى الباقات:", tr: "Botu kullanmak için kredi gerekir.\nBir paket seç:", ru: "Для использования бота нужны кредиты.\nВыберите пакет:", es: "Necesitas créditos para usar el bot.\nElige un paquete:", de: "Du brauchst Credits, um den Bot zu nutzen.\nWähle ein Paket:", fr: "Il te faut des crédits pour utiliser le bot.\nChoisis un pack :" },
-  credit_pay_stars_btn: { fa: "خرید با Telegram Stars 🌟", en: "Buy with Telegram Stars 🌟", ar: "شراء عبر Telegram Stars 🌟", tr: "Telegram Stars ile al 🌟", ru: "Купить через Telegram Stars 🌟", es: "Comprar con Telegram Stars 🌟", de: "Mit Telegram Stars kaufen 🌟", fr: "Acheter via Telegram Stars 🌟" },
+  credit_title: { fa: "خرید کردیت", en: "Buy credits", ar: "شراء الرصيد", tr: "Kredi satın al", ru: "Покупка кредитов", es: "Comprar créditos", de: "Credits kaufen", fr: "Acheter des crédits" },
+  credit_header: { fa: "برای استفاده از ربات، کردیت لازم دارید", en: "Pick a package below to top up your balance.", ar: "اختر إحدى الباقات أدناه لشحن رصيدك.", tr: "Bakiyeni doldurmak için aşağıdaki paketlerden birini seç.", ru: "Выберите один из пакетов ниже, чтобы пополнить баланс.", es: "Elige uno de los paquetes para recargar tu saldo.", de: "Wähle eines der folgenden Pakete, um dein Guthaben aufzuladen.", fr: "Choisis l'un des packs ci-dessous pour recharger ton solde." },
+  credit_pay_stars_btn: { fa: "خرید با Telegram Stars 🌟", en: "Buy with Telegram Stars 🌟", ar: "اشترِ عبر Telegram Stars 🌟", tr: "Telegram Stars ile satın al 🌟", ru: "Купить через Telegram Stars 🌟", es: "Comprar con Telegram Stars 🌟", de: "Mit Telegram Stars kaufen 🌟", fr: "Acheter avec Telegram Stars 🌟" },
   credit_pay_rial_btn: { fa: "پرداخت به تومان", en: "Pay in Toman", ar: "الدفع بالتومان", tr: "Toman ile öde", ru: "Оплата в томанах", es: "Pagar en tomanes", de: "In Toman zahlen", fr: "Payer en toman" },
-  credit_stars_menu: { fa: "🌟 <b>بسته‌های Telegram Stars</b>\n\nیکی از بسته‌ها را انتخاب کن:", en: "🌟 <b>Telegram Stars packages</b>\n\nChoose one package:", ar: "🌟 <b>باقات Telegram Stars</b>\n\nاختر باقة:", tr: "🌟 <b>Telegram Stars paketleri</b>\n\nBir paket seç:", ru: "🌟 <b>Пакеты Telegram Stars</b>\n\nВыберите пакет:", es: "🌟 <b>Paquetes de Telegram Stars</b>\n\nElige un paquete:", de: "🌟 <b>Telegram-Stars-Pakete</b>\n\nWähle ein Paket:", fr: "🌟 <b>Packs Telegram Stars</b>\n\nChoisis un pack :" },
+  credit_cancel: { fa: "لغو ❌", en: "Cancel ❌", ar: "إلغاء ❌", tr: "İptal ❌", ru: "Отмена ❌", es: "Cancelar ❌", de: "Abbrechen ❌", fr: "Annuler ❌" },
+  credit_unavailable: { fa: "پرداخت به تومان فقط برای کاربران فارسی فعال است.", en: "Payments in tomans are only available in the Persian language.", ar: "الدفع بالعملة المحلية متاح فقط باللغة الفارسية.", tr: "Toman ile ödeme yalnızca Farsça dilinde kullanılabilir.", ru: "Оплата в туманах доступна только для персидского языка.", es: "El pago en toman solo está disponible en el idioma persa.", de: "Zahlungen in Toman sind nur auf Persisch verfügbar.", fr: "Le paiement en tomans est disponible uniquement en persan." },
+  credit_stars_menu: { fa: "🌟 شارژ آنی با Telegram Stars\n\nیکی از بسته‌های زیر را انتخاب کن:", en: "🌟 Instant top-up with Telegram Stars\n\nPick one of the packages below:", ar: "🌟 شحن فوري عبر Telegram Stars\n\nاختر إحدى الباقات أدناه:", tr: "🌟 Telegram Stars ile anında yükleme\n\nAşağıdaki paketlerden birini seç:", ru: "🌟 Мгновенное пополнение через Telegram Stars\n\nВыберите один из пакетов ниже:", es: "🌟 Recarga instantánea con Telegram Stars\n\nElige uno de los paquetes a continuación:", de: "🌟 Sofort aufladen mit Telegram Stars\n\nWähle eines der Pakete unten:", fr: "🌟 Recharge instantanée via Telegram Stars\n\nChoisis l'un des packs ci-dessous :" },
+  credit_invoice_label: { fa: "{credits} کردیت", en: "{credits} credits", ar: "{credits} رصيداً", tr: "{credits} kredi", ru: "{credits} кредитов", es: "{credits} créditos", de: "{credits} Guthaben", fr: "{credits} crédits" },
+  credit_invoice_title: { fa: "Vexa — خرید کردیت", en: "Vexa — Buy Credits", ar: "Vexa — شراء الرصيد", tr: "Vexa — Kredi Satın Al", ru: "Vexa — Покупка кредитов", es: "Vexa — Comprar créditos", de: "Vexa — Guthaben kaufen", fr: "Vexa — Acheter des crédits" },
+  credit_invoice_desc: { fa: "شارژ موجودی با Telegram Stars.", en: "Top up your balance with Telegram Stars.", ar: "اشحن رصيدك عبر Telegram Stars.", tr: "Bakiyeni Telegram Stars ile doldur.", ru: "Пополните баланс через Telegram Stars.", es: "Recarga tu saldo con Telegram Stars.", de: "Lade dein Guthaben mit Telegram Stars auf.", fr: "Recharge ton solde avec Telegram Stars." },
+  credit_pay_success: { fa: "✅ پرداخت موفق: ⭐{stars}\n🎉 {credits} کردیت اضافه شد.\n💳 موجودی فعلی: <b>{balance}</b>", en: "✅ Payment successful: ⭐{stars}\n🎉 Added {credits} credits.\n💳 Current balance: <b>{balance}</b>", ar: "✅ تم الدفع: ⭐{stars}\n🎉 تمت إضافة {credits} رصيدًا.\n💳 الرصيد الحالي: <b>{balance}</b>", tr: "✅ Ödeme başarılı: ⭐{stars}\n🎉 {credits} kredi eklendi.\n💳 Güncel bakiye: <b>{balance}</b>", ru: "✅ Оплата прошла: ⭐{stars}\n🎉 Добавлено {credits} кредитов.\n💳 Текущий баланс: <b>{balance}</b>", es: "✅ Pago exitoso: ⭐{stars}\n🎉 {credits} créditos añadidos.\n💳 Saldo actual: <b>{balance}</b>", de: "✅ Zahlung erfolgreich: ⭐{stars}\n🎉 {credits} Guthaben gutgeschrieben.\n💳 Aktueller Stand: <b>{balance}</b>", fr: "✅ Paiement réussi : ⭐{stars}\n🎉 {credits} crédits ajoutés.\n💳 Solde actuel : <b>{balance}</b>" },
+  low_credit_warning: { fa: "کردیت‌ت رو به اتمامه.\nهر وقت خواستی شارژ کن تا راحت‌تر ادامه بدی.", en: "Your credits are running low.\nTop up anytime to keep going.", ar: "رصيدك على وشك النفاد.\nيمكنك الشحن في أي وقت للمتابعة.", tr: "Kredin bitmek üzere.\nDevam etmek için istediğin zaman yükleyebilirsin.", ru: "Кредиты заканчиваются.\nПополните баланс в любое время, чтобы продолжить.", es: "Tus créditos están por agotarse.\nRecarga cuando quieras para seguir.", de: "Deine Credits gehen zur Neige.\nLade jederzeit auf, um weiterzumachen.", fr: "Tes crédits sont presque épuisés.\nRecharge quand tu veux pour continuer." },
+  low_credit_button: { fa: "خرید کردیت", en: "Buy credits", ar: "شراء الرصيد", tr: "Kredi satın al", ru: "Купить кредиты", es: "Comprar créditos", de: "Credits kaufen", fr: "Acheter des crédits" },
+  force_sub_confirmed: { fa: "✅ عضویت تایید شد!", en: "✅ Subscription confirmed!", ar: "✅ تم تأكيد الاشتراك!", tr: "✅ Üyelik doğrulandı!", ru: "✅ Подписка подтверждена!", es: "✅ Suscripción confirmada.", de: "✅ Mitgliedschaft bestätigt!", fr: "✅ Inscription confirmée !" },
+  force_sub_not_joined: { fa: "❌ هنوز عضو نشدی!", en: "❌ You're not a member yet!", ar: "❌ لم تنضم بعد!", tr: "❌ Henüz katılmadın!", ru: "❌ Вы ещё не подписались!", es: "❌ Aún no te has unido.", de: "❌ Du bist noch nicht beigetreten!", fr: "❌ Tu n'as pas encore rejoint !" },
 };
 const t = (key: string, lang: string) => I18N[key]?.[lang] || I18N[key]?.fa || key;
 const DEFAULT_VOICE_NAME_BY_LANG: Record<string, string> = { fa: "Liam", en: "Ava", ar: "Liam", tr: "Arda", ru: "Алина", es: "Valeria", de: "Lena", fr: "Léa" };
@@ -159,6 +177,9 @@ const LABELS = {
   onboardingDailyUnlocked: "🎉 جایزه روزانه فعال شد!\nحالا می‌تونی از بخش دعوت دوستان، هر روز جایزه بگیری.",
 };
 
+type DemoAudioKind = "audio" | "voice" | "document";
+type DemoAudioConfig = { fileId: string; kind: DemoAudioKind };
+
 export class TelegramBotFlowService {
   constructor(private deps: TelegramBotFlowDeps) {}
 
@@ -205,9 +226,13 @@ export class TelegramBotFlowService {
         await this.deps.credits.grant(user.userId, credits, "telegram_stars_purchase", "telegram_bot");
       }
       const balance = (await this.deps.credits.getCredits(user.userId)).credits;
+      const successText = t("credit_pay_success", lang)
+        .replace("{stars}", String(msg.successful_payment.total_amount || 0))
+        .replace("{credits}", String(credits))
+        .replace("{balance}", String(balance));
       await this.sendMessage(
         msg.chat.id,
-        `✅ <b>پرداخت موفق شد!</b>\n🌟 ${msg.successful_payment.total_amount || 0} Stars\n💎 ${credits} کردیت\n💳 موجودی جدید: <b>${balance}</b>`,
+        successText,
         "HTML"
       );
       await this.markProcessed(update, user.userId, "successful_payment");
@@ -308,11 +333,15 @@ export class TelegramBotFlowService {
       const parts = data.split(":");
       const stars = Number(parts[2] || 0);
       const credits = Number(parts[3] || 0);
-      await this.sendInvoice(chatId, stars, credits);
+      await this.sendInvoice(chatId, stars, credits, lang);
       await this.answerCallback(callback.id);
       return { handled: "credit_buy_stars" };
     }
     if (data === "credit:payrial") {
+      if (lang !== "fa") {
+        await this.answerCallback(callback.id, t("credit_unavailable", lang), true);
+        return { handled: "credit_unavailable" };
+      }
       await this.sendOrEditMessage(chatId, "🧾 <b>پرداخت به تومـان – انتخاب پلن</b>\n\nبا خرید هر بسته 30% کردیت بیشتر دریافت میکنید\nیکی از بسته‌های زیر را انتخاب کنید:", this.payRialPlansKeyboard(lang), messageId, "HTML");
       await this.answerCallback(callback.id);
       return { handled: "credit_payrial" };
@@ -321,13 +350,13 @@ export class TelegramBotFlowService {
       const index = Number(data.split(":")[2] || 0);
       const plan = PAYMENT_PLANS[index];
       if (!plan) {
-        await this.answerCallback(callback.id, "بسته نامعتبر", true);
+        await this.answerCallback(callback.id, t("credit_invalid_plan", lang), true);
         return { handled: "credit_invalid_plan" };
       }
       await this.deps.userState.setBotState(user.userId, { ...state, mode: "idle", updatedAt: nowTs(), waitingReceipt: true, selectedPlanIndex: index });
       const card = this.deps.cardNumber || "---- ---- ---- ----";
       const text = `💱 <b>پرداخت فـوری (کارت‌به‌کارت)</b>\n<b>شماره کارت:</b><code>${card}</code>\n\n• دقیقاً مبلغ <b>${plan.amount_toman.toLocaleString("en-US")} تومان</b> پرداخت کنید\n• سپس <b>تصویر رسید</b> را همین‌جا ارسال کنید\n\n✅ <b>پس از تایید، <b>${plan.credits.toLocaleString("en-US")} کردیت</b> + 30% کردیت اضافه به حساب شما اضافه خواهد شد (کمتر از ۵ دقیقه)</b>`;
-      await this.sendOrEditMessage(chatId, text, { inline_keyboard: [[{ text: "لغو ❌", callback_data: "credit:cancel" }]] }, messageId, "HTML");
+      await this.sendOrEditMessage(chatId, text, { inline_keyboard: [[{ text: t("credit_cancel", lang), callback_data: "credit:cancel" }]] }, messageId, "HTML");
       await this.answerCallback(callback.id);
       return { handled: "credit_select_plan" };
     }
@@ -389,7 +418,7 @@ export class TelegramBotFlowService {
     if (data === "home:tts") {
       const selected = state.ttsVoice || DEFAULT_VOICE_NAME_BY_LANG[lang] || DEFAULT_VOICE_NAME_BY_LANG.fa;
       await this.deps.userState.setBotState(user.userId, { ...state, mode: "tts:wait_text", updatedAt: nowTs(), ttsVoice: selected, ttsOutput: state.ttsOutput || "mp3", ttsPage: state.ttsPage || 0 });
-      await this.sendMessage(chatId, `🎧 <b>${t("tts_title", lang)}</b>\n\n${t("tts_prompt", lang).replace("{credit}", "1")}\n\n🎙 <b>${selected}</b>`, "HTML", this.ttsKeyboard(lang, selected, state.ttsOutput || "mp3", state.ttsPage || 0));
+      await this.sendMessage(chatId, this.ttsAskText(lang, selected), "HTML", this.ttsKeyboard(lang, selected, state.ttsOutput || "mp3", state.ttsPage || 0));
       await this.answerCallback(callback.id);
       return { handled: "tts_open" };
     }
@@ -397,7 +426,7 @@ export class TelegramBotFlowService {
       const name = data.split(":").slice(2).join(":");
       const st = await this.deps.userState.getBotState(user.userId);
       await this.deps.userState.setBotState(user.userId, { ...st, mode: "tts:wait_text", updatedAt: nowTs(), ttsVoice: name });
-      await this.sendOrEditMessage(chatId, `🎧 <b>${t("tts_title", lang)}</b>\n\n${t("tts_prompt", lang).replace("{credit}", "1")}\n\n🎙 <b>${name}</b>`, this.ttsKeyboard(lang, name, st.ttsOutput || "mp3", st.ttsPage || 0), messageId, "HTML");
+      await this.sendOrEditMessage(chatId, this.ttsAskText(lang, name), this.ttsKeyboard(lang, name, st.ttsOutput || "mp3", st.ttsPage || 0), messageId, "HTML");
       await this.answerCallback(callback.id, name);
       return { handled: "tts_voice" };
     }
@@ -406,14 +435,54 @@ export class TelegramBotFlowService {
       const step = data.endsWith(":next") ? 1 : -1;
       const nextPage = Math.max(0, (st.ttsPage || 0) + step);
       await this.deps.userState.setBotState(user.userId, { ...st, ttsPage: nextPage, updatedAt: nowTs() });
-      await this.sendOrEditMessage(chatId, `🎧 <b>${t("tts_title", lang)}</b>\n\n${t("tts_prompt", lang).replace("{credit}", "1")}\n\n🎙 <b>${st.ttsVoice || DEFAULT_VOICE_NAME_BY_LANG[lang] || DEFAULT_VOICE_NAME_BY_LANG.fa}</b>`, this.ttsKeyboard(lang, st.ttsVoice || DEFAULT_VOICE_NAME_BY_LANG[lang] || DEFAULT_VOICE_NAME_BY_LANG.fa, st.ttsOutput || "mp3", nextPage), messageId, "HTML");
+      const selected = st.ttsVoice || DEFAULT_VOICE_NAME_BY_LANG[lang] || DEFAULT_VOICE_NAME_BY_LANG.fa;
+      await this.sendOrEditMessage(chatId, this.ttsAskText(lang, selected), this.ttsKeyboard(lang, selected, st.ttsOutput || "mp3", nextPage), messageId, "HTML");
       await this.answerCallback(callback.id);
       return { handled: "tts_page" };
     }
     if (data.startsWith("tts:demo:")) {
-      const voice = data.split(":")[2] || "alloy";
-      await this.answerCallback(callback.id, `دموی صدا: ${voice}`);
-      await this.sendMessage(chatId, `🎙 دمو برای صدای <b>${voice}</b>\n\nیک متن بفرست تا با همین صدا پردازش شود.`, "HTML", this.ttsKeyboard(lang, voice, state.ttsOutput || "mp3", state.ttsPage || 0));
+      const voice = data.split(":")[2] || "";
+      const demo = this.getDemoAudio(voice, lang);
+      if (!demo) {
+        await this.answerCallback(callback.id);
+        await this.sendMessage(chatId, t("tts_demo_missing", lang), "HTML");
+        return { handled: "tts_demo_missing" };
+      }
+      const now = nowTs();
+      const lockKey = `${lang}:${voice}`;
+      const existingLock = state.ttsDemoLocks?.[lockKey];
+      if (existingLock && existingLock.expiresAt > now) {
+        await this.answerCallback(callback.id, t("tts_demo_wait", lang));
+        return { handled: "tts_demo_locked" };
+      }
+      const caption = t("tts_demo_caption", lang).replace("{voice}", voice).replace("{seconds}", String(TTS_DEMO_AUTO_DELETE_SECONDS));
+      const method = demo.kind === "voice" ? "sendVoice" : demo.kind === "document" ? "sendDocument" : "sendAudio";
+      const mediaKey = demo.kind === "voice" ? "voice" : demo.kind === "document" ? "document" : "audio";
+      const sent = await fetch(`https://api.telegram.org/bot${this.deps.botToken}/${method}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ chat_id: chatId, [mediaKey]: demo.fileId, caption }),
+      });
+      const payload = (await sent.json().catch(() => ({}))) as { result?: { message_id?: number } };
+      const messageIdToDelete = payload.result?.message_id;
+      if (messageIdToDelete) {
+        setTimeout(async () => {
+          await fetch(`https://api.telegram.org/bot${this.deps.botToken}/deleteMessage`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ chat_id: chatId, message_id: messageIdToDelete }),
+          });
+        }, TTS_DEMO_AUTO_DELETE_SECONDS * 1000);
+        await this.deps.userState.setBotState(user.userId, {
+          ...state,
+          ttsDemoLocks: {
+            ...(state.ttsDemoLocks || {}),
+            [lockKey]: { messageId: messageIdToDelete, expiresAt: now + TTS_DEMO_AUTO_DELETE_SECONDS },
+          },
+          updatedAt: now,
+        });
+      }
+      await this.answerCallback(callback.id);
       return { handled: "tts_demo" };
     }
     if (data.startsWith("tts:output:")) {
@@ -421,7 +490,7 @@ export class TelegramBotFlowService {
       const output = data.endsWith(":voice") ? "voice" : "mp3";
       const voice = state.ttsVoice || DEFAULT_VOICE_NAME_BY_LANG[lang] || DEFAULT_VOICE_NAME_BY_LANG.fa;
       await this.deps.userState.setBotState(user.userId, { ...state, mode: "tts:wait_text", updatedAt: nowTs(), ttsOutput: output });
-      await this.sendMessage(chatId, `✅ خروجی روی <b>${output.toUpperCase()}</b> تنظیم شد.`, "HTML", this.ttsKeyboard(lang, voice, output, state.ttsPage || 0));
+      await this.sendMessage(chatId, t("tts_output_saved", lang).replace("{mode}", output.toUpperCase()), "HTML", this.ttsKeyboard(lang, voice, output, state.ttsPage || 0));
       await this.answerCallback(callback.id);
       return { handled: "tts_output" };
     }
@@ -521,11 +590,35 @@ export class TelegramBotFlowService {
       if (action === "approve" && plan && targetUser > 0) {
         await this.deps.credits.grant(targetUser, plan.credits, "manual_rial_payment", "telegram_bot");
         await this.sendMessage(targetUser, `✅ <b>پرداخت تأیید شد!</b>\n\n💎 <b>${plan.credits.toLocaleString("en-US")} کردیت</b> به حساب شما اضافه شد.\n💰 مبلغ: ${plan.amount_toman.toLocaleString("en-US")} تومان`, "HTML");
+        if (callback.message?.message_id && callback.message?.chat?.id) {
+          await fetch(`https://api.telegram.org/bot${this.deps.botToken}/editMessageCaption`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              chat_id: callback.message.chat.id,
+              message_id: callback.message.message_id,
+              caption: `${callback.message.caption || ""}\n\n✅ <b>تأیید شده توسط ادمین</b>`,
+              parse_mode: "HTML",
+            }),
+          });
+        }
         await this.answerCallback(callback.id, "✅ تایید شد");
         return { handled: "credit_admin_approve" };
       }
       if (action === "reject" && targetUser > 0) {
         await this.sendMessage(targetUser, "❌ <b>پرداخت رد شد</b>\n\nرسید ارسالی تأیید نشد. در صورت اطمینان از صحت پرداخت، مجدداً رسید ارسال کنید یا با پشتیبانی تماس بگیرید.", "HTML");
+        if (callback.message?.message_id && callback.message?.chat?.id) {
+          await fetch(`https://api.telegram.org/bot${this.deps.botToken}/editMessageCaption`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              chat_id: callback.message.chat.id,
+              message_id: callback.message.message_id,
+              caption: `${callback.message.caption || ""}\n\n❌ <b>رد شده توسط ادمین</b>`,
+              parse_mode: "HTML",
+            }),
+          });
+        }
         await this.answerCallback(callback.id, "❌ رد شد");
         return { handled: "credit_admin_reject" };
       }
@@ -641,7 +734,9 @@ export class TelegramBotFlowService {
         category: "tts_request",
         message: `voice=${state.ttsVoice || "alloy"} output=${state.ttsOutput || "mp3"} text=${text.slice(0, 1000)}`,
       });
-      await this.sendMessage(chatId, `✅ متن صوتی ثبت شد.\n\n🎙 صدا: <b>${state.ttsVoice || DEFAULT_VOICE_NAME_BY_LANG[lang] || DEFAULT_VOICE_NAME_BY_LANG.fa}</b>\n📦 خروجی: <b>${(state.ttsOutput || "mp3").toUpperCase()}</b>`, "HTML", this.ttsKeyboard(lang, state.ttsVoice || DEFAULT_VOICE_NAME_BY_LANG[lang] || DEFAULT_VOICE_NAME_BY_LANG.fa, state.ttsOutput || "mp3", state.ttsPage || 0));
+      const voice = state.ttsVoice || DEFAULT_VOICE_NAME_BY_LANG[lang] || DEFAULT_VOICE_NAME_BY_LANG.fa;
+      const output = (state.ttsOutput || "mp3").toUpperCase();
+      await this.sendMessage(chatId, t("tts_request_saved", lang).replace("{voice}", voice).replace("{output}", output), "HTML", this.ttsKeyboard(lang, voice, state.ttsOutput || "mp3", state.ttsPage || 0));
       return true;
     }
 
@@ -702,7 +797,7 @@ export class TelegramBotFlowService {
         return true;
       case t("btn_tts", lang):
         await this.deps.userState.setBotState(userId, { mode: "tts:wait_text", updatedAt: nowTs(), ttsVoice: DEFAULT_VOICE_NAME_BY_LANG[lang] || DEFAULT_VOICE_NAME_BY_LANG.fa, ttsOutput: "mp3", ttsPage: 0 });
-        await this.sendMessage(chatId, `🎧 <b>${t("tts_title", lang)}</b>\n\n${t("tts_prompt", lang).replace("{credit}", "1")}\n\n🎙 <b>${DEFAULT_VOICE_NAME_BY_LANG[lang] || DEFAULT_VOICE_NAME_BY_LANG.fa}</b>`, "HTML", this.ttsKeyboard(lang, DEFAULT_VOICE_NAME_BY_LANG[lang] || DEFAULT_VOICE_NAME_BY_LANG.fa, "mp3", 0));
+        await this.sendMessage(chatId, this.ttsAskText(lang, DEFAULT_VOICE_NAME_BY_LANG[lang] || DEFAULT_VOICE_NAME_BY_LANG.fa), "HTML", this.ttsKeyboard(lang, DEFAULT_VOICE_NAME_BY_LANG[lang] || DEFAULT_VOICE_NAME_BY_LANG.fa, "mp3", 0));
         return true;
       case LABELS.gpt:
         await this.handleCommand(userId, lang, chatId, "/ask", { mode: "idle", updatedAt: nowTs() });
@@ -787,19 +882,19 @@ export class TelegramBotFlowService {
     return { inline_keyboard: rows };
   }
 
-  private async sendInvoice(chatId: number, stars: number, credits: number) {
+  private async sendInvoice(chatId: number, stars: number, credits: number, lang: string) {
     const payload = JSON.stringify({ credits, stars });
     await fetch(`https://api.telegram.org/bot${this.deps.botToken}/sendInvoice`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         chat_id: chatId,
-        title: "شارژ کردیت",
-        description: `خرید ${credits} کردیت`,
+        title: t("credit_invoice_title", lang),
+        description: t("credit_invoice_desc", lang),
         payload,
         provider_token: "",
         currency: "XTR",
-        prices: [{ label: `${credits} credits`, amount: stars }],
+        prices: [{ label: t("credit_invoice_label", lang).replace("{credits}", String(credits)), amount: stars }],
       }),
     });
   }
@@ -862,9 +957,30 @@ export class TelegramBotFlowService {
       { text: `${selectedOutput === "mp3" ? "✔️ " : ""}${t("tts_output_mp3", lang)}`, callback_data: "tts:output:mp3" },
       { text: `${selectedOutput === "voice" ? "✔️ " : ""}${t("tts_output_voice", lang)}`, callback_data: "tts:output:voice" },
     ]);
-    rows.push([{ text: "ساخت صدای شخصی 🧬", callback_data: "home:clone" }]);
+    rows.push([{ text: t("btn_clone", lang), callback_data: "home:clone" }]);
     rows.push([{ text: t("back", lang), callback_data: "home:back" }]);
     return { inline_keyboard: rows };
+  }
+
+  private ttsAskText(lang: string, voiceName: string) {
+    return `🎧 <b>${t("tts_title", lang)}</b>\n\n${t("tts_prompt", lang).replace("{credit}", "1")}\n\n🎙 <b>${voiceName}</b>`;
+  }
+
+  private getDemoAudio(voiceName: string, lang: string): DemoAudioConfig | null {
+    if (!voiceName) return null;
+    const raw = this.deps.ttsDemoAudiosJson;
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw) as Record<string, Record<string, { fileId?: string; kind?: DemoAudioKind }> | { fileId?: string; kind?: DemoAudioKind }>;
+      const byLang = parsed[lang];
+      const global = parsed[voiceName];
+      const langVoice = byLang && typeof byLang === "object" && voiceName in byLang ? (byLang as Record<string, { fileId?: string; kind?: DemoAudioKind }>)[voiceName] : undefined;
+      const picked = langVoice || (global as { fileId?: string; kind?: DemoAudioKind } | undefined);
+      if (!picked?.fileId) return null;
+      return { fileId: picked.fileId, kind: picked.kind || "audio" };
+    } catch {
+      return null;
+    }
   }
 
   private async handleStart(userId: number, lang: string, chatId: number, text: string, state: BotConversationState) {
@@ -896,7 +1012,7 @@ export class TelegramBotFlowService {
       const planIndex = state.selectedPlanIndex ?? 0;
       const plan = PAYMENT_PLANS[planIndex];
       if (this.deps.ownerTelegramChatId) {
-        const caption = `🧾 <b>رسید پرداخت جدید</b>\n• User ID: <code>${userId}</code>\n• مبلغ: ${plan?.amount_toman?.toLocaleString("en-US") || "-"} تومان\n• کردیت: ${plan?.credits?.toLocaleString("en-US") || "-"} `;
+        const caption = `🧾 <b>رسید پرداخت جدید</b>\n• User ID: <code>${userId}</code>\n• Username: @${msg.from?.username || "-"}\n• Name: ${(msg.from?.first_name || "").trim() || "-"}\n\n• مبلغ: ${plan?.amount_toman?.toLocaleString("en-US") || "-"} تومان\n• کردیت: ${plan?.credits?.toLocaleString("en-US") || "-"} `;
         await fetch(`https://api.telegram.org/bot${this.deps.botToken}/sendPhoto`, {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -915,8 +1031,9 @@ export class TelegramBotFlowService {
         });
       }
       await this.deps.userState.setBotState(userId, { ...state, waitingReceipt: undefined, selectedPlanIndex: undefined, updatedAt: nowTs() });
+      const user = await this.deps.users.getProfile(userId);
       await this.sendMessage(chatId, "✅ رسید دریافت شد\n⏳ <b>لطفاً منتظر تایید باش</b>", "HTML");
-      await this.sendMainMenu(chatId, undefined, "fa");
+      await this.sendMainMenu(chatId, undefined, user.lang || "fa");
       return true;
     }
     if (state.mode === "video:wait_image") {
@@ -1027,7 +1144,7 @@ export class TelegramBotFlowService {
       return;
     }
     if (state.lowCreditScheduledAt && now < state.lowCreditScheduledAt) return;
-    await this.sendMessage(chatId, LABELS.lowCreditWarning, "HTML", { inline_keyboard: [[{ text: LABELS.lowCreditButton, callback_data: "credit:menu" }]] });
+    await this.sendMessage(chatId, t("low_credit_warning", _lang), "HTML", { inline_keyboard: [[{ text: t("low_credit_button", _lang), callback_data: "credit:menu" }]] });
     await this.deps.userState.setBotState(userId, {
       ...state,
       lowCreditPromptedAt: now,
@@ -1168,10 +1285,10 @@ export class TelegramBotFlowService {
       await this.triggerOnboarding(chatId, userId, lang);
       await this.maybeAdvanceOnboardingMilestones(chatId, userId, lang);
       await this.maybeSendLowCreditWarning(chatId, userId, lang, true);
-      await this.answerCallback(callbackId, "✅ عضویت تایید شد!");
+      await this.answerCallback(callbackId, t("force_sub_confirmed", lang));
       return { handled: "force_sub_confirmed" };
     }
-    await this.answerCallback(callbackId, "❌ هنوز عضو نشدی!");
+    await this.answerCallback(callbackId, t("force_sub_not_joined", lang));
     return { handled: "force_sub_not_joined" };
   }
 
