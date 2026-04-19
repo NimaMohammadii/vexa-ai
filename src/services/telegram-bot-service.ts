@@ -32,6 +32,7 @@ export interface TelegramWebhookUpdate {
 }
 
 interface TelegramBotFlowDeps {
+  db: D1Database;
   botToken: string;
   botUsername?: string;
   forceSubMode?: string;
@@ -187,6 +188,7 @@ const ADMIN_MENU_TEXT = `از دکمه‌های زیر استفاده کنید:
 • افزایش/کسر کردیت
 • تنظیمات و خروجی‌ها`;
 const ADMIN_DENY_TEXT = "⛔️ شما دسترسی به پنل ادمین ندارید.";
+const ADMIN_DONE_TEXT = "✅ انجام شد.";
 const BANNED_WORDS = ["کوص"];
 const DEFAULT_VOICE_NAME_BY_LANG: Record<string, string> = { fa: "Liam", en: "Ava", ar: "Liam", tr: "Arda", ru: "Алина", es: "Valeria", de: "Lena", fr: "Léa" };
 const VOICES_BY_LANG: Record<string, Record<string, string>> = {"fa": {"Liam": "TX3LPaxmHKxFdv7VOQHJ", "Amir": "1SM7GgM6IMuvQlz2BwM3", "Nazy": "tnSpp4vdxKPjI9w0GnoV", "Sarah": "BIvP0GN1cAtSRTxNHnWS", "Alex": "GFGuOkimbpNkTEOVDkqX", "Noushin": "NZiuR1C6kVMSWHG27sIM", "Paniz": "BZgkqPqms7Kj9ulSkVzn", "Alexandra": "kdmDKE6EkgrWrrykO9Qt", "Laura": "7piC4m7q8WrpEAnMj5xC", "Maxon": "0dPqNXnhg2bmxQv1WKDp", "Jessica": "cgSgspJ2msm6clMCkdW9", "Austin": "Bj9UqZbhQsanLzgalpEG", "priyanka": "BpjGufoPiobT79j2vtj4", "horatius": "qXpMhyvQqiRxWQs4qSSB", "anika": "Sm1seazb4gs7RSlUVw7c", "brock": "DGzg6RaUqxGRTHSBjfgF", "Xavier": "YOq2y2Up4RgXP2HyXjE5", "Bradford": "NNl6r8mD7vthiJatiJt1"}, "en": {"Liam": "TX3LPaxmHKxFdv7VOQHJ", "Noah": "1SM7GgM6IMuvQlz2BwM3", "Ava": "tnSpp4vdxKPjI9w0GnoV", "Nora": "BIvP0GN1cAtSRTxNHnWS", "Alex": "GFGuOkimbpNkTEOVDkqX", "Ella": "NZiuR1C6kVMSWHG27sIM", "Chloe": "BZgkqPqms7Kj9ulSkVzn", "Alexandra": "kdmDKE6EkgrWrrykO9Qt", "Laura": "7piC4m7q8WrpEAnMj5xC", "Maxon": "0dPqNXnhg2bmxQv1WKDp", "Jessica": "cgSgspJ2msm6clMCkdW9", "Austin": "Bj9UqZbhQsanLzgalpEG", "priyanka": "BpjGufoPiobT79j2vtj4", "horatius": "qXpMhyvQqiRxWQs4qSSB", "anika": "Sm1seazb4gs7RSlUVw7c", "brock": "DGzg6RaUqxGRTHSBjfgF", "Xavier": "YOq2y2Up4RgXP2HyXjE5", "Lucas": "NNl6r8mD7vthiJatiJt1"}, "ar": {"Liam": "TX3LPaxmHKxFdv7VOQHJ", "Amir": "1SM7GgM6IMuvQlz2BwM3", "Nazy": "tnSpp4vdxKPjI9w0GnoV", "Sarah": "BIvP0GN1cAtSRTxNHnWS", "Alex": "GFGuOkimbpNkTEOVDkqX", "Noushin": "NZiuR1C6kVMSWHG27sIM", "Paniz": "BZgkqPqms7Kj9ulSkVzn", "Alexandra": "kdmDKE6EkgrWrrykO9Qt", "Laura": "7piC4m7q8WrpEAnMj5xC", "Maxon": "0dPqNXnhg2bmxQv1WKDp", "Jessica": "cgSgspJ2msm6clMCkdW9", "Austin": "Bj9UqZbhQsanLzgalpEG", "priyanka": "BpjGufoPiobT79j2vtj4", "horatius": "qXpMhyvQqiRxWQs4qSSB", "anika": "Sm1seazb4gs7RSlUVw7c", "brock": "DGzg6RaUqxGRTHSBjfgF", "Xavier": "YOq2y2Up4RgXP2HyXjE5", "Bradford": "NNl6r8mD7vthiJatiJt1"}, "tr": {"Arda": "TX3LPaxmHKxFdv7VOQHJ", "Emre": "1SM7GgM6IMuvQlz2BwM3", "Deniz": "tnSpp4vdxKPjI9w0GnoV", "Sarah": "BIvP0GN1cAtSRTxNHnWS", "Burak": "GFGuOkimbpNkTEOVDkqX", "Selin": "NZiuR1C6kVMSWHG27sIM", "Duru": "BZgkqPqms7Kj9ulSkVzn", "Elif": "kdmDKE6EkgrWrrykO9Qt", "İrem": "7piC4m7q8WrpEAnMj5xC", "Mert": "0dPqNXnhg2bmxQv1WKDp", "Asya": "cgSgspJ2msm6clMCkdW9", "Derya": "Bj9UqZbhQsanLzgalpEG", "priyanka": "BpjGufoPiobT79j2vtj4", "horatius": "qXpMhyvQqiRxWQs4qSSB", "anika": "Sm1seazb4gs7RSlUVw7c", "Ozan": "DGzg6RaUqxGRTHSBjfgF", "Xavier": "YOq2y2Up4RgXP2HyXjE5", "Kaan": "NNl6r8mD7vthiJatiJt1"}, "ru": {"Илья": "TX3LPaxmHKxFdv7VOQHJ", "Никита": "1SM7GgM6IMuvQlz2BwM3", "Алина": "tnSpp4vdxKPjI9w0GnoV", "Милана": "BIvP0GN1cAtSRTxNHnWS", "Даниил": "GFGuOkimbpNkTEOVDkqX", "София": "NZiuR1C6kVMSWHG27sIM", "Ева": "BZgkqPqms7Kj9ulSkVzn", "Полина": "kdmDKE6EkgrWrrykO9Qt", "Кира": "7piC4m7q8WrpEAnMj5xC", "Maxon": "0dPqNXnhg2bmxQv1WKDp", "Дарья": "cgSgspJ2msm6clMCkdW9", "Austin": "Bj9UqZbhQsanLzgalpEG", "priyanka": "BpjGufoPiobT79j2vtj4", "horatius": "qXpMhyvQqiRxWQs4qSSB", "Вероника": "Sm1seazb4gs7RSlUVw7c", "brock": "DGzg6RaUqxGRTHSBjfgF", "Xavier": "YOq2y2Up4RgXP2HyXjE5", "Матвей": "NNl6r8mD7vthiJatiJt1"}, "es": {"Mateo": "TX3LPaxmHKxFdv7VOQHJ", "Leo": "1SM7GgM6IMuvQlz2BwM3", "Valeria": "tnSpp4vdxKPjI9w0GnoV", "Sofía": "BIvP0GN1cAtSRTxNHnWS", "Diego": "GFGuOkimbpNkTEOVDkqX", "Camila": "NZiuR1C6kVMSWHG27sIM", "Luna": "BZgkqPqms7Kj9ulSkVzn", "Renata": "kdmDKE6EkgrWrrykO9Qt", "Martina": "7piC4m7q8WrpEAnMj5xC", "Bruno": "0dPqNXnhg2bmxQv1WKDp", "Paula": "cgSgspJ2msm6clMCkdW9", "Tomás": "Bj9UqZbhQsanLzgalpEG", "Elena": "BpjGufoPiobT79j2vtj4", "horatius": "qXpMhyvQqiRxWQs4qSSB", "Abril": "Sm1seazb4gs7RSlUVw7c", "brock": "DGzg6RaUqxGRTHSBjfgF", "Xavier": "YOq2y2Up4RgXP2HyXjE5", "Andrés": "NNl6r8mD7vthiJatiJt1"}, "de": {"Leon": "TX3LPaxmHKxFdv7VOQHJ", "Luca": "1SM7GgM6IMuvQlz2BwM3", "Lena": "tnSpp4vdxKPjI9w0GnoV", "Mia": "BIvP0GN1cAtSRTxNHnWS", "Finn": "GFGuOkimbpNkTEOVDkqX", "Emma": "NZiuR1C6kVMSWHG27sIM", "Lea": "BZgkqPqms7Kj9ulSkVzn", "Hannah": "kdmDKE6EkgrWrrykO9Qt", "Laura": "7piC4m7q8WrpEAnMj5xC", "Jonas": "0dPqNXnhg2bmxQv1WKDp", "Nina": "cgSgspJ2msm6clMCkdW9", "Paul": "Bj9UqZbhQsanLzgalpEG", "Clara": "BpjGufoPiobT79j2vtj4", "Max": "qXpMhyvQqiRxWQs4qSSB", "Sophie": "Sm1seazb4gs7RSlUVw7c", "Noah": "DGzg6RaUqxGRTHSBjfgF", "Xavier": "YOq2y2Up4RgXP2HyXjE5", "Tim": "NNl6r8mD7vthiJatiJt1"}, "fr": {"Hugo": "TX3LPaxmHKxFdv7VOQHJ", "Noah": "1SM7GgM6IMuvQlz2BwM3", "Léa": "tnSpp4vdxKPjI9w0GnoV", "Inès": "BIvP0GN1cAtSRTxNHnWS", "Theo": "GFGuOkimbpNkTEOVDkqX", "Emma": "NZiuR1C6kVMSWHG27sIM", "Jade": "BZgkqPqms7Kj9ulSkVzn", "Mila": "kdmDKE6EkgrWrrykO9Qt", "Louise": "7piC4m7q8WrpEAnMj5xC", "Jules": "0dPqNXnhg2bmxQv1WKDp", "Jessica": "cgSgspJ2msm6clMCkdW9", "Adrien": "Bj9UqZbhQsanLzgalpEG", "Nina": "BpjGufoPiobT79j2vtj4", "horatius": "qXpMhyvQqiRxWQs4qSSB", "Zoé": "Sm1seazb4gs7RSlUVw7c", "brock": "DGzg6RaUqxGRTHSBjfgF", "Xavier": "YOq2y2Up4RgXP2HyXjE5", "Paul": "NNl6r8mD7vthiJatiJt1"}};
@@ -905,6 +907,128 @@ export class TelegramBotFlowService {
       return true;
     }
 
+    if (this.isOwner(userId) && text) {
+      if (state.mode === "admin:lookup_user") {
+        const uid = await this.resolveUserId(text);
+        if (!uid) {
+          await this.sendMessage(chatId, "❌ آی‌دی/یوزرنیم معتبر نیست.");
+          return true;
+        }
+        await this.deps.userState.setBotState(userId, { mode: "idle", updatedAt: nowTs() });
+        const u = await this.deps.db
+          .prepare(`SELECT user_id, username, lang, banned, credits FROM users WHERE user_id = ?1`)
+          .bind(uid)
+          .first<{ user_id: number; username: string | null; lang: string; banned: number; credits: number }>();
+        if (!u) {
+          await this.sendMessage(chatId, "❌ کاربر یافت نشد.");
+          return true;
+        }
+        const txt = `👤 <b>${u.user_id}</b>\n@${u.username || "-"} | 💳 ${Math.round(Number(u.credits || 0))} | ${u.banned ? "🚫 بن" : "✅ مجاز"}\n🌐 زبان: <b>${u.lang || "fa"}</b>`;
+        const keyboard: InlineKeyboard = {
+          inline_keyboard: [
+            [{ text: "➕ افزودن", callback_data: `admin:uadd:${u.user_id}` }, { text: "➖ کسر", callback_data: `admin:usub:${u.user_id}` }],
+            [{ text: "✉️ پیام تکی", callback_data: `admin:dm:${u.user_id}` }, { text: u.banned ? "✅ آن‌بن" : "🚫 بن", callback_data: `admin:${u.banned ? "unban" : "ban"}:${u.user_id}` }],
+            [{ text: "⬅️ بازگشت", callback_data: "admin:users" }],
+          ],
+        };
+        await this.sendMessage(chatId, txt, "HTML", keyboard);
+        return true;
+      }
+      if (state.mode === "admin:add_user" || state.mode === "admin:sub_user" || state.mode === "admin:dm_user") {
+        const uid = await this.resolveUserId(text);
+        if (!uid) {
+          await this.sendMessage(chatId, "❌ آی‌دی/یوزرنیم معتبر نیست.");
+          return true;
+        }
+        const mode = state.mode === "admin:add_user" ? "admin:add_amount" : state.mode === "admin:sub_user" ? "admin:sub_amount" : "admin:dm_content";
+        await this.deps.userState.setBotState(userId, { mode, updatedAt: nowTs(), adminTargetUserId: uid });
+        await this.sendMessage(chatId, state.mode === "admin:dm_user" ? "✍️ متن پیام تکی را بفرستید." : state.mode === "admin:add_user" ? "➕ مقدار کردیتی که باید اضافه شود را بفرستید (فقط عدد)." : "➖ مقدار کردیتی که باید کم شود را بفرستید (فقط عدد).");
+        return true;
+      }
+      if (state.mode === "admin:add_amount" || state.mode === "admin:sub_amount") {
+        const uid = Number(state.adminTargetUserId || 0);
+        const amount = Number(text.trim());
+        if (!uid || !Number.isFinite(amount)) {
+          await this.sendMessage(chatId, "❌ فقط عدد.");
+          return true;
+        }
+        const delta = state.mode === "admin:add_amount" ? Math.abs(amount) : -Math.abs(amount);
+        await this.deps.db.prepare(`UPDATE users SET credits = credits + ?1 WHERE user_id = ?2`).bind(delta, uid).run();
+        const row = await this.deps.db.prepare(`SELECT credits FROM users WHERE user_id = ?1`).bind(uid).first<{ credits: number }>();
+        await this.sendMessage(chatId, `${ADMIN_DONE_TEXT}\n👤 <code>${uid}</code>\n${delta > 0 ? "➕" : "➖"} ${delta > 0 ? "+" : ""}${Math.abs(delta)}💳\n💼 موجودی: <b>${Math.round(Number(row?.credits || 0))}</b>`, "HTML");
+        await this.deps.userState.setBotState(userId, { mode: "idle", updatedAt: nowTs() });
+        return true;
+      }
+      if (state.mode === "admin:reset_user") {
+        const uid = await this.resolveUserId(text);
+        if (!uid) {
+          await this.sendMessage(chatId, "❌ آی‌دی/یوزرنیم معتبر نیست.");
+          return true;
+        }
+        await this.deps.db.batch([
+          this.deps.db.prepare(`DELETE FROM gpt_messages WHERE user_id = ?1`).bind(uid),
+          this.deps.db.prepare(`DELETE FROM generated_assets WHERE user_id = ?1`).bind(uid),
+          this.deps.db.prepare(`DELETE FROM credit_ledger WHERE user_id = ?1`).bind(uid),
+          this.deps.db.prepare(`DELETE FROM users WHERE user_id = ?1`).bind(uid),
+        ]);
+        await this.sendMessage(chatId, `${ADMIN_DONE_TEXT}\n👤 <code>${uid}</code>\n♻️ اطلاعات کاربر حذف شد و باید دوباره استارت کند.`, "HTML");
+        await this.deps.userState.setBotState(userId, { mode: "idle", updatedAt: nowTs() });
+        return true;
+      }
+      if (state.mode === "admin:dm_content") {
+        const uid = Number(state.adminTargetUserId || 0);
+        if (!uid) return true;
+        await this.sendMessage(uid, text);
+        await this.sendMessage(chatId, ADMIN_DONE_TEXT);
+        await this.deps.userState.setBotState(userId, { mode: "idle", updatedAt: nowTs() });
+        return true;
+      }
+      if (state.mode === "admin:cast_content") {
+        const langCode = state.adminCastLang || "all";
+        const query = langCode === "all" ? `SELECT user_id FROM users` : `SELECT user_id FROM users WHERE lang = ?1`;
+        const rs = langCode === "all" ? await this.deps.db.prepare(query).all<{ user_id: number }>() : await this.deps.db.prepare(query).bind(langCode).all<{ user_id: number }>();
+        let sent = 0;
+        for (const row of rs.results || []) {
+          try {
+            await this.sendMessage(Number(row.user_id), text);
+            sent++;
+          } catch {}
+        }
+        await this.sendMessage(chatId, `${ADMIN_DONE_TEXT}\n📣 ارسال شد به ${sent} کاربر.`);
+        await this.deps.userState.setBotState(userId, { mode: "idle", updatedAt: nowTs() });
+        return true;
+      }
+      if (state.mode === "admin:set_setting") {
+        await this.setSetting(state.adminSettingKey || "GENERIC", text.trim());
+        await this.sendMessage(chatId, ADMIN_DONE_TEXT);
+        await this.deps.userState.setBotState(userId, { mode: "idle", updatedAt: nowTs() });
+        return true;
+      }
+      if (state.mode === "admin:formula") {
+        const expr = text.trim();
+        const { results } = await this.deps.db.prepare(`SELECT user_id, credits FROM users`).all<{ user_id: number; credits: number }>();
+        let affected = 0;
+        for (const row of results || []) {
+          const old = Number(row.credits || 0);
+          let next = old;
+          try {
+            // Legacy parity keeps formula evaluation behavior.
+            next = Number(Function("old", `return (${expr});`)(old));
+          } catch {
+            await this.sendMessage(chatId, "❌ خطا در فرمول.");
+            return true;
+          }
+          if (Number.isFinite(next)) {
+            await this.deps.db.prepare(`UPDATE users SET credits = ?1 WHERE user_id = ?2`).bind(Math.round(next), row.user_id).run();
+            affected++;
+          }
+        }
+        await this.sendMessage(chatId, `✅ کردیت ${affected} کاربر به‌روزرسانی شد.`);
+        await this.deps.userState.setBotState(userId, { mode: "idle", updatedAt: nowTs() });
+        return true;
+      }
+    }
+
     return false;
   }
 
@@ -939,6 +1063,35 @@ export class TelegramBotFlowService {
   private isOwner(userId: number): boolean {
     const ownerId = Number(this.deps.ownerTelegramChatId || 0);
     return ownerId > 0 && ownerId === userId;
+  }
+
+  private async getOrCreateAdminSettingsTable() {
+    await this.deps.db
+      .prepare(`CREATE TABLE IF NOT EXISTS bot_settings (key TEXT PRIMARY KEY, value TEXT, updated_at INTEGER NOT NULL)`)
+      .run();
+  }
+
+  private async getSetting(key: string, fallback = ""): Promise<string> {
+    await this.getOrCreateAdminSettingsTable();
+    const row = await this.deps.db.prepare(`SELECT value FROM bot_settings WHERE key = ?1`).bind(key).first<{ value: string }>();
+    return row?.value ?? fallback;
+  }
+
+  private async setSetting(key: string, value: string): Promise<void> {
+    await this.getOrCreateAdminSettingsTable();
+    await this.deps.db
+      .prepare(`INSERT INTO bot_settings(key, value, updated_at) VALUES(?1, ?2, ?3) ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at`)
+      .bind(key, value, nowTs())
+      .run();
+  }
+
+  private async resolveUserId(raw: string): Promise<number | null> {
+    const text = (raw || "").trim();
+    if (!text) return null;
+    if (/^\d+$/.test(text)) return Number(text);
+    const username = text.replace(/^@/, "");
+    const row = await this.deps.db.prepare(`SELECT user_id FROM users WHERE username = ?1 LIMIT 1`).bind(username).first<{ user_id: number }>();
+    return row ? Number(row.user_id) : null;
   }
 
   private adminMenuKeyboard(): InlineKeyboard {
@@ -1071,6 +1224,11 @@ ${ADMIN_MENU_TEXT}`, this.adminMenuKeyboard(), messageId);
       await this.answerCallback(callbackId);
       return { handled: "admin_exports" };
     }
+    if (data.startsWith("admin:ban:") || data.startsWith("admin:unban:")) {
+      const uid = Number(data.split(":")[2] || 0);
+      await this.deps.db.prepare(`UPDATE users SET banned = ?1 WHERE user_id = ?2`).bind(data.startsWith("admin:ban:") ? 1 : 0, uid).run();
+      return this.handleAdminCallback(callbackId, chatId, messageId, userId, `admin:user:${uid}`);
+    }
 
     const legacyPrompts: Record<string, string> = {
       "admin:add": "➕ آیدی عددی یا یوزرنیم کاربر برای «افزایش کردیت» را بفرستید.",
@@ -1097,15 +1255,71 @@ ${ADMIN_MENU_TEXT}`, this.adminMenuKeyboard(), messageId);
       "admin:set:ig": "📷 لینک پیج اینستاگرام (برای عضویت اجباری) را بفرستید.",
     };
 
+    if (data === "admin:stats") {
+      const total = await this.deps.db.prepare(`SELECT COUNT(*) as c FROM users`).first<{ c: number }>();
+      const active24 = await this.deps.db.prepare(`SELECT COUNT(*) as c FROM users WHERE last_seen_at >= ?1`).bind(nowTs() - 86400).first<{ c: number }>();
+      const imageUsers = await this.deps.db.prepare(`SELECT COUNT(DISTINCT user_id) as c FROM generated_assets WHERE asset_type='image'`).first<{ c: number }>();
+      const gptUsers = await this.deps.db.prepare(`SELECT COUNT(DISTINCT user_id) as c FROM gpt_messages`).first<{ c: number }>();
+      const txt = `📊 <b>آمار</b>\n\n👥 کل کاربران: <b>${Number(total?.c || 0)}</b>\n⚡️ فعال ۲۴ساعت: <b>${Number(active24?.c || 0)}</b>\n🖼️ کاربران تولید تصویر: <b>${Number(imageUsers?.c || 0)}</b>\n🤖 کاربران GPT: <b>${Number(gptUsers?.c || 0)}</b>`;
+      await this.sendOrEditMessage(chatId, txt, this.adminMenuKeyboard(), messageId, "HTML");
+      await this.answerCallback(callbackId);
+      return { handled: "admin_stats" };
+    }
+
+    if (data === "admin:users") {
+      const { results } = await this.deps.db
+        .prepare(`SELECT user_id, username, credits, banned FROM users ORDER BY user_id DESC LIMIT 10`)
+        .all<{ user_id: number; username: string | null; credits: number; banned: number }>();
+      const rows: InlineKeyboard["inline_keyboard"] = (results || []).map((u) => [
+        { text: `${u.banned ? "🚫" : "✅"} ${u.user_id}${u.username ? ` · @${u.username}` : ""} · 💳 ${Math.round(Number(u.credits || 0))}`, callback_data: `admin:user:${u.user_id}` },
+      ]);
+      rows.push([{ text: "🔎 جستجوی کاربر", callback_data: "admin:user:lookup" }], [{ text: "⬅️ بازگشت", callback_data: "admin:menu" }]);
+      await this.sendOrEditMessage(chatId, "👥 لیست کاربران:", { inline_keyboard: rows }, messageId, "HTML");
+      await this.answerCallback(callbackId);
+      return { handled: "admin_users" };
+    }
+
     const prompt = legacyPrompts[data];
     if (prompt) {
       const keyboard = data === "admin:cast" ? this.adminCastLangKeyboard() : this.adminMenuKeyboard();
       await this.sendOrEditMessage(chatId, prompt, keyboard, messageId, "HTML");
+      if (data === "admin:add") await this.deps.userState.setBotState(userId, { mode: "admin:add_user", updatedAt: nowTs() });
+      if (data === "admin:sub") await this.deps.userState.setBotState(userId, { mode: "admin:sub_user", updatedAt: nowTs() });
+      if (data === "admin:reset") await this.deps.userState.setBotState(userId, { mode: "admin:reset_user", updatedAt: nowTs() });
+      if (data === "admin:dm") await this.deps.userState.setBotState(userId, { mode: "admin:dm_user", updatedAt: nowTs() });
+      if (data === "admin:bulk_credit") await this.deps.userState.setBotState(userId, { mode: "admin:formula", updatedAt: nowTs() });
+      if (data === "admin:set:bonus") await this.deps.userState.setBotState(userId, { mode: "admin:set_setting", updatedAt: nowTs(), adminSettingKey: "BONUS_REFERRAL" });
+      if (data === "admin:set:free") await this.deps.userState.setBotState(userId, { mode: "admin:set_setting", updatedAt: nowTs(), adminSettingKey: "FREE_CREDIT" });
+      if (data === "admin:set:tg") await this.deps.userState.setBotState(userId, { mode: "admin:set_setting", updatedAt: nowTs(), adminSettingKey: "TG_CHANNEL" });
+      if (data === "admin:set:ig") await this.deps.userState.setBotState(userId, { mode: "admin:set_setting", updatedAt: nowTs(), adminSettingKey: "IG_URL" });
       await this.answerCallback(callbackId);
       return { handled: "admin_prompt" };
     }
 
     if (data === "admin:user:lookup" || data.startsWith("admin:user:")) {
+      if (data === "admin:user:lookup") {
+        await this.deps.userState.setBotState(userId, { mode: "admin:lookup_user", updatedAt: nowTs() });
+      }
+      if (data.startsWith("admin:user:") && data !== "admin:user:lookup") {
+        const uid = Number(data.split(":")[2] || 0);
+        const u = await this.deps.db
+          .prepare(`SELECT user_id, username, lang, banned, credits FROM users WHERE user_id = ?1`)
+          .bind(uid)
+          .first<{ user_id: number; username: string | null; lang: string; banned: number; credits: number }>();
+        if (u) {
+          const txt = `👤 <b>${u.user_id}</b>\n@${u.username || "-"} | 💳 ${Math.round(Number(u.credits || 0))} | ${u.banned ? "🚫 بن" : "✅ مجاز"}\n🌐 زبان: <b>${u.lang || "fa"}</b>`;
+          const keyboard: InlineKeyboard = {
+            inline_keyboard: [
+              [{ text: "➕ افزودن", callback_data: `admin:uadd:${u.user_id}` }, { text: "➖ کسر", callback_data: `admin:usub:${u.user_id}` }],
+              [{ text: "✉️ پیام تکی", callback_data: `admin:dm:${u.user_id}` }, { text: u.banned ? "✅ آن‌بن" : "🚫 بن", callback_data: `admin:${u.banned ? "unban" : "ban"}:${u.user_id}` }],
+              [{ text: "⬅️ بازگشت", callback_data: "admin:users" }],
+            ],
+          };
+          await this.sendOrEditMessage(chatId, txt, keyboard, messageId, "HTML");
+          await this.answerCallback(callbackId);
+          return { handled: "admin_user_profile" };
+        }
+      }
       await this.sendOrEditMessage(chatId, "🔎 آیدی عددی یا یوزرنیم کاربر را بفرستید (مثل @user یا 123456789).", this.adminMenuKeyboard(), messageId, "HTML");
       await this.answerCallback(callbackId);
       return { handled: "admin_user_lookup" };
@@ -1121,6 +1335,7 @@ ${ADMIN_MENU_TEXT}`, this.adminMenuKeyboard(), messageId);
       const selected = data.split(":")[2] || "all";
       const label = selected === "all" ? "همه زبان‌ها" : selected;
       await this.sendOrEditMessage(chatId, `📣 زبان پیام همگانی روی <b>${label}</b> انتخاب شد.\nحالا متن پیام همگانی را ارسال کنید.`, this.adminMenuKeyboard(), messageId, "HTML");
+      await this.deps.userState.setBotState(userId, { mode: "admin:cast_content", updatedAt: nowTs(), adminCastLang: selected });
       await this.answerCallback(callbackId);
       return { handled: "admin_cast_lang" };
     }
@@ -1224,6 +1439,19 @@ ${ADMIN_MENU_TEXT}`, this.adminMenuKeyboard(), messageId);
     }
 
     if (data.startsWith("admin:feature:toggle:") || data === "admin:toggle:fs" || data === "admin:toggle:sound") {
+      if (data.startsWith("admin:feature:toggle:")) {
+        const key = data.split(":")[3] || "";
+        const cur = await this.getSetting(key, "1");
+        await this.setSetting(key, cur === "1" ? "0" : "1");
+      } else if (data === "admin:toggle:fs") {
+        const cur = await this.getSetting("FORCE_SUB_MODE", "none");
+        const order = ["none", "new", "all"];
+        const idx = Math.max(0, order.indexOf(cur));
+        await this.setSetting("FORCE_SUB_MODE", order[(idx + 1) % order.length]!);
+      } else {
+        const cur = await this.getSetting("SOUND_ENABLED", "1");
+        await this.setSetting("SOUND_ENABLED", cur === "1" ? "0" : "1");
+      }
       await this.sendOrEditMessage(chatId, "✅ وضعیت با موفقیت تغییر کرد.", this.adminSettingsKeyboard(), messageId);
       await this.answerCallback(callbackId);
       return { handled: "admin_toggle" };
@@ -1270,7 +1498,11 @@ ${ADMIN_MENU_TEXT}`, this.adminMenuKeyboard(), messageId);
     }
 
     if (data.startsWith("admin:uadd:") || data.startsWith("admin:usub:") || data.startsWith("admin:dm:")) {
-      await this.sendOrEditMessage(chatId, "👤 عملیات کاربر انتخاب شد. آیدی/یوزرنیم جدید را ارسال کنید.", this.adminMenuKeyboard(), messageId, "HTML");
+      const uid = Number(data.split(":")[2] || 0);
+      if (data.startsWith("admin:uadd:")) await this.deps.userState.setBotState(userId, { mode: "admin:add_amount", updatedAt: nowTs(), adminTargetUserId: uid });
+      if (data.startsWith("admin:usub:")) await this.deps.userState.setBotState(userId, { mode: "admin:sub_amount", updatedAt: nowTs(), adminTargetUserId: uid });
+      if (data.startsWith("admin:dm:")) await this.deps.userState.setBotState(userId, { mode: "admin:dm_content", updatedAt: nowTs(), adminTargetUserId: uid });
+      await this.sendOrEditMessage(chatId, data.startsWith("admin:dm:") ? "✍️ متن پیام تکی را بفرستید." : "➕/➖ مقدار را به‌صورت عدد ارسال کنید.", this.adminMenuKeyboard(), messageId, "HTML");
       await this.answerCallback(callbackId);
       return { handled: "admin_user_action_shortcut" };
     }
