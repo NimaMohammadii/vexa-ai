@@ -16,6 +16,8 @@ export async function handleTelegramRoutes(ctx: RouteCtx): Promise<Response | nu
       forceSubInstagramUrl: env.IG_URL,
       welcomeAudioFileId: env.WELCOME_AUDIO_FILE_ID,
       welcomeAudioKind: env.WELCOME_AUDIO_KIND,
+      ownerTelegramChatId: env.OWNER_TELEGRAM_CHAT_ID,
+      cardNumber: env.CARD_NUMBER,
       users: services.users,
       credits: services.credits,
       tokens: services.tokens,

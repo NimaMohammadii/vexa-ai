@@ -24,6 +24,9 @@ export interface BotConversationState {
   dailyBonusUnlockedAt?: number;
   pendingReferralCode?: string;
   langSelected?: boolean;
+  ttsPage?: number;
+  waitingReceipt?: boolean;
+  selectedPlanIndex?: number;
 }
 
 const DEFAULT_STATE: BotConversationState = {
@@ -78,6 +81,9 @@ export class UserStateRepository {
         dailyBonusUnlockedAt: Number(parsed.dailyBonusUnlockedAt ?? 0) || undefined,
         pendingReferralCode: typeof parsed.pendingReferralCode === "string" ? parsed.pendingReferralCode : undefined,
         langSelected: parsed.langSelected === undefined ? undefined : !!parsed.langSelected,
+        ttsPage: Number(parsed.ttsPage ?? 0) || undefined,
+        waitingReceipt: parsed.waitingReceipt === undefined ? undefined : !!parsed.waitingReceipt,
+        selectedPlanIndex: Number(parsed.selectedPlanIndex ?? -1) >= 0 ? Number(parsed.selectedPlanIndex) : undefined,
       };
     } catch {
       return DEFAULT_STATE;
