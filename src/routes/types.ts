@@ -23,6 +23,7 @@ export interface Env {
   IG_URL?: string;
   WELCOME_AUDIO_FILE_ID?: string;
   WELCOME_AUDIO_KIND?: "audio" | "voice" | "document";
+  CARD_NUMBER?: string;
 }
 
 export interface Services {

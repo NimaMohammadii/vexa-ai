@@ -10,6 +10,7 @@ interface TelegramUser {
 
 export interface TelegramWebhookUpdate {
   update_id?: number;
+  pre_checkout_query?: { id: string; from?: TelegramUser };
   message?: {
     message_id?: number;
     text?: string;
@@ -18,6 +19,7 @@ export interface TelegramWebhookUpdate {
     voice?: { file_id: string };
     audio?: { file_id: string };
     document?: { file_id: string; mime_type?: string };
+    successful_payment?: { invoice_payload?: string; total_amount?: number; telegram_payment_charge_id?: string };
     from?: TelegramUser;
     chat?: { id: number };
   };
@@ -37,6 +39,8 @@ interface TelegramBotFlowDeps {
   forceSubInstagramUrl?: string;
   welcomeAudioFileId?: string;
   welcomeAudioKind?: "audio" | "voice" | "document";
+  ownerTelegramChatId?: string;
+  cardNumber?: string;
   users: UserService;
   credits: CreditService;
   tokens: ApiTokenService;
@@ -78,6 +82,54 @@ const LANGS: Array<{ label: string; code: string }> = [
   { label: "Français", code: "fr" },
 ];
 
+
+const I18N: Record<string, Record<string, string>> = {
+  home_title: { fa: "/help   منوی اصلی", en: "Main Menu", ar: "القائمة الرئيسية", tr: "Ana Menü", ru: "Главное меню", es: "Menú principal", de: "Hauptmenü", fr: "Menu principal" },
+  home_body: { fa: "یکی از گزینه‌های زیر را انتخاب کنید:", en: "Choose an option:", ar: "اختر خياراً:", tr: "Bir seçenek seçin:", ru: "Выберите опцию:", es: "Elige una opción:", de: "Wähle eine Option:", fr: "Choisissez une option :" },
+  btn_profile: { fa: "موجودی شما", en: "Your Balance", ar: "رصيدك", tr: "Bakiyeniz", ru: "Ваш баланс", es: "Tu saldo", de: "Dein Guthaben", fr: "Ton solde" },
+  btn_credit: { fa: "خرید کردیـت 🛒", en: "Buy Credit 🛒", ar: "شراء الرصيد 🛒", tr: "Kredi Satın Al 🛒", ru: "Купить кредит 🛒", es: "Comprar crédito 🛒", de: "Guthaben kaufen 🛒", fr: "Acheter du crédit 🛒" },
+  btn_tts: { fa: "تبدیل متن به صدا 🎧", en: "Text to Speech 🎧", ar: "تحويل النص إلى صوت 🎧", tr: "Metinden Sese 🎧", ru: "Текст в речь 🎧", es: "Texto a voz 🎧", de: "Text zu Sprache 🎧", fr: "Texte en voix 🎧" },
+  btn_lang: { fa: "Language 📚", en: "Language 📚", ar: "اللغة 📚", tr: "Dil 📚", ru: "Язык 📚", es: "Idioma 📚", de: "Sprache 📚", fr: "Langue 📚" },
+  btn_invite: { fa: "🎁", en: "🎁", ar: "دعوة الأصدقاء 🎁", tr: "🎁", ru: "🎁", es: "🎁", de: "🎁", fr: "🎁" },
+  back: { fa: "🔙 بازگشت", en: "🔙 Back", ar: "🔙 رجوع", tr: "🔙 Geri", ru: "🔙 Назад", es: "🔙 Volver", de: "🔙 Zurück", fr: "🔙 Retour" },
+  home_back_to_menu: { fa: "🏠 منوی اصلی", en: "🏠 Main menu", ar: "🏠 القائمة الرئيسية", tr: "🏠 Ana menü", ru: "🏠 Главное меню", es: "🏠 Menú principal", de: "🏠 Hauptmenü", fr: "🏠 Menu principal" },
+  lang_title: { fa: "انتخاب زبان", en: "Choose language", ar: "اختر اللغة", tr: "Dil seçimi", ru: "Выбор языка", es: "Elige idioma", de: "Sprache wählen", fr: "Choisir la langue" },
+  lang_hint: { fa: "یکی از زبان‌های زیر را انتخاب کن.", en: "Select one of the languages below.", ar: "اختر إحدى اللغات التالية.", tr: "Aşağıdaki dillerden birini seç.", ru: "Выберите один из языков ниже.", es: "Elige uno de los idiomas a continuación.", de: "Wähle eine der folgenden Sprachen.", fr: "Choisissez une langue ci-dessous." },
+  lang_saved: { fa: "✅ زبان ذخیره شد.", en: "✅ Language saved.", ar: "✅ تم حفظ اللغة.", tr: "✅ Dil kaydedildi.", ru: "✅ Язык сохранён.", es: "✅ Idioma guardado.", de: "✅ Sprache gespeichert.", fr: "✅ Langue enregistrée." },
+  tts_title: { fa: "تبدیل متن به صدا", en: "Text to Speech", ar: "تحويل النص إلى صوت", tr: "Metinden Sese", ru: "Текст в речь", es: "Texto a voz", de: "Text zu Sprache", fr: "Texte en voix" },
+  tts_prompt: { fa: "متن را بفرست. هر کاراکتر = {credit} کردیت", en: "Send your text. Each character = {credit} credit", ar: "أرسل النص. كل حرف = {credit} رصيد", tr: "Metni gönder. Her karakter = {credit} kredi", ru: "Отправьте текст. Каждый символ = {credit} кредит", es: "Envía el texto. Cada carácter = {credit} crédito", de: "Sende den Text. Jedes Zeichen = {credit} Credit", fr: "Envoie le texte. Chaque caractère = {credit} crédit" },
+  tts_demo: { fa: "دمو 🎧", en: "Demo 🎧", ar: "تجربة 🎧", tr: "Demo 🎧", ru: "Демо 🎧", es: "Demo 🎧", de: "Demo 🎧", fr: "Démo 🎧" },
+  tts_next: { fa: "بعدی ➜", en: "Next ➜", ar: "التالي ➜", tr: "Sonraki ➜", ru: "Далее ➜", es: "Siguiente ➜", de: "Weiter ➜", fr: "Suivant ➜" },
+  tts_prev: { fa: "⬅︎ قبل", en: "⬅︎ Previous", ar: "⬅︎ السابق", tr: "⬅︎ Önceki", ru: "⬅︎ Назад", es: "⬅︎ Anterior", de: "⬅︎ Zurück", fr: "⬅︎ Précédent" },
+  tts_output_mp3: { fa: "MP3 📁", en: "MP3 📁", ar: "MP3 📁", tr: "MP3 📁", ru: "MP3 📁", es: "MP3 📁", de: "MP3 📁", fr: "MP3 📁" },
+  tts_output_voice: { fa: "Voice 🎙️", en: "Voice 🎙️", ar: "Voice 🎙️", tr: "Voice 🎙️", ru: "Voice 🎙️", es: "Voice 🎙️", de: "Voice 🎙️", fr: "Voice 🎙️" },
+  credit_title: { fa: "خرید کردیت", en: "Buy Credit", ar: "شراء الرصيد", tr: "Kredi Satın Al", ru: "Покупка кредитов", es: "Comprar crédito", de: "Credits kaufen", fr: "Acheter du crédit" },
+  credit_header: { fa: "برای استفاده از ربات، کردیت لازم دارید.\nیکی از بسته‌های زیر را انتخاب کنید:", en: "You need credits to use the bot.\nChoose one package:", ar: "تحتاج رصيدًا لاستخدام البوت.\nاختر إحدى الباقات:", tr: "Botu kullanmak için kredi gerekir.\nBir paket seç:", ru: "Для использования бота нужны кредиты.\nВыберите пакет:", es: "Necesitas créditos para usar el bot.\nElige un paquete:", de: "Du brauchst Credits, um den Bot zu nutzen.\nWähle ein Paket:", fr: "Il te faut des crédits pour utiliser le bot.\nChoisis un pack :" },
+  credit_pay_stars_btn: { fa: "خرید با Telegram Stars 🌟", en: "Buy with Telegram Stars 🌟", ar: "شراء عبر Telegram Stars 🌟", tr: "Telegram Stars ile al 🌟", ru: "Купить через Telegram Stars 🌟", es: "Comprar con Telegram Stars 🌟", de: "Mit Telegram Stars kaufen 🌟", fr: "Acheter via Telegram Stars 🌟" },
+  credit_pay_rial_btn: { fa: "پرداخت به تومان", en: "Pay in Toman", ar: "الدفع بالتومان", tr: "Toman ile öde", ru: "Оплата в томанах", es: "Pagar en tomanes", de: "In Toman zahlen", fr: "Payer en toman" },
+  credit_stars_menu: { fa: "🌟 <b>بسته‌های Telegram Stars</b>\n\nیکی از بسته‌ها را انتخاب کن:", en: "🌟 <b>Telegram Stars packages</b>\n\nChoose one package:", ar: "🌟 <b>باقات Telegram Stars</b>\n\nاختر باقة:", tr: "🌟 <b>Telegram Stars paketleri</b>\n\nBir paket seç:", ru: "🌟 <b>Пакеты Telegram Stars</b>\n\nВыберите пакет:", es: "🌟 <b>Paquetes de Telegram Stars</b>\n\nElige un paquete:", de: "🌟 <b>Telegram-Stars-Pakete</b>\n\nWähle ein Paket:", fr: "🌟 <b>Packs Telegram Stars</b>\n\nChoisis un pack :" },
+};
+const t = (key: string, lang: string) => I18N[key]?.[lang] || I18N[key]?.fa || key;
+const DEFAULT_VOICE_NAME_BY_LANG: Record<string, string> = { fa: "Liam", en: "Ava", ar: "Liam", tr: "Arda", ru: "Алина", es: "Valeria", de: "Lena", fr: "Léa" };
+const VOICES_BY_LANG: Record<string, Record<string, string>> = {"fa": {"Liam": "TX3LPaxmHKxFdv7VOQHJ", "Amir": "1SM7GgM6IMuvQlz2BwM3", "Nazy": "tnSpp4vdxKPjI9w0GnoV", "Sarah": "BIvP0GN1cAtSRTxNHnWS", "Alex": "GFGuOkimbpNkTEOVDkqX", "Noushin": "NZiuR1C6kVMSWHG27sIM", "Paniz": "BZgkqPqms7Kj9ulSkVzn", "Alexandra": "kdmDKE6EkgrWrrykO9Qt", "Laura": "7piC4m7q8WrpEAnMj5xC", "Maxon": "0dPqNXnhg2bmxQv1WKDp", "Jessica": "cgSgspJ2msm6clMCkdW9", "Austin": "Bj9UqZbhQsanLzgalpEG", "priyanka": "BpjGufoPiobT79j2vtj4", "horatius": "qXpMhyvQqiRxWQs4qSSB", "anika": "Sm1seazb4gs7RSlUVw7c", "brock": "DGzg6RaUqxGRTHSBjfgF", "Xavier": "YOq2y2Up4RgXP2HyXjE5", "Bradford": "NNl6r8mD7vthiJatiJt1"}, "en": {"Liam": "TX3LPaxmHKxFdv7VOQHJ", "Noah": "1SM7GgM6IMuvQlz2BwM3", "Ava": "tnSpp4vdxKPjI9w0GnoV", "Nora": "BIvP0GN1cAtSRTxNHnWS", "Alex": "GFGuOkimbpNkTEOVDkqX", "Ella": "NZiuR1C6kVMSWHG27sIM", "Chloe": "BZgkqPqms7Kj9ulSkVzn", "Alexandra": "kdmDKE6EkgrWrrykO9Qt", "Laura": "7piC4m7q8WrpEAnMj5xC", "Maxon": "0dPqNXnhg2bmxQv1WKDp", "Jessica": "cgSgspJ2msm6clMCkdW9", "Austin": "Bj9UqZbhQsanLzgalpEG", "priyanka": "BpjGufoPiobT79j2vtj4", "horatius": "qXpMhyvQqiRxWQs4qSSB", "anika": "Sm1seazb4gs7RSlUVw7c", "brock": "DGzg6RaUqxGRTHSBjfgF", "Xavier": "YOq2y2Up4RgXP2HyXjE5", "Lucas": "NNl6r8mD7vthiJatiJt1"}, "ar": {"Liam": "TX3LPaxmHKxFdv7VOQHJ", "Amir": "1SM7GgM6IMuvQlz2BwM3", "Nazy": "tnSpp4vdxKPjI9w0GnoV", "Sarah": "BIvP0GN1cAtSRTxNHnWS", "Alex": "GFGuOkimbpNkTEOVDkqX", "Noushin": "NZiuR1C6kVMSWHG27sIM", "Paniz": "BZgkqPqms7Kj9ulSkVzn", "Alexandra": "kdmDKE6EkgrWrrykO9Qt", "Laura": "7piC4m7q8WrpEAnMj5xC", "Maxon": "0dPqNXnhg2bmxQv1WKDp", "Jessica": "cgSgspJ2msm6clMCkdW9", "Austin": "Bj9UqZbhQsanLzgalpEG", "priyanka": "BpjGufoPiobT79j2vtj4", "horatius": "qXpMhyvQqiRxWQs4qSSB", "anika": "Sm1seazb4gs7RSlUVw7c", "brock": "DGzg6RaUqxGRTHSBjfgF", "Xavier": "YOq2y2Up4RgXP2HyXjE5", "Bradford": "NNl6r8mD7vthiJatiJt1"}, "tr": {"Arda": "TX3LPaxmHKxFdv7VOQHJ", "Emre": "1SM7GgM6IMuvQlz2BwM3", "Deniz": "tnSpp4vdxKPjI9w0GnoV", "Sarah": "BIvP0GN1cAtSRTxNHnWS", "Burak": "GFGuOkimbpNkTEOVDkqX", "Selin": "NZiuR1C6kVMSWHG27sIM", "Duru": "BZgkqPqms7Kj9ulSkVzn", "Elif": "kdmDKE6EkgrWrrykO9Qt", "İrem": "7piC4m7q8WrpEAnMj5xC", "Mert": "0dPqNXnhg2bmxQv1WKDp", "Asya": "cgSgspJ2msm6clMCkdW9", "Derya": "Bj9UqZbhQsanLzgalpEG", "priyanka": "BpjGufoPiobT79j2vtj4", "horatius": "qXpMhyvQqiRxWQs4qSSB", "anika": "Sm1seazb4gs7RSlUVw7c", "Ozan": "DGzg6RaUqxGRTHSBjfgF", "Xavier": "YOq2y2Up4RgXP2HyXjE5", "Kaan": "NNl6r8mD7vthiJatiJt1"}, "ru": {"Илья": "TX3LPaxmHKxFdv7VOQHJ", "Никита": "1SM7GgM6IMuvQlz2BwM3", "Алина": "tnSpp4vdxKPjI9w0GnoV", "Милана": "BIvP0GN1cAtSRTxNHnWS", "Даниил": "GFGuOkimbpNkTEOVDkqX", "София": "NZiuR1C6kVMSWHG27sIM", "Ева": "BZgkqPqms7Kj9ulSkVzn", "Полина": "kdmDKE6EkgrWrrykO9Qt", "Кира": "7piC4m7q8WrpEAnMj5xC", "Maxon": "0dPqNXnhg2bmxQv1WKDp", "Дарья": "cgSgspJ2msm6clMCkdW9", "Austin": "Bj9UqZbhQsanLzgalpEG", "priyanka": "BpjGufoPiobT79j2vtj4", "horatius": "qXpMhyvQqiRxWQs4qSSB", "Вероника": "Sm1seazb4gs7RSlUVw7c", "brock": "DGzg6RaUqxGRTHSBjfgF", "Xavier": "YOq2y2Up4RgXP2HyXjE5", "Матвей": "NNl6r8mD7vthiJatiJt1"}, "es": {"Mateo": "TX3LPaxmHKxFdv7VOQHJ", "Leo": "1SM7GgM6IMuvQlz2BwM3", "Valeria": "tnSpp4vdxKPjI9w0GnoV", "Sofía": "BIvP0GN1cAtSRTxNHnWS", "Diego": "GFGuOkimbpNkTEOVDkqX", "Camila": "NZiuR1C6kVMSWHG27sIM", "Luna": "BZgkqPqms7Kj9ulSkVzn", "Renata": "kdmDKE6EkgrWrrykO9Qt", "Martina": "7piC4m7q8WrpEAnMj5xC", "Bruno": "0dPqNXnhg2bmxQv1WKDp", "Paula": "cgSgspJ2msm6clMCkdW9", "Tomás": "Bj9UqZbhQsanLzgalpEG", "Elena": "BpjGufoPiobT79j2vtj4", "horatius": "qXpMhyvQqiRxWQs4qSSB", "Abril": "Sm1seazb4gs7RSlUVw7c", "brock": "DGzg6RaUqxGRTHSBjfgF", "Xavier": "YOq2y2Up4RgXP2HyXjE5", "Andrés": "NNl6r8mD7vthiJatiJt1"}, "de": {"Leon": "TX3LPaxmHKxFdv7VOQHJ", "Luca": "1SM7GgM6IMuvQlz2BwM3", "Lena": "tnSpp4vdxKPjI9w0GnoV", "Mia": "BIvP0GN1cAtSRTxNHnWS", "Finn": "GFGuOkimbpNkTEOVDkqX", "Emma": "NZiuR1C6kVMSWHG27sIM", "Lea": "BZgkqPqms7Kj9ulSkVzn", "Hannah": "kdmDKE6EkgrWrrykO9Qt", "Laura": "7piC4m7q8WrpEAnMj5xC", "Jonas": "0dPqNXnhg2bmxQv1WKDp", "Nina": "cgSgspJ2msm6clMCkdW9", "Paul": "Bj9UqZbhQsanLzgalpEG", "Clara": "BpjGufoPiobT79j2vtj4", "Max": "qXpMhyvQqiRxWQs4qSSB", "Sophie": "Sm1seazb4gs7RSlUVw7c", "Noah": "DGzg6RaUqxGRTHSBjfgF", "Xavier": "YOq2y2Up4RgXP2HyXjE5", "Tim": "NNl6r8mD7vthiJatiJt1"}, "fr": {"Hugo": "TX3LPaxmHKxFdv7VOQHJ", "Noah": "1SM7GgM6IMuvQlz2BwM3", "Léa": "tnSpp4vdxKPjI9w0GnoV", "Inès": "BIvP0GN1cAtSRTxNHnWS", "Theo": "GFGuOkimbpNkTEOVDkqX", "Emma": "NZiuR1C6kVMSWHG27sIM", "Jade": "BZgkqPqms7Kj9ulSkVzn", "Mila": "kdmDKE6EkgrWrrykO9Qt", "Louise": "7piC4m7q8WrpEAnMj5xC", "Jules": "0dPqNXnhg2bmxQv1WKDp", "Jessica": "cgSgspJ2msm6clMCkdW9", "Adrien": "Bj9UqZbhQsanLzgalpEG", "Nina": "BpjGufoPiobT79j2vtj4", "horatius": "qXpMhyvQqiRxWQs4qSSB", "Zoé": "Sm1seazb4gs7RSlUVw7c", "brock": "DGzg6RaUqxGRTHSBjfgF", "Xavier": "YOq2y2Up4RgXP2HyXjE5", "Paul": "NNl6r8mD7vthiJatiJt1"}};
+const STAR_PACKAGES = [
+  { stars: 250, credits: 8000, title: "• Starter " },
+  { stars: 1000, credits: 40000, title: "🎯 Creator " },
+  { stars: 3000, credits: 120000, title: "⚡️ Pro " },
+  { stars: 5500, credits: 300000, title: "👑 Studio" },
+];
+const PAYMENT_PLANS = [
+  { title: " 800 → 150,000T", amount_toman: 150000, credits: 800 },
+  { title: " 2899 → 340,000T", amount_toman: 340000, credits: 2899 },
+  { title: " 6100 → 550,000T", amount_toman: 550000, credits: 6100 },
+  { title: " 9200 → 770,000T", amount_toman: 770000, credits: 9200 },
+  { title: " 12K + 1k → 999,000T", amount_toman: 999000, credits: 13000 },
+  { title: " 21K → 1,650,000T", amount_toman: 1650000, credits: 21000 },
+  { title: " 46K → 3,420,000T", amount_toman: 3420000, credits: 46000 },
+  { title: " 88K → 5,990,000T", amount_toman: 5990000, credits: 88000 },
+  { title: " 120K → 8,100,000T", amount_toman: 8100000, credits: 120000 },
+  { title: " 150K → 9,999,000T", amount_toman: 9999000, credits: 150000 },
+];
 const LABELS = {
   homeTitle: "/help   منوی اصلی",
   homeBody: "یکی از گزینه‌های زیر را انتخاب کنید:",
@@ -114,6 +166,15 @@ export class TelegramBotFlowService {
     if (await this.deps.telegramEvents.shouldSkipUpdate(update.update_id)) {
       return { handled: "duplicate_update" };
     }
+    if (update.pre_checkout_query?.id) {
+      await fetch(`https://api.telegram.org/bot${this.deps.botToken}/answerPreCheckoutQuery`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ pre_checkout_query_id: update.pre_checkout_query.id, ok: true }),
+      });
+      await this.markProcessed(update, update.pre_checkout_query.from?.id ?? null, "pre_checkout");
+      return { handled: "pre_checkout" };
+    }
 
     if (update.callback_query?.id) {
       const handled = await this.handleCallback(update.callback_query);
@@ -136,6 +197,22 @@ export class TelegramBotFlowService {
     const text = (msg.text ?? "").trim();
     const state = await this.deps.userState.getBotState(user.userId);
     const lang = user.lang || "fa";
+
+    if (msg.successful_payment) {
+      const payload = JSON.parse(msg.successful_payment.invoice_payload || "{}") as { credits?: number };
+      const credits = Number(payload.credits || 0);
+      if (credits > 0) {
+        await this.deps.credits.grant(user.userId, credits, "telegram_stars_purchase", "telegram_bot");
+      }
+      const balance = (await this.deps.credits.getCredits(user.userId)).credits;
+      await this.sendMessage(
+        msg.chat.id,
+        `✅ <b>پرداخت موفق شد!</b>\n🌟 ${msg.successful_payment.total_amount || 0} Stars\n💎 ${credits} کردیت\n💳 موجودی جدید: <b>${balance}</b>`,
+        "HTML"
+      );
+      await this.markProcessed(update, user.userId, "successful_payment");
+      return { handled: "successful_payment" };
+    }
 
     if (text.startsWith("/")) {
       const handled = await this.handleCommand(user.userId, lang, msg.chat.id, text, state);
@@ -218,44 +295,47 @@ export class TelegramBotFlowService {
       return { handled: "profile" };
     }
     if (data === "home:credit" || data === "credit:menu") {
-      await this.sendCreditMenu(chatId, messageId);
+      await this.sendCreditMenu(chatId, lang, messageId);
       await this.answerCallback(callback.id);
       return { handled: "credit_menu" };
     }
     if (data === "credit:stars") {
-      await this.sendMessage(chatId, "🌟 شارژ با Telegram Stars\n\nبرای شارژ فوری، لطفاً از پشتیبانی داخل بات راهنمای پرداخت Stars را بگیر.", "HTML", {
-        inline_keyboard: [[{ text: LABELS.back, callback_data: "credit:menu" }]],
-      });
+      await this.sendOrEditMessage(chatId, t("credit_stars_menu", lang), this.starsPackagesKeyboard(lang), messageId, "HTML");
       await this.answerCallback(callback.id);
       return { handled: "credit_stars" };
     }
+    if (data.startsWith("credit:buy:")) {
+      const parts = data.split(":");
+      const stars = Number(parts[2] || 0);
+      const credits = Number(parts[3] || 0);
+      await this.sendInvoice(chatId, stars, credits);
+      await this.answerCallback(callback.id);
+      return { handled: "credit_buy_stars" };
+    }
     if (data === "credit:payrial") {
-      await this.sendMessage(
-        chatId,
-        "💱 <b>پرداخت ریالی</b>\n\nبرای پرداخت کارت‌به‌کارت، رسیدت را برای ادمین ارسال می‌کنیم تا حداکثر ظرف چند دقیقه تایید شود.",
-        "HTML",
-        {
-          inline_keyboard: [
-            [{ text: "ارسال رسید برای تایید", callback_data: "credit:payrial:instant" }],
-            [{ text: LABELS.back, callback_data: "credit:menu" }],
-          ],
-        }
-      );
+      await this.sendOrEditMessage(chatId, "🧾 <b>پرداخت به تومـان – انتخاب پلن</b>\n\nبا خرید هر بسته 30% کردیت بیشتر دریافت میکنید\nیکی از بسته‌های زیر را انتخاب کنید:", this.payRialPlansKeyboard(lang), messageId, "HTML");
       await this.answerCallback(callback.id);
       return { handled: "credit_payrial" };
     }
-    if (data === "credit:payrial:instant") {
-      await this.deps.userState.setBotState(user.userId, { mode: "idle", updatedAt: nowTs() });
-      await this.sendMessage(
-        chatId,
-        "🧾 عکس رسید پرداخت را ارسال کن.\n\nبعد از ارسال، درخواستت برای تایید دستی پشتیبانی ثبت می‌شود.",
-        "HTML",
-        {
-          inline_keyboard: [[{ text: LABELS.back, callback_data: "credit:menu" }]],
-        }
-      );
+    if (data.startsWith("credit:select:")) {
+      const index = Number(data.split(":")[2] || 0);
+      const plan = PAYMENT_PLANS[index];
+      if (!plan) {
+        await this.answerCallback(callback.id, "بسته نامعتبر", true);
+        return { handled: "credit_invalid_plan" };
+      }
+      await this.deps.userState.setBotState(user.userId, { ...state, mode: "idle", updatedAt: nowTs(), waitingReceipt: true, selectedPlanIndex: index });
+      const card = this.deps.cardNumber || "---- ---- ---- ----";
+      const text = `💱 <b>پرداخت فـوری (کارت‌به‌کارت)</b>\n<b>شماره کارت:</b><code>${card}</code>\n\n• دقیقاً مبلغ <b>${plan.amount_toman.toLocaleString("en-US")} تومان</b> پرداخت کنید\n• سپس <b>تصویر رسید</b> را همین‌جا ارسال کنید\n\n✅ <b>پس از تایید، <b>${plan.credits.toLocaleString("en-US")} کردیت</b> + 30% کردیت اضافه به حساب شما اضافه خواهد شد (کمتر از ۵ دقیقه)</b>`;
+      await this.sendOrEditMessage(chatId, text, { inline_keyboard: [[{ text: "لغو ❌", callback_data: "credit:cancel" }]] }, messageId, "HTML");
       await this.answerCallback(callback.id);
-      return { handled: "credit_payrial_instant" };
+      return { handled: "credit_select_plan" };
+    }
+    if (data === "credit:cancel") {
+      await this.deps.userState.setBotState(user.userId, { ...state, mode: "idle", updatedAt: nowTs(), waitingReceipt: undefined, selectedPlanIndex: undefined });
+      await this.sendCreditMenu(chatId, lang, messageId);
+      await this.answerCallback(callback.id);
+      return { handled: "credit_cancel" };
     }
     if (data === "home:api_token") {
       const token = await this.deps.tokens.getOrCreate(user.userId);
@@ -285,7 +365,7 @@ export class TelegramBotFlowService {
         updatedAt: nowTs(),
       });
       const langState = await this.deps.userState.getBotState(user.userId);
-      await this.answerCallback(callback.id, LABELS.langSaved);
+      await this.answerCallback(callback.id, t("lang_saved", code));
       if (!(await this.ensureForceSub(chatId, user.userId, code, messageId))) {
         return { handled: "lang_set_force_sub" };
       }
@@ -307,23 +387,41 @@ export class TelegramBotFlowService {
       return { handled: "gpt_open" };
     }
     if (data === "home:tts") {
-      await this.deps.userState.setBotState(user.userId, { mode: "tts:wait_text", updatedAt: nowTs(), ttsVoice: "alloy", ttsOutput: "mp3" });
-      await this.sendMessage(chatId, "🎧 <b>تبدیل متن به صدا</b>\n\nمتن را بفرست. می‌تونی صدا و خروجی را از منوی زیر عوض کنی.", "HTML", this.ttsKeyboard("alloy", "mp3"));
+      const selected = state.ttsVoice || DEFAULT_VOICE_NAME_BY_LANG[lang] || DEFAULT_VOICE_NAME_BY_LANG.fa;
+      await this.deps.userState.setBotState(user.userId, { ...state, mode: "tts:wait_text", updatedAt: nowTs(), ttsVoice: selected, ttsOutput: state.ttsOutput || "mp3", ttsPage: state.ttsPage || 0 });
+      await this.sendMessage(chatId, `🎧 <b>${t("tts_title", lang)}</b>\n\n${t("tts_prompt", lang).replace("{credit}", "1")}\n\n🎙 <b>${selected}</b>`, "HTML", this.ttsKeyboard(lang, selected, state.ttsOutput || "mp3", state.ttsPage || 0));
       await this.answerCallback(callback.id);
       return { handled: "tts_open" };
+    }
+    if (data.startsWith("tts:voice:")) {
+      const name = data.split(":").slice(2).join(":");
+      const st = await this.deps.userState.getBotState(user.userId);
+      await this.deps.userState.setBotState(user.userId, { ...st, mode: "tts:wait_text", updatedAt: nowTs(), ttsVoice: name });
+      await this.sendOrEditMessage(chatId, `🎧 <b>${t("tts_title", lang)}</b>\n\n${t("tts_prompt", lang).replace("{credit}", "1")}\n\n🎙 <b>${name}</b>`, this.ttsKeyboard(lang, name, st.ttsOutput || "mp3", st.ttsPage || 0), messageId, "HTML");
+      await this.answerCallback(callback.id, name);
+      return { handled: "tts_voice" };
+    }
+    if (data.startsWith("tts:page:")) {
+      const st = await this.deps.userState.getBotState(user.userId);
+      const step = data.endsWith(":next") ? 1 : -1;
+      const nextPage = Math.max(0, (st.ttsPage || 0) + step);
+      await this.deps.userState.setBotState(user.userId, { ...st, ttsPage: nextPage, updatedAt: nowTs() });
+      await this.sendOrEditMessage(chatId, `🎧 <b>${t("tts_title", lang)}</b>\n\n${t("tts_prompt", lang).replace("{credit}", "1")}\n\n🎙 <b>${st.ttsVoice || DEFAULT_VOICE_NAME_BY_LANG[lang] || DEFAULT_VOICE_NAME_BY_LANG.fa}</b>`, this.ttsKeyboard(lang, st.ttsVoice || DEFAULT_VOICE_NAME_BY_LANG[lang] || DEFAULT_VOICE_NAME_BY_LANG.fa, st.ttsOutput || "mp3", nextPage), messageId, "HTML");
+      await this.answerCallback(callback.id);
+      return { handled: "tts_page" };
     }
     if (data.startsWith("tts:demo:")) {
       const voice = data.split(":")[2] || "alloy";
       await this.answerCallback(callback.id, `دموی صدا: ${voice}`);
-      await this.sendMessage(chatId, `🎙 دمو برای صدای <b>${voice}</b>\n\nیک متن بفرست تا با همین صدا پردازش شود.`, "HTML", this.ttsKeyboard(voice));
+      await this.sendMessage(chatId, `🎙 دمو برای صدای <b>${voice}</b>\n\nیک متن بفرست تا با همین صدا پردازش شود.`, "HTML", this.ttsKeyboard(lang, voice, state.ttsOutput || "mp3", state.ttsPage || 0));
       return { handled: "tts_demo" };
     }
     if (data.startsWith("tts:output:")) {
       const state = await this.deps.userState.getBotState(user.userId);
       const output = data.endsWith(":voice") ? "voice" : "mp3";
-      const voice = state.ttsVoice || "alloy";
+      const voice = state.ttsVoice || DEFAULT_VOICE_NAME_BY_LANG[lang] || DEFAULT_VOICE_NAME_BY_LANG.fa;
       await this.deps.userState.setBotState(user.userId, { ...state, mode: "tts:wait_text", updatedAt: nowTs(), ttsOutput: output });
-      await this.sendMessage(chatId, `✅ خروجی روی <b>${output.toUpperCase()}</b> تنظیم شد.`, "HTML", this.ttsKeyboard(voice, output));
+      await this.sendMessage(chatId, `✅ خروجی روی <b>${output.toUpperCase()}</b> تنظیم شد.`, "HTML", this.ttsKeyboard(lang, voice, output, state.ttsPage || 0));
       await this.answerCallback(callback.id);
       return { handled: "tts_output" };
     }
@@ -414,6 +512,26 @@ export class TelegramBotFlowService {
       await this.answerCallback(callback.id);
       return { handled: "sora2_buy" };
     }
+    if (data.startsWith("credit_admin:")) {
+      const parts = data.split(":");
+      const action = parts[1];
+      const targetUser = Number(parts[2] || 0);
+      const planIndex = Number(parts[3] || 0);
+      const plan = PAYMENT_PLANS[planIndex];
+      if (action === "approve" && plan && targetUser > 0) {
+        await this.deps.credits.grant(targetUser, plan.credits, "manual_rial_payment", "telegram_bot");
+        await this.sendMessage(targetUser, `✅ <b>پرداخت تأیید شد!</b>\n\n💎 <b>${plan.credits.toLocaleString("en-US")} کردیت</b> به حساب شما اضافه شد.\n💰 مبلغ: ${plan.amount_toman.toLocaleString("en-US")} تومان`, "HTML");
+        await this.answerCallback(callback.id, "✅ تایید شد");
+        return { handled: "credit_admin_approve" };
+      }
+      if (action === "reject" && targetUser > 0) {
+        await this.sendMessage(targetUser, "❌ <b>پرداخت رد شد</b>\n\nرسید ارسالی تأیید نشد. در صورت اطمینان از صحت پرداخت، مجدداً رسید ارسال کنید یا با پشتیبانی تماس بگیرید.", "HTML");
+        await this.answerCallback(callback.id, "❌ رد شد");
+        return { handled: "credit_admin_reject" };
+      }
+      await this.answerCallback(callback.id, "خطا در پردازش", true);
+      return { handled: "credit_admin_invalid" };
+    }
 
     if (data.startsWith("owner:")) {
       await this.deps.ownerNotifications.queue({
@@ -462,7 +580,7 @@ export class TelegramBotFlowService {
         return { handled: "profile" };
       }
       case "/credits":
-        await this.sendCreditMenu(chatId);
+        await this.sendCreditMenu(chatId, lang);
         return { handled: "credits" };
       case "/apitoken": {
         const token = await this.deps.tokens.getOrCreate(userId);
@@ -523,7 +641,7 @@ export class TelegramBotFlowService {
         category: "tts_request",
         message: `voice=${state.ttsVoice || "alloy"} output=${state.ttsOutput || "mp3"} text=${text.slice(0, 1000)}`,
       });
-      await this.sendMessage(chatId, `✅ متن صوتی ثبت شد.\n\n🎙 صدا: <b>${state.ttsVoice || "alloy"}</b>\n📦 خروجی: <b>${(state.ttsOutput || "mp3").toUpperCase()}</b>`, "HTML", this.ttsKeyboard(state.ttsVoice || "alloy", state.ttsOutput || "mp3"));
+      await this.sendMessage(chatId, `✅ متن صوتی ثبت شد.\n\n🎙 صدا: <b>${state.ttsVoice || DEFAULT_VOICE_NAME_BY_LANG[lang] || DEFAULT_VOICE_NAME_BY_LANG.fa}</b>\n📦 خروجی: <b>${(state.ttsOutput || "mp3").toUpperCase()}</b>`, "HTML", this.ttsKeyboard(lang, state.ttsVoice || DEFAULT_VOICE_NAME_BY_LANG[lang] || DEFAULT_VOICE_NAME_BY_LANG.fa, state.ttsOutput || "mp3", state.ttsPage || 0));
       return true;
     }
 
@@ -576,20 +694,20 @@ export class TelegramBotFlowService {
 
   private async handleTextNavigation(userId: number, lang: string, chatId: number, text: string): Promise<boolean> {
     switch (text) {
-      case LABELS.profile:
+      case t("btn_profile", lang):
         await this.handleCommand(userId, lang, chatId, "/profile", { mode: "idle", updatedAt: nowTs() });
         return true;
-      case LABELS.credit:
-        await this.sendCreditMenu(chatId);
+      case t("btn_credit", lang):
+        await this.sendCreditMenu(chatId, lang);
         return true;
-      case LABELS.tts:
-        await this.deps.userState.setBotState(userId, { mode: "tts:wait_text", updatedAt: nowTs(), ttsVoice: "alloy", ttsOutput: "mp3" });
-        await this.sendMessage(chatId, "🎧 <b>تبدیل متن به صدا</b>\n\nمتن را بفرست. می‌تونی صدا و خروجی را از منوی زیر عوض کنی.", "HTML", this.ttsKeyboard("alloy", "mp3"));
+      case t("btn_tts", lang):
+        await this.deps.userState.setBotState(userId, { mode: "tts:wait_text", updatedAt: nowTs(), ttsVoice: DEFAULT_VOICE_NAME_BY_LANG[lang] || DEFAULT_VOICE_NAME_BY_LANG.fa, ttsOutput: "mp3", ttsPage: 0 });
+        await this.sendMessage(chatId, `🎧 <b>${t("tts_title", lang)}</b>\n\n${t("tts_prompt", lang).replace("{credit}", "1")}\n\n🎙 <b>${DEFAULT_VOICE_NAME_BY_LANG[lang] || DEFAULT_VOICE_NAME_BY_LANG.fa}</b>`, "HTML", this.ttsKeyboard(lang, DEFAULT_VOICE_NAME_BY_LANG[lang] || DEFAULT_VOICE_NAME_BY_LANG.fa, "mp3", 0));
         return true;
       case LABELS.gpt:
         await this.handleCommand(userId, lang, chatId, "/ask", { mode: "idle", updatedAt: nowTs() });
         return true;
-      case LABELS.lang:
+      case t("btn_lang", lang):
         await this.sendLanguageMenu(chatId, lang);
         return true;
       case LABELS.apiToken: {
@@ -602,14 +720,14 @@ export class TelegramBotFlowService {
     }
   }
 
-  private mainMenuKeyboard(): InlineKeyboard {
+  private mainMenuKeyboard(lang: string): InlineKeyboard {
     return {
       inline_keyboard: [
         [
-          { text: LABELS.profile, callback_data: "home:profile" },
-          { text: LABELS.credit, callback_data: "home:credit" },
+          { text: t("btn_profile", lang), callback_data: "home:profile" },
+          { text: t("btn_credit", lang), callback_data: "home:credit" },
         ],
-        [{ text: LABELS.tts, callback_data: "home:tts" }],
+        [{ text: t("btn_tts", lang), callback_data: "home:tts" }],
         [{ text: LABELS.gpt, callback_data: "home:gpt_chat" }],
         [
           { text: LABELS.image, callback_data: "home:image" },
@@ -617,28 +735,73 @@ export class TelegramBotFlowService {
         ],
         [{ text: "Sora 2 🎬", callback_data: "home:sora2" }],
         [
-          { text: LABELS.lang, callback_data: "home:lang" },
-          { text: LABELS.invite, callback_data: "home:invite" },
+          { text: t("btn_lang", lang), callback_data: "home:lang" },
+          { text: t("btn_invite", lang), callback_data: "home:invite" },
         ],
       ],
     };
   }
 
   private async sendMainMenu(chatId: number, messageId?: number, lang = "fa") {
-    const text = `🏠 <b>${LABELS.homeTitle}</b>\n\n${LABELS.homeBody}`;
-    await this.sendOrEditMessage(chatId, text, this.mainMenuKeyboard(), messageId, "HTML");
+    const text = `🏠 <b>${t("home_title", lang)}</b>\n\n${t("home_body", lang)}`;
+    await this.sendOrEditMessage(chatId, text, this.mainMenuKeyboard(lang), messageId, "HTML");
   }
 
-  private async sendCreditMenu(chatId: number, messageId?: number) {
-    const text = "🛒 <b>خرید کردیت</b>\n\nبرای استفاده از ربات، کردیت لازم دارید";
+  private async sendCreditMenu(chatId: number, lang: string, messageId?: number) {
+    const text = `🛒 <b>${t("credit_title", lang)}</b>\n\n${t("credit_header", lang)}`;
     const replyMarkup: InlineKeyboard = {
       inline_keyboard: [
-        [{ text: "خرید با Telegram Stars 🌟", callback_data: "credit:stars" }],
-        [{ text: "پرداخت به تومان", callback_data: "credit:payrial" }],
-        [{ text: LABELS.back, callback_data: "home:back" }],
+        [{ text: t("credit_pay_stars_btn", lang), callback_data: "credit:stars" }],
+        ...(lang === "fa" ? [[{ text: t("credit_pay_rial_btn", lang), callback_data: "credit:payrial" }] as Array<{ text: string; callback_data: string }>] : []),
+        [{ text: t("back", lang), callback_data: "home:back" }],
       ],
     };
     await this.sendOrEditMessage(chatId, text, replyMarkup, messageId, "HTML");
+  }
+
+  private starsPackagesKeyboard(lang: string): InlineKeyboard {
+    const rows: InlineKeyboard["inline_keyboard"] = [];
+    for (let i = 0; i < STAR_PACKAGES.length; i += 2) {
+      rows.push(
+        STAR_PACKAGES.slice(i, i + 2).map((pkg) => ({
+          text: pkg.title,
+          callback_data: `credit:buy:${pkg.stars}:${pkg.credits}`,
+        }))
+      );
+    }
+    rows.push([{ text: t("back", lang), callback_data: "credit:menu" }]);
+    return { inline_keyboard: rows };
+  }
+
+  private payRialPlansKeyboard(lang: string): InlineKeyboard {
+    const rows: InlineKeyboard["inline_keyboard"] = [];
+    for (let i = 0; i < PAYMENT_PLANS.length; i += 2) {
+      rows.push(
+        PAYMENT_PLANS.slice(i, i + 2).map((plan, idx) => ({
+          text: plan.title,
+          callback_data: `credit:select:${i + idx}`,
+        }))
+      );
+    }
+    rows.push([{ text: t("back", lang), callback_data: "credit:menu" }]);
+    return { inline_keyboard: rows };
+  }
+
+  private async sendInvoice(chatId: number, stars: number, credits: number) {
+    const payload = JSON.stringify({ credits, stars });
+    await fetch(`https://api.telegram.org/bot${this.deps.botToken}/sendInvoice`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        title: "شارژ کردیت",
+        description: `خرید ${credits} کردیت`,
+        payload,
+        provider_token: "",
+        currency: "XTR",
+        prices: [{ label: `${credits} credits`, amount: stars }],
+      }),
+    });
   }
 
   private async sendLanguageMenu(chatId: number, currentLang: string, messageId?: number, forceNew = false) {
@@ -653,7 +816,7 @@ export class TelegramBotFlowService {
       rows.push(row);
     }
 
-    const text = "🌐 <b>انتخاب زبان</b>\n\nیکی از زبان‌های زیر را انتخاب کن.";
+    const text = `🌐 <b>${t("lang_title", currentLang)}</b>\n\n${t("lang_hint", currentLang)}`;
     if (forceNew || !messageId) {
       await this.sendMessage(chatId, text, "HTML", { inline_keyboard: rows });
       return;
@@ -678,18 +841,30 @@ export class TelegramBotFlowService {
     await this.sendOrEditMessage(chatId, text, replyMarkup, messageId, "HTML");
   }
 
-  private ttsKeyboard(selectedVoice = "alloy", selectedOutput: "mp3" | "voice" = "mp3"): InlineKeyboard {
-    return {
-      inline_keyboard: [
-        [{ text: `▶︎ دمو (${selectedVoice})`, callback_data: `tts:demo:${selectedVoice}` }],
-        [
-          { text: `${selectedOutput === "mp3" ? "✔️ " : ""}MP3 📁`, callback_data: "tts:output:mp3" },
-          { text: `${selectedOutput === "voice" ? "✔️ " : ""}Voice 🎙️`, callback_data: "tts:output:voice" },
-        ],
-        [{ text: "ساخت صدای شخصی 🧬", callback_data: "home:clone" }],
-        [{ text: LABELS.back, callback_data: "home:back" }],
-      ],
-    };
+  private ttsKeyboard(lang: string, selectedVoice: string, selectedOutput: "mp3" | "voice" = "mp3", page = 0): InlineKeyboard {
+    const voices = Object.keys(VOICES_BY_LANG[lang] || VOICES_BY_LANG.fa);
+    const perPage = voices.length > 10 ? 9 : 10;
+    const totalPages = Math.max(1, Math.ceil(voices.length / perPage));
+    const current = Math.max(0, Math.min(page, totalPages - 1));
+    const slice = voices.slice(current * perPage, current * perPage + perPage);
+    const rows: InlineKeyboard["inline_keyboard"] = [];
+    for (let i = 0; i < slice.length; i += 2) {
+      rows.push(
+        slice.slice(i, i + 2).map((name) => ({ text: `${name === selectedVoice ? "✔️ " : ""}${name}`, callback_data: `tts:voice:${name}` }))
+      );
+    }
+    const nav: Array<{ text: string; callback_data: string }> = [];
+    if (current > 0) nav.push({ text: t("tts_prev", lang), callback_data: "tts:page:prev" });
+    if (current < totalPages - 1) nav.push({ text: t("tts_next", lang), callback_data: "tts:page:next" });
+    if (nav.length) rows.push(nav);
+    rows.push([{ text: t("tts_demo", lang), callback_data: `tts:demo:${selectedVoice}` }]);
+    rows.push([
+      { text: `${selectedOutput === "mp3" ? "✔️ " : ""}${t("tts_output_mp3", lang)}`, callback_data: "tts:output:mp3" },
+      { text: `${selectedOutput === "voice" ? "✔️ " : ""}${t("tts_output_voice", lang)}`, callback_data: "tts:output:voice" },
+    ]);
+    rows.push([{ text: "ساخت صدای شخصی 🧬", callback_data: "home:clone" }]);
+    rows.push([{ text: t("back", lang), callback_data: "home:back" }]);
+    return { inline_keyboard: rows };
   }
 
   private async handleStart(userId: number, lang: string, chatId: number, text: string, state: BotConversationState) {
@@ -715,6 +890,35 @@ export class TelegramBotFlowService {
   }
 
   private async handleMediaDrivenMessage(userId: number, chatId: number, msg: NonNullable<TelegramWebhookUpdate["message"]>, state: BotConversationState): Promise<boolean> {
+    if (state.waitingReceipt) {
+      const fileId = (msg.photo && msg.photo.length ? msg.photo[msg.photo.length - 1]?.file_id : undefined) || msg.document?.file_id;
+      if (!fileId) return false;
+      const planIndex = state.selectedPlanIndex ?? 0;
+      const plan = PAYMENT_PLANS[planIndex];
+      if (this.deps.ownerTelegramChatId) {
+        const caption = `🧾 <b>رسید پرداخت جدید</b>\n• User ID: <code>${userId}</code>\n• مبلغ: ${plan?.amount_toman?.toLocaleString("en-US") || "-"} تومان\n• کردیت: ${plan?.credits?.toLocaleString("en-US") || "-"} `;
+        await fetch(`https://api.telegram.org/bot${this.deps.botToken}/sendPhoto`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            chat_id: this.deps.ownerTelegramChatId,
+            photo: fileId,
+            caption,
+            parse_mode: "HTML",
+            reply_markup: {
+              inline_keyboard: [[
+                { text: "✅ تایید", callback_data: `credit_admin:approve:${userId}:${planIndex}` },
+                { text: "❌ رد", callback_data: `credit_admin:reject:${userId}:${planIndex}` },
+              ]],
+            },
+          }),
+        });
+      }
+      await this.deps.userState.setBotState(userId, { ...state, waitingReceipt: undefined, selectedPlanIndex: undefined, updatedAt: nowTs() });
+      await this.sendMessage(chatId, "✅ رسید دریافت شد\n⏳ <b>لطفاً منتظر تایید باش</b>", "HTML");
+      await this.sendMainMenu(chatId, undefined, "fa");
+      return true;
+    }
     if (state.mode === "video:wait_image") {
       const lastPhoto = msg.photo && msg.photo.length ? msg.photo[msg.photo.length - 1] : undefined;
       const imageFile = lastPhoto?.file_id || (msg.document?.mime_type?.startsWith("image/") ? msg.document.file_id : undefined);
