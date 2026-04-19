@@ -126,6 +126,7 @@ const I18N: Record<string, Record<string, string>> = {
   low_credit_button: { fa: "خرید کردیت", en: "Buy credits", ar: "شراء الرصيد", tr: "Kredi satın al", ru: "Купить кредиты", es: "Comprar créditos", de: "Credits kaufen", fr: "Acheter des crédits" },
   force_sub_confirmed: { fa: "✅ عضویت تایید شد!", en: "✅ Subscription confirmed!", ar: "✅ تم تأكيد الاشتراك!", tr: "✅ Üyelik doğrulandı!", ru: "✅ Подписка подтверждена!", es: "✅ Suscripción confirmada.", de: "✅ Mitgliedschaft bestätigt!", fr: "✅ Inscription confirmée !" },
   force_sub_not_joined: { fa: "❌ هنوز عضو نشدی!", en: "❌ You're not a member yet!", ar: "❌ لم تنضم بعد!", tr: "❌ Henüz katılmadın!", ru: "❌ Вы ещё не подписались!", es: "❌ Aún no te has unido.", de: "❌ Du bist noch nicht beigetreten!", fr: "❌ Tu n'as pas encore rejoint !" },
+  error_banned: { fa: "⛔️ دسترسی شما مسدود است.", en: "⛔️ Your access is blocked.", ar: "⛔️ تم حظر وصولك.", tr: "⛔️ Erişimin engellendi.", ru: "⛔️ Доступ заблокирован.", es: "⛔️ Tu acceso está bloqueado.", de: "⛔️ Dein Zugriff ist gesperrt.", fr: "⛔️ Ton accès est bloqué." },
   home_help: {
     fa: "<b>📖 راهنمای استفاده از Vexa</b>\n\n🔹 <b>کردیت یعنی چی؟</b>\nهر حرف، فاصله یا علامت = ۱ کردیت.\n\n🔹 <b>کردیت رایگان شروع</b>\nبعد از /start، <b>۴۵ کردیت</b> هدیه می‌گیری؛ برای تست کوتاه مثل «سلام، من Vexa هستم».\n\n🔹 <b>اگر پیام «موجودی کافی نیست» دیدی</b>\nمتن رو کوتاه‌تر کن یا اول موجودی رو شارژ کن.\n\n🔹 <b>نکات صداگیری طبیعی</b>\nاز علائم نگارشی استفاده کن:\n• جمله‌ها رو با نقطه جدا کن.\n• برای مکث کوتاه از ویرگول استفاده کن.\n• سوال‌ها رو با ؟ ببند.\n• برای هیجان از ! کمک بگیر.\n\n✍️ <b>مثال</b>\n• ❌ «سلام خوبی امیدوارم حالت خوب باشه»\n• ✅ «سلام! خوبی؟ امیدوارم حالت خوب باشه.»",
     en: "<b>📖 Using Vexa</b>\n\n🔹 <b>What are credits?</b>\nEach letter, space or symbol = 1 credit.\n\n🔹 <b>Free starter credits</b>\nAfter /start you receive <b>45 credits</b>; enough to try “Hi, I'm Vexa.”\n\n🔹 <b>Not enough credit?</b>\nSend a shorter text or top up first.\n\n🔹 <b>Tips for a natural voice</b>\nUse punctuation for better pauses:\n• Separate sentences with periods.\n• Add commas for short breaks.\n• Finish questions with ?.\n• Add ! for excitement.\n\n✍️ <b>Example</b>\n• ❌ \"hi hope you are well\"\n• ✅ \"Hi! How are you? Hope you're well.\"",
@@ -267,6 +268,11 @@ export class TelegramBotFlowService {
     const text = (msg.text ?? "").trim();
     const state = await this.deps.userState.getBotState(user.userId);
     const lang = user.lang || "fa";
+    if (user.banned) {
+      await this.sendMessage(msg.chat.id, t("error_banned", lang));
+      await this.markProcessed(update, user.userId, "banned");
+      return { handled: "banned" };
+    }
 
     if (msg.successful_payment) {
       const payload = JSON.parse(msg.successful_payment.invoice_payload || "{}") as { credits?: number };
@@ -338,6 +344,10 @@ export class TelegramBotFlowService {
     const lang = user.lang || "fa";
     const data = callback.data ?? "";
     const state = await this.deps.userState.getBotState(user.userId);
+    if (user.banned) {
+      await this.answerCallback(callback.id, t("error_banned", lang), true);
+      return { handled: "banned" };
+    }
 
     if (data.startsWith("admin:")) {
       return this.handleAdminCallback(callback.id, chatId, messageId, user.userId, data);
@@ -366,6 +376,11 @@ export class TelegramBotFlowService {
       await this.maybeAdvanceOnboardingMilestones(chatId, user.userId, lang);
       await this.answerCallback(callback.id);
       return { handled: "home_back" };
+    }
+    if (data === "lang:back" || data === "profile:back" || data === "video:back") {
+      await this.sendMainMenu(chatId, messageId, lang);
+      await this.answerCallback(callback.id);
+      return { handled: "legacy_back" };
     }
     if (data === "home:profile") {
       const credits = (await this.deps.credits.getCredits(user.userId)).credits;
@@ -720,6 +735,9 @@ export class TelegramBotFlowService {
       case "/help":
         await this.sendHelp(chatId, lang);
         return { handled: "help" };
+      case "/language":
+        await this.sendLanguageMenu(chatId, lang, undefined, false, true);
+        return { handled: "language_menu" };
       case "/admin":
         if (!this.isOwner(userId)) {
           await this.sendMessage(chatId, ADMIN_DENY_TEXT);
@@ -755,12 +773,31 @@ export class TelegramBotFlowService {
         return { handled: "api_rotate" };
       }
       case "/ask":
+      case "/gpt":
         await this.deps.userState.setBotState(userId, { mode: "gpt:chat", updatedAt: nowTs() });
         await this.sendMessage(chatId, t("gpt_open", lang), "HTML", undefined, {
           keyboard: [[{ text: t("gpt_end_button", lang) }]],
           resize_keyboard: true,
         });
         return { handled: "gpt_open" };
+      case "/endgpt":
+      case "/stopgpt":
+        await this.deps.userState.setBotState(userId, { mode: "idle", updatedAt: nowTs() });
+        await this.sendMessage(chatId, t("gpt_end", lang), "HTML", undefined, { remove_keyboard: true });
+        await this.sendMainMenu(chatId, undefined, lang);
+        return { handled: "gpt_end" };
+      case "/img":
+        await this.deps.userState.setBotState(userId, { mode: "image:wait_prompt", updatedAt: nowTs() });
+        await this.sendMessage(chatId, t("image_intro", lang), "HTML", {
+          inline_keyboard: [[{ text: LABELS.back, callback_data: "image:back" }]],
+        });
+        return { handled: "image_open" };
+      case "/video":
+        await this.deps.userState.setBotState(userId, { mode: "video:wait_image", updatedAt: nowTs() });
+        await this.sendMessage(chatId, t("video_gen4_intro", lang), "HTML", {
+          inline_keyboard: [[{ text: LABELS.back, callback_data: "video_gen4:back" }]],
+        });
+        return { handled: "video_open" };
       case "/cancel":
         await this.deps.userState.setBotState(userId, { mode: "idle", updatedAt: nowTs() });
         await this.sendMainMenu(chatId, undefined, lang);
