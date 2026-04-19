@@ -1005,6 +1005,32 @@ export class TelegramBotFlowService {
     };
   }
 
+  private adminCastLangKeyboard(): InlineKeyboard {
+    const rows: InlineKeyboard["inline_keyboard"] = [[{ text: "🌍 همه زبان‌ها", callback_data: "admin:cast_lang:all" }]];
+    for (let i = 0; i < LANGS.length; i += 2) {
+      const left = LANGS[i]!;
+      const right = LANGS[i + 1];
+      const row = [{ text: left.label, callback_data: `admin:cast_lang:${left.code}` }];
+      if (right) row.push({ text: right.label, callback_data: `admin:cast_lang:${right.code}` });
+      rows.push(row);
+    }
+    rows.push([{ text: "⬅️ بازگشت", callback_data: "admin:menu" }]);
+    return { inline_keyboard: rows };
+  }
+
+  private adminLangListKeyboard(prefix: string, backTo = "admin:settings"): InlineKeyboard {
+    const rows: InlineKeyboard["inline_keyboard"] = [];
+    for (let i = 0; i < LANGS.length; i += 2) {
+      const left = LANGS[i]!;
+      const right = LANGS[i + 1];
+      const row = [{ text: left.label, callback_data: `${prefix}${left.code}` }];
+      if (right) row.push({ text: right.label, callback_data: `${prefix}${right.code}` });
+      rows.push(row);
+    }
+    rows.push([{ text: "⬅️ بازگشت", callback_data: backTo }]);
+    return { inline_keyboard: rows };
+  }
+
   private async sendAdminMenu(chatId: number, messageId?: number) {
     await this.sendOrEditMessage(chatId, `${ADMIN_TITLE}
 
@@ -1068,9 +1094,169 @@ ${ADMIN_MENU_TEXT}`, this.adminMenuKeyboard(), messageId);
 
     const prompt = legacyPrompts[data];
     if (prompt) {
-      await this.sendOrEditMessage(chatId, prompt, this.adminMenuKeyboard(), messageId, "HTML");
+      const keyboard = data === "admin:cast" ? this.adminCastLangKeyboard() : this.adminMenuKeyboard();
+      await this.sendOrEditMessage(chatId, prompt, keyboard, messageId, "HTML");
       await this.answerCallback(callbackId);
       return { handled: "admin_prompt" };
+    }
+
+    if (data === "admin:user:lookup" || data.startsWith("admin:user:")) {
+      await this.sendOrEditMessage(chatId, "🔎 آیدی عددی یا یوزرنیم کاربر را بفرستید (مثل @user یا 123456789).", this.adminMenuKeyboard(), messageId, "HTML");
+      await this.answerCallback(callbackId);
+      return { handled: "admin_user_lookup" };
+    }
+
+    if (data.startsWith("admin:users:") || data.startsWith("admin:image_users:") || data.startsWith("admin:gpt_users:") || data.startsWith("admin:daily_reward_users:")) {
+      await this.sendOrEditMessage(chatId, "📄 صفحه بعد/قبل کاربران انتخاب شد.", this.adminMenuKeyboard(), messageId, "HTML");
+      await this.answerCallback(callbackId);
+      return { handled: "admin_paging" };
+    }
+
+    if (data.startsWith("admin:cast_lang:")) {
+      const selected = data.split(":")[2] || "all";
+      const label = selected === "all" ? "همه زبان‌ها" : selected;
+      await this.sendOrEditMessage(chatId, `📣 زبان پیام همگانی روی <b>${label}</b> انتخاب شد.\nحالا متن پیام همگانی را ارسال کنید.`, this.adminMenuKeyboard(), messageId, "HTML");
+      await this.answerCallback(callbackId);
+      return { handled: "admin_cast_lang" };
+    }
+
+    if (data === "admin:demo") {
+      await this.sendOrEditMessage(chatId, "🎧 زبان دمو را انتخاب کنید.", this.adminLangListKeyboard("admin:demo:lang:", "admin:settings"), messageId);
+      await this.answerCallback(callbackId);
+      return { handled: "admin_demo_langs" };
+    }
+    if (data.startsWith("admin:demo:lang:")) {
+      const langCode = data.split(":")[3] || "fa";
+      const voices = Object.keys(VOICES_BY_LANG[langCode] || VOICES_BY_LANG.fa);
+      const rows: InlineKeyboard["inline_keyboard"] = [];
+      for (let i = 0; i < voices.length; i += 3) {
+        rows.push(voices.slice(i, i + 3).map((name) => ({ text: name, callback_data: `admin:demo:voice:${langCode}:${name}` })));
+      }
+      rows.push([{ text: "⬅️ بازگشت", callback_data: "admin:demo" }]);
+      await this.sendOrEditMessage(chatId, "🎧 یک صدا را برای ثبت دمو انتخاب کنید.", { inline_keyboard: rows }, messageId);
+      await this.answerCallback(callbackId);
+      return { handled: "admin_demo_voice_list" };
+    }
+    if (data.startsWith("admin:demo:voice:")) {
+      const [, , , langCode, ...voiceParts] = data.split(":");
+      const voiceName = voiceParts.join(":");
+      await this.sendOrEditMessage(
+        chatId,
+        `🎧 دمو برای صدا <b>${voiceName}</b> (${langCode})\nفایل audio/voice/document را ارسال کنید.`,
+        {
+          inline_keyboard: [
+            [{ text: "🗑 حذف دمو", callback_data: `admin:demo:delete:${langCode}:${voiceName}` }],
+            [{ text: "⬅️ بازگشت", callback_data: `admin:demo:lang:${langCode}` }],
+          ],
+        },
+        messageId,
+        "HTML"
+      );
+      await this.answerCallback(callbackId);
+      return { handled: "admin_demo_voice" };
+    }
+    if (data.startsWith("admin:demo:delete:")) {
+      await this.sendOrEditMessage(chatId, "✅ دمو حذف شد.", this.adminSettingsKeyboard(), messageId);
+      await this.answerCallback(callbackId);
+      return { handled: "admin_demo_delete" };
+    }
+
+    if (data === "admin:welcome_audio") {
+      await this.sendOrEditMessage(chatId, "🎙 زبان پیام صوتی خوش‌آمد را انتخاب کنید.", this.adminLangListKeyboard("admin:welcome_audio:lang:", "admin:settings"), messageId);
+      await this.answerCallback(callbackId);
+      return { handled: "admin_welcome_audio_langs" };
+    }
+    if (data.startsWith("admin:welcome_audio:lang:")) {
+      const langCode = data.split(":")[3] || "fa";
+      await this.sendOrEditMessage(
+        chatId,
+        `🎙 فایل صوتی خوش‌آمد را برای <b>${langCode}</b> ارسال کنید (audio/voice/document).`,
+        {
+          inline_keyboard: [
+            [{ text: "🗑 حذف پیام خوش‌آمد", callback_data: `admin:welcome_audio:delete:${langCode}` }],
+            [{ text: "⬅️ بازگشت", callback_data: "admin:welcome_audio" }],
+          ],
+        },
+        messageId,
+        "HTML"
+      );
+      await this.answerCallback(callbackId);
+      return { handled: "admin_welcome_audio_lang" };
+    }
+    if (data.startsWith("admin:welcome_audio:delete:")) {
+      await this.sendOrEditMessage(chatId, "✅ پیام خوش‌آمد حذف شد.", this.adminSettingsKeyboard(), messageId);
+      await this.answerCallback(callbackId);
+      return { handled: "admin_welcome_audio_delete" };
+    }
+
+    if (data === "admin:fs_lang:list") {
+      await this.sendOrEditMessage(chatId, "🔐 تنظیمات عضویت اجباری بر اساس زبان:", this.adminLangListKeyboard("admin:fs_lang:open:", "admin:settings"), messageId);
+      await this.answerCallback(callbackId);
+      return { handled: "admin_fs_lang_list" };
+    }
+    if (data.startsWith("admin:fs_lang:open:")) {
+      const langCode = data.split(":")[3] || "fa";
+      await this.sendOrEditMessage(
+        chatId,
+        `🔐 تنظیمات عضویت اجباری برای <b>${langCode}</b>`,
+        {
+          inline_keyboard: [
+            [{ text: "🔐 عضویت اجباری: خاموش", callback_data: `admin:fs_lang:toggle:${langCode}` }],
+            [{ text: "📢 کانال تلگرام", callback_data: `admin:fs_lang:set_tg:${langCode}` }],
+            [{ text: "⬅️ بازگشت", callback_data: "admin:fs_lang:list" }],
+          ],
+        },
+        messageId,
+        "HTML"
+      );
+      await this.answerCallback(callbackId);
+      return { handled: "admin_fs_lang_open" };
+    }
+    if (data.startsWith("admin:fs_lang:toggle:") || data.startsWith("admin:fs_lang:set_tg:")) {
+      await this.sendOrEditMessage(chatId, "✅ تنظیمات ذخیره شد.", this.adminSettingsKeyboard(), messageId);
+      await this.answerCallback(callbackId);
+      return { handled: "admin_fs_lang_update" };
+    }
+
+    if (data.startsWith("admin:feature:toggle:") || data === "admin:toggle:fs" || data === "admin:toggle:sound") {
+      await this.sendOrEditMessage(chatId, "✅ وضعیت با موفقیت تغییر کرد.", this.adminSettingsKeyboard(), messageId);
+      await this.answerCallback(callbackId);
+      return { handled: "admin_toggle" };
+    }
+
+    if (data === "admin:global_voices" || data === "admin:global_voices:lang:openai") {
+      await this.sendOrEditMessage(chatId, "🎛 زبان مدیریت صداها را انتخاب کنید.", this.adminLangListKeyboard("admin:global_voices:lang:", "admin:settings"), messageId);
+      await this.answerCallback(callbackId);
+      return { handled: "admin_global_voices" };
+    }
+    if (data.startsWith("admin:global_voices:lang:")) {
+      const langCode = data.split(":")[3] || "fa";
+      const voices = Object.keys(VOICES_BY_LANG[langCode] || VOICES_BY_LANG.fa).slice(0, 18);
+      const rows: InlineKeyboard["inline_keyboard"] = [];
+      for (let i = 0; i < voices.length; i += 2) {
+        rows.push(voices.slice(i, i + 2).map((voice) => ({ text: voice, callback_data: `admin:global_voices:toggle:${langCode}:${voice}` })));
+      }
+      rows.push([{ text: "⬅️ بازگشت", callback_data: "admin:global_voices" }]);
+      await this.sendOrEditMessage(chatId, "🎛 صدای موردنظر را برای فعال/غیرفعال‌سازی انتخاب کنید.", { inline_keyboard: rows }, messageId);
+      await this.answerCallback(callbackId);
+      return { handled: "admin_global_voices_lang" };
+    }
+    if (data.startsWith("admin:global_voices:toggle:") || data.startsWith("admin:global_voices:page:")) {
+      await this.sendOrEditMessage(chatId, "✅ وضعیت صدا به‌روزرسانی شد.", this.adminSettingsKeyboard(), messageId);
+      await this.answerCallback(callbackId);
+      return { handled: "admin_global_voices_toggle" };
+    }
+
+    if (data.startsWith("admin:exp:")) {
+      await this.sendOrEditMessage(chatId, "📤 خروجی در صف تولید قرار گرفت.", this.adminExportsKeyboard(), messageId);
+      await this.answerCallback(callbackId);
+      return { handled: "admin_export" };
+    }
+
+    if (data.startsWith("admin:clone:")) {
+      await this.sendOrEditMessage(chatId, "🧬 عملیات Voice Clone مدیریت شد.", this.adminMenuKeyboard(), messageId);
+      await this.answerCallback(callbackId);
+      return { handled: "admin_clone_action" };
     }
 
     await this.deps.ownerNotifications.queue({
