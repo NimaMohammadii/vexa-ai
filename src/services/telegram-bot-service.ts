@@ -13,6 +13,11 @@ export interface TelegramWebhookUpdate {
   message?: {
     message_id?: number;
     text?: string;
+    caption?: string;
+    photo?: Array<{ file_id: string }>;
+    voice?: { file_id: string };
+    audio?: { file_id: string };
+    document?: { file_id: string; mime_type?: string };
     from?: TelegramUser;
     chat?: { id: number };
   };
@@ -48,6 +53,7 @@ type ReplyKeyboard = {
 };
 
 const nowTs = () => Math.floor(Date.now() / 1000);
+const DAILY_REWARD_SECONDS = 24 * 60 * 60;
 const LANGS: Array<{ label: string; code: string }> = [
   { label: "English", code: "en" },
   { label: "فارسی", code: "fa" },
@@ -111,6 +117,11 @@ export class TelegramBotFlowService {
       return handled;
     }
 
+    if (await this.handleMediaDrivenMessage(user.userId, msg.chat.id, msg, state)) {
+      await this.markProcessed(update, user.userId, `${state.mode}:media`);
+      return { handled: `${state.mode}:media` };
+    }
+
     if (await this.handleStateDrivenMessage(user.userId, user.lang || "fa", msg.chat.id, text, state)) {
       await this.markProcessed(update, user.userId, state.mode);
       return { handled: state.mode };
@@ -160,11 +171,39 @@ export class TelegramBotFlowService {
       return { handled: "credit_menu" };
     }
     if (data === "credit:stars") {
-      await this.sendMessage(chatId, "🌟 شارژ آنی با Telegram Stars\n\nاین بخش در Workers فعلاً فقط نمای منو را برگردانده و پرداخت Stars هنوز متصل نشده است.", "HTML", {
+      await this.sendMessage(chatId, "🌟 شارژ با Telegram Stars\n\nبرای شارژ فوری، لطفاً از پشتیبانی داخل بات راهنمای پرداخت Stars را بگیر.", "HTML", {
         inline_keyboard: [[{ text: LABELS.back, callback_data: "credit:menu" }]],
       });
       await this.answerCallback(callback.id);
       return { handled: "credit_stars" };
+    }
+    if (data === "credit:payrial") {
+      await this.sendMessage(
+        chatId,
+        "💱 <b>پرداخت ریالی</b>\n\nبرای پرداخت کارت‌به‌کارت، رسیدت را برای ادمین ارسال می‌کنیم تا حداکثر ظرف چند دقیقه تایید شود.",
+        "HTML",
+        {
+          inline_keyboard: [
+            [{ text: "ارسال رسید برای تایید", callback_data: "credit:payrial:instant" }],
+            [{ text: LABELS.back, callback_data: "credit:menu" }],
+          ],
+        }
+      );
+      await this.answerCallback(callback.id);
+      return { handled: "credit_payrial" };
+    }
+    if (data === "credit:payrial:instant") {
+      await this.deps.userState.setBotState(user.userId, { mode: "idle", updatedAt: nowTs() });
+      await this.sendMessage(
+        chatId,
+        "🧾 عکس رسید پرداخت را ارسال کن.\n\nبعد از ارسال، درخواستت برای تایید دستی پشتیبانی ثبت می‌شود.",
+        "HTML",
+        {
+          inline_keyboard: [[{ text: LABELS.back, callback_data: "credit:menu" }]],
+        }
+      );
+      await this.answerCallback(callback.id);
+      return { handled: "credit_payrial_instant" };
     }
     if (data === "home:api_token") {
       const token = await this.deps.tokens.getOrCreate(user.userId);
@@ -200,10 +239,36 @@ export class TelegramBotFlowService {
       return { handled: "gpt_open" };
     }
     if (data === "home:tts") {
-      await this.deps.userState.setBotState(user.userId, { mode: "tts:wait_text", updatedAt: nowTs() });
-      await this.sendMessage(chatId, "🎧 <b>تبدیل متن به صدا 🎧</b>\n\n✨ <b>متن رو بفرست (هر کاراکتر = 1 Credit)</b>\n\n🎙 <b>alloy</b>", "HTML", this.ttsKeyboard());
+      await this.deps.userState.setBotState(user.userId, { mode: "tts:wait_text", updatedAt: nowTs(), ttsVoice: "alloy", ttsOutput: "mp3" });
+      await this.sendMessage(chatId, "🎧 <b>تبدیل متن به صدا</b>\n\nمتن را بفرست. می‌تونی صدا و خروجی را از منوی زیر عوض کنی.", "HTML", this.ttsKeyboard("alloy", "mp3"));
       await this.answerCallback(callback.id);
       return { handled: "tts_open" };
+    }
+    if (data.startsWith("tts:demo:")) {
+      const voice = data.split(":")[2] || "alloy";
+      await this.answerCallback(callback.id, `دموی صدا: ${voice}`);
+      await this.sendMessage(chatId, `🎙 دمو برای صدای <b>${voice}</b>\n\nیک متن بفرست تا با همین صدا پردازش شود.`, "HTML", this.ttsKeyboard(voice));
+      return { handled: "tts_demo" };
+    }
+    if (data.startsWith("tts:output:")) {
+      const state = await this.deps.userState.getBotState(user.userId);
+      const output = data.endsWith(":voice") ? "voice" : "mp3";
+      const voice = state.ttsVoice || "alloy";
+      await this.deps.userState.setBotState(user.userId, { ...state, mode: "tts:wait_text", updatedAt: nowTs(), ttsOutput: output });
+      await this.sendMessage(chatId, `✅ خروجی روی <b>${output.toUpperCase()}</b> تنظیم شد.`, "HTML", this.ttsKeyboard(voice, output));
+      await this.answerCallback(callback.id);
+      return { handled: "tts_output" };
+    }
+    if (data === "home:clone") {
+      await this.deps.userState.setBotState(user.userId, { mode: "clone:wait_audio", updatedAt: nowTs() });
+      await this.sendMessage(
+        chatId,
+        "🧬 <b>ساخت صدای شخصی</b>\n\nیک فایل صوتی (voice/audio) بفرست. بعد از دریافت، اسم صدا را ازت می‌پرسم.",
+        "HTML",
+        { inline_keyboard: [[{ text: LABELS.back, callback_data: "home:back" }]] }
+      );
+      await this.answerCallback(callback.id);
+      return { handled: "clone_open" };
     }
     if (data === "home:image") {
       await this.deps.userState.setBotState(user.userId, { mode: "image:wait_prompt", updatedAt: nowTs() });
@@ -234,9 +299,29 @@ export class TelegramBotFlowService {
       return { handled: "video_back" };
     }
     if (data === "home:invite") {
-      await this.sendMessage(chatId, "🎁 بخش دعوت دوستان در نسخه Workers فعلاً فقط منو را حفظ کرده است.");
+      await this.sendInviteMenu(chatId, user.userId);
       await this.answerCallback(callback.id);
       return { handled: "invite_open" };
+    }
+    if (data === "invite:daily_reward" || data === "onboarding:daily_reward") {
+      const state = await this.deps.userState.getBotState(user.userId);
+      const last = state.dailyRewardClaimedAt ?? 0;
+      const diff = nowTs() - last;
+      if (diff < DAILY_REWARD_SECONDS) {
+        const minutes = Math.ceil((DAILY_REWARD_SECONDS - diff) / 60);
+        await this.answerCallback(callback.id, `⏳ ${minutes} دقیقه تا جایزه بعدی باقی مانده.`, true);
+        return { handled: "daily_reward_cooldown" };
+      }
+      await this.deps.credits.grant(user.userId, 10, "invite_daily_reward", "telegram_bot");
+      await this.deps.userState.setBotState(user.userId, { ...state, dailyRewardClaimedAt: nowTs(), updatedAt: nowTs() });
+      await this.answerCallback(callback.id, "✅ 10 کردیت روزانه اضافه شد!", true);
+      await this.sendInviteMenu(chatId, user.userId);
+      return { handled: "daily_reward_claim" };
+    }
+    if (data === "onboarding:invite") {
+      await this.sendInviteMenu(chatId, user.userId);
+      await this.answerCallback(callback.id);
+      return { handled: "onboarding_invite" };
     }
 
     if (data.startsWith("owner:")) {
@@ -253,12 +338,16 @@ export class TelegramBotFlowService {
   }
 
   private async handleCommand(userId: number, lang: string, chatId: number, text: string): Promise<{ handled: string }> {
+    if (text.startsWith("/start")) {
+      await this.handleStart(userId, lang, chatId, text);
+      return { handled: "start" };
+    }
+
     switch (text) {
-      case "/start":
       case "/help":
       case "/menu":
         await this.sendMainMenu(chatId);
-        return { handled: "start" };
+        return { handled: "menu" };
       case "/profile": {
         const credits = await this.deps.credits.getCredits(userId);
         await this.sendMessage(chatId, `نمای کلی حساب\n\n💳 موجودی شما: ${credits.credits} کردیت`);
@@ -295,9 +384,8 @@ export class TelegramBotFlowService {
   }
 
   private async handleStateDrivenMessage(userId: number, lang: string, chatId: number, text: string, state: BotConversationState): Promise<boolean> {
-    if (!text) return false;
-
     if (state.mode === "gpt:chat") {
+      if (!text) return false;
       if (text === LABELS.gptEnd) {
         await this.deps.userState.setBotState(userId, { mode: "idle", updatedAt: nowTs() });
         await this.sendMessage(chatId, "✅ <b>فعلاً تا همین‌جا! هر وقت خواستی برگرد گپ بزنیم.</b>", "HTML", undefined, {
@@ -318,23 +406,60 @@ export class TelegramBotFlowService {
     }
 
     if (state.mode === "tts:wait_text") {
-      await this.deps.credits.consume(userId, 1, "tts_message", "telegram_bot");
-      await this.sendMessage(chatId, "👀 <b>در حال تبدیل...</b>\n\n(در Workers فعلاً فقط UX منوی TTS از نسخه قدیمی بازسازی شده است.)", "HTML", this.ttsKeyboard());
+      if (!text) return false;
+      const cost = Math.max(1, Math.ceil(text.length / 100));
+      await this.deps.credits.consume(userId, cost, "tts_message", "telegram_bot");
+      await this.deps.ownerNotifications.queue({
+        userId,
+        source: "telegram_bot",
+        category: "tts_request",
+        message: `voice=${state.ttsVoice || "alloy"} output=${state.ttsOutput || "mp3"} text=${text.slice(0, 1000)}`,
+      });
+      await this.sendMessage(chatId, `✅ متن صوتی ثبت شد.\n\n🎙 صدا: <b>${state.ttsVoice || "alloy"}</b>\n📦 خروجی: <b>${(state.ttsOutput || "mp3").toUpperCase()}</b>`, "HTML", this.ttsKeyboard(state.ttsVoice || "alloy", state.ttsOutput || "mp3"));
       return true;
     }
 
     if (state.mode === "image:wait_prompt") {
+      if (!text) return false;
       await this.deps.credits.consume(userId, 1, "image_prompt", "telegram_bot");
-      await this.sendMessage(chatId, "🖼️ درخواست تصویر ثبت شد.\n(جریان کامل تولید تصویر هنوز در مسیر Workers کامل نشده است.)", undefined, {
+      await this.deps.ownerNotifications.queue({
+        userId,
+        source: "telegram_bot",
+        category: "image_request",
+        message: text.slice(0, 1500),
+      });
+      await this.sendMessage(chatId, "🖼️ درخواست تصویرت ثبت شد و برای پردازش ارسال شد.", undefined, {
         inline_keyboard: [[{ text: LABELS.back, callback_data: "image:back" }]],
       });
       return true;
     }
 
     if (state.mode === "video:wait_image") {
-      await this.sendMessage(chatId, "🎬 لطفاً یک عکس ارسال کن.\n(جریان کامل تولید ویدیو هنوز در مسیر Workers کامل نشده است.)", undefined, {
+      if (!text) return false;
+      await this.sendMessage(chatId, "🎬 لطفاً یک عکس ارسال کن.", undefined, {
         inline_keyboard: [[{ text: LABELS.back, callback_data: "video_gen4:back" }]],
       });
+      return true;
+    }
+
+    if (state.mode === "clone:wait_name") {
+      if (!text) return false;
+      if (!state.cloneFileId) {
+        await this.deps.userState.setBotState(userId, { mode: "clone:wait_audio", updatedAt: nowTs() });
+        await this.sendMessage(chatId, "⚠️ فایل صوتی پیدا نشد؛ دوباره فایل را ارسال کن.");
+        return true;
+      }
+
+      await this.deps.credits.consume(userId, 5, "clone_voice", "telegram_bot");
+      await this.deps.ownerNotifications.queue({
+        userId,
+        source: "telegram_bot",
+        category: "clone_request",
+        message: `name=${text.slice(0, 100)} file_kind=${state.cloneFileKind || "voice"} file_id=${state.cloneFileId}`,
+      });
+      await this.deps.userState.setBotState(userId, { mode: "idle", updatedAt: nowTs() });
+      await this.sendMessage(chatId, "✅ درخواست ساخت صدای شخصی ثبت شد. بعد از آماده‌شدن اطلاع می‌گیری.", "HTML");
+      await this.sendMainMenu(chatId);
       return true;
     }
 
@@ -350,8 +475,8 @@ export class TelegramBotFlowService {
         await this.sendCreditMenu(chatId);
         return true;
       case LABELS.tts:
-        await this.deps.userState.setBotState(userId, { mode: "tts:wait_text", updatedAt: nowTs() });
-        await this.sendMessage(chatId, "🎧 <b>تبدیل متن به صدا 🎧</b>\n\n✨ <b>متن رو بفرست (هر کاراکتر = 1 Credit)</b>\n\n🎙 <b>alloy</b>", "HTML", this.ttsKeyboard());
+        await this.deps.userState.setBotState(userId, { mode: "tts:wait_text", updatedAt: nowTs(), ttsVoice: "alloy", ttsOutput: "mp3" });
+        await this.sendMessage(chatId, "🎧 <b>تبدیل متن به صدا</b>\n\nمتن را بفرست. می‌تونی صدا و خروجی را از منوی زیر عوض کنی.", "HTML", this.ttsKeyboard("alloy", "mp3"));
         return true;
       case LABELS.gpt:
         await this.handleCommand(userId, lang, chatId, "/ask");
@@ -441,15 +566,106 @@ export class TelegramBotFlowService {
     await this.sendOrEditMessage(chatId, text, replyMarkup, messageId, "HTML");
   }
 
-  private ttsKeyboard(): InlineKeyboard {
+  private ttsKeyboard(selectedVoice = "alloy", selectedOutput: "mp3" | "voice" = "mp3"): InlineKeyboard {
     return {
       inline_keyboard: [
-        [{ text: "▶︎ دمو", callback_data: "tts:demo:alloy" }],
-        [{ text: "MP3 📁", callback_data: "tts:output:mp3" }, { text: "Voice 🎙️", callback_data: "tts:output:voice" }],
+        [{ text: `▶︎ دمو (${selectedVoice})`, callback_data: `tts:demo:${selectedVoice}` }],
+        [
+          { text: `${selectedOutput === "mp3" ? "✔️ " : ""}MP3 📁`, callback_data: "tts:output:mp3" },
+          { text: `${selectedOutput === "voice" ? "✔️ " : ""}Voice 🎙️`, callback_data: "tts:output:voice" },
+        ],
         [{ text: "ساخت صدای شخصی 🧬", callback_data: "home:clone" }],
         [{ text: LABELS.back, callback_data: "home:back" }],
       ],
     };
+  }
+
+  private async handleStart(userId: number, lang: string, chatId: number, text: string) {
+    const parts = text.split(/\s+/, 2);
+    const startParam = parts.length > 1 ? parts[1] : "";
+    if (startParam && /^\d+$/.test(startParam) && Number(startParam) !== userId) {
+      await this.deps.ownerNotifications.queue({
+        userId,
+        source: "telegram_bot",
+        category: "start_referral",
+        message: `start_param_ref=${startParam}`,
+      });
+      await this.sendMessage(chatId, "🎉 از لینک دعوت وارد شدی. کد ارجاع ثبت شد.");
+    }
+
+    const profile = await this.deps.users.getProfile(userId);
+    const isFirstOpen = Math.abs(profile.lastSeenAt - profile.joinedAt) <= 3;
+    if (isFirstOpen) {
+      await this.sendMessage(
+        chatId,
+        "👋 خوش اومدی به Vexa AI!\n\n🎁 اعتبار اولیه حسابت فعال شده.\nاز منوی اصلی سرویس مورد نظرت رو انتخاب کن.",
+        "HTML",
+        {
+          inline_keyboard: [[{ text: "🎁 پاداش روزانه", callback_data: "onboarding:daily_reward" }, { text: "دعوت دوستان", callback_data: "onboarding:invite" }]],
+        }
+      );
+    }
+    await this.sendMainMenu(chatId);
+  }
+
+  private async handleMediaDrivenMessage(userId: number, chatId: number, msg: NonNullable<TelegramWebhookUpdate["message"]>, state: BotConversationState): Promise<boolean> {
+    if (state.mode === "video:wait_image") {
+      const lastPhoto = msg.photo && msg.photo.length ? msg.photo[msg.photo.length - 1] : undefined;
+      const imageFile = lastPhoto?.file_id || (msg.document?.mime_type?.startsWith("image/") ? msg.document.file_id : undefined);
+      if (!imageFile) return false;
+      await this.deps.credits.consume(userId, 1, "video_prompt", "telegram_bot");
+      await this.deps.ownerNotifications.queue({
+        userId,
+        source: "telegram_bot",
+        category: "video_request",
+        message: `image_file_id=${imageFile} caption=${(msg.caption || "").slice(0, 500)}`,
+      });
+      await this.sendMessage(chatId, "✅ درخواست ویدیو ثبت شد و برای پردازش ارسال شد.", "HTML", {
+        inline_keyboard: [[{ text: LABELS.back, callback_data: "video_gen4:back" }]],
+      });
+      return true;
+    }
+
+    if (state.mode === "clone:wait_audio") {
+      const fileId = msg.voice?.file_id || msg.audio?.file_id || msg.document?.file_id;
+      if (!fileId) return false;
+      const kind: "voice" | "audio" | "document" = msg.voice ? "voice" : msg.audio ? "audio" : "document";
+      await this.deps.userState.setBotState(userId, {
+        mode: "clone:wait_name",
+        updatedAt: nowTs(),
+        cloneFileId: fileId,
+        cloneFileKind: kind,
+      });
+      await this.sendMessage(chatId, "✅ فایل صوتی دریافت شد.\nحالا یک اسم برای صدای جدیدت بفرست.", "HTML");
+      return true;
+    }
+
+    if (!msg.photo && !msg.document?.file_id) {
+      return false;
+    }
+
+    await this.deps.ownerNotifications.queue({
+      userId,
+      source: "telegram_bot",
+      category: "payment_receipt",
+      message: `file_id=${(msg.photo && msg.photo.length ? msg.photo[msg.photo.length - 1]?.file_id : undefined) || msg.document?.file_id || "unknown"} caption=${(msg.caption || "").slice(0, 300)}`,
+    });
+    await this.sendMessage(chatId, "✅ رسید دریافت شد و برای تایید ادمین ارسال شد.");
+    return true;
+  }
+
+  private async sendInviteMenu(chatId: number, userId: number) {
+    await this.sendMessage(
+      chatId,
+      `🎁 <b>دعوت دوستان</b>\n\nلینک دعوت اختصاصی تو:\n<code>https://t.me/VexaAiBot?start=${userId}</code>\n\nبا هر دعوت موفق، پاداش اضافه می‌گیری.`,
+      "HTML",
+      {
+        inline_keyboard: [
+          [{ text: "🎁 دریافت جایزه روزانه", callback_data: "invite:daily_reward" }],
+          [{ text: LABELS.back, callback_data: "home:back" }],
+        ],
+      }
+    );
   }
 
   private async markProcessed(update: TelegramWebhookUpdate, telegramUserId: number | null, eventType: string) {
