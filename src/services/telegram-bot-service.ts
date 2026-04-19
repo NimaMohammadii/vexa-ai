@@ -31,6 +31,12 @@ export interface TelegramWebhookUpdate {
 
 interface TelegramBotFlowDeps {
   botToken: string;
+  botUsername?: string;
+  forceSubMode?: string;
+  forceSubChannel?: string;
+  forceSubInstagramUrl?: string;
+  welcomeAudioFileId?: string;
+  welcomeAudioKind?: "audio" | "voice" | "document";
   users: UserService;
   credits: CreditService;
   tokens: ApiTokenService;
@@ -43,7 +49,7 @@ interface TelegramBotFlowDeps {
 type ParseMode = "Markdown" | "HTML";
 
 type InlineKeyboard = {
-  inline_keyboard: Array<Array<{ text: string; callback_data: string }>>;
+  inline_keyboard: Array<Array<{ text: string; callback_data?: string; url?: string }>>;
 };
 
 type ReplyKeyboard = {
@@ -54,6 +60,10 @@ type ReplyKeyboard = {
 
 const nowTs = () => Math.floor(Date.now() / 1000);
 const DAILY_REWARD_SECONDS = 24 * 60 * 60;
+const LOW_CREDIT_THRESHOLD = 15;
+const REFERRAL_BONUS = 30;
+const SORA2_COST = 259;
+const SORA2_QUEUE_START = 22;
 const LANGS: Array<{ label: string; code: string }> = [
   { label: "English", code: "en" },
   { label: "فارسی", code: "fa" },
@@ -66,8 +76,10 @@ const LANGS: Array<{ label: string; code: string }> = [
 ];
 
 const LABELS = {
-  homeTitle: "منوی اصلی",
+  homeTitle: "/help   منوی اصلی",
   homeBody: "یکی از گزینه‌های زیر را انتخاب کنید:",
+  homeHelp:
+    "<b>📖 راهنمای استفاده از Vexa</b>\n\n🔹 <b>کردیت یعنی چی؟</b>\nهر حرف، فاصله یا علامت = ۱ کردیت.\n\n🔹 <b>کردیت رایگان شروع</b>\nبعد از /start، <b>۴۵ کردیت</b> هدیه می‌گیری؛ برای تست کوتاه مثل «سلام، من Vexa هستم».\n\n🔹 <b>اگر پیام «موجودی کافی نیست» دیدی</b>\nمتن رو کوتاه‌تر کن یا اول موجودی رو شارژ کن.\n\n🔹 <b>نکات صداگیری طبیعی</b>\nاز علائم نگارشی استفاده کن:\n• جمله‌ها رو با نقطه جدا کن.\n• برای مکث کوتاه از ویرگول استفاده کن.\n• سوال‌ها رو با ؟ ببند.\n• برای هیجان از ! کمک بگیر.\n\n✍️ <b>مثال</b>\n• ❌ «سلام خوبی امیدوارم حالت خوب باشه»\n• ✅ «سلام! خوبی؟ امیدوارم حالت خوب باشه.»",
   profile: "موجودی شما",
   credit: "خرید کردیـت 🛒",
   tts: "تبدیل متن به صدا 🎧",
@@ -80,6 +92,13 @@ const LABELS = {
   back: "🔙 بازگشت",
   homeBack: "🏠 منوی اصلی",
   gptEnd: "✅ اتمام چت",
+  langTitle: "انتخاب زبان",
+  langHint: "یکی از زبان‌های زیر را انتخاب کن.",
+  langSaved: "✅ زبان ذخیره شد.",
+  inviteTitle: "دعوت دوستان 🎁",
+  inviteDailyReward: "دریافت پاداش روزانه 🎁",
+  lowCreditWarning: "کردیت‌ت رو به اتمامه.\nهر وقت خواستی شارژ کن تا راحت‌تر ادامه بدی.",
+  lowCreditButton: "خرید کردیت",
 };
 
 export class TelegramBotFlowService {
@@ -110,11 +129,18 @@ export class TelegramBotFlowService {
 
     const text = (msg.text ?? "").trim();
     const state = await this.deps.userState.getBotState(user.userId);
+    const lang = user.lang || "fa";
 
     if (text.startsWith("/")) {
-      const handled = await this.handleCommand(user.userId, user.lang || "fa", msg.chat.id, text);
+      const handled = await this.handleCommand(user.userId, lang, msg.chat.id, text, state);
       await this.markProcessed(update, user.userId, handled.handled);
       return handled;
+    }
+
+    if (!state.langSelected) {
+      await this.sendLanguageMenu(msg.chat.id, lang, undefined, true);
+      await this.markProcessed(update, user.userId, "lang_required");
+      return { handled: "lang_required" };
     }
 
     if (await this.handleMediaDrivenMessage(user.userId, msg.chat.id, msg, state)) {
@@ -122,17 +148,17 @@ export class TelegramBotFlowService {
       return { handled: `${state.mode}:media` };
     }
 
-    if (await this.handleStateDrivenMessage(user.userId, user.lang || "fa", msg.chat.id, text, state)) {
+    if (await this.handleStateDrivenMessage(user.userId, lang, msg.chat.id, text, state)) {
       await this.markProcessed(update, user.userId, state.mode);
       return { handled: state.mode };
     }
 
-    if (await this.handleTextNavigation(user.userId, user.lang || "fa", msg.chat.id, text)) {
+    if (await this.handleTextNavigation(user.userId, lang, msg.chat.id, text)) {
       await this.markProcessed(update, user.userId, "text_navigation");
       return { handled: "text_navigation" };
     }
 
-    await this.sendMainMenu(msg.chat.id);
+    await this.sendMainMenu(msg.chat.id, undefined, lang);
     await this.markProcessed(update, user.userId, "fallback_main_menu");
     return { handled: "fallback_main_menu" };
   }
@@ -154,9 +180,28 @@ export class TelegramBotFlowService {
 
     const lang = user.lang || "fa";
     const data = callback.data ?? "";
+    const state = await this.deps.userState.getBotState(user.userId);
+
+    if (data.startsWith("fs:")) {
+      return this.handleForceSubCallback(callback.id, chatId, messageId, user.userId, lang, data);
+    }
+
+    if (data !== "lang:set:fa" && data.startsWith("lang:set:")) {
+      // no-op, handled below
+    } else if (!state.langSelected && data !== "home:lang" && !data.startsWith("lang:set:")) {
+      await this.answerCallback(callback.id);
+      await this.sendLanguageMenu(chatId, lang, messageId, true);
+      return { handled: "lang_required" };
+    }
+
+    if (!data.startsWith("lang:set:") && !(await this.ensureForceSub(chatId, user.userId, lang, messageId))) {
+      await this.answerCallback(callback.id);
+      return { handled: "force_sub_required" };
+    }
 
     if (data === "home:back") {
-      await this.sendMainMenu(chatId, messageId);
+      await this.sendMainMenu(chatId, messageId, lang);
+      await this.maybeSendLowCreditWarning(chatId, user.userId, lang);
       await this.answerCallback(callback.id);
       return { handled: "home_back" };
     }
@@ -225,8 +270,17 @@ export class TelegramBotFlowService {
     if (data.startsWith("lang:set:")) {
       const code = data.split(":")[2] || "fa";
       await this.deps.users.setLanguage(user.userId, code);
-      await this.answerCallback(callback.id, "✅ زبان ذخیره شد.");
-      await this.sendMainMenu(chatId, messageId);
+      const nextState = await this.deps.userState.getBotState(user.userId);
+      await this.deps.userState.setBotState(user.userId, { ...nextState, langSelected: true, updatedAt: nowTs() });
+      await this.answerCallback(callback.id, LABELS.langSaved);
+      if (!(await this.ensureForceSub(chatId, user.userId, code, messageId))) {
+        return { handled: "lang_set_force_sub" };
+      }
+      await this.consumePendingReferral(user.userId, chatId, code);
+      await this.maybeSendWelcomeAudio(chatId, user.userId, code, nextState);
+      await this.sendMainMenu(chatId, messageId, code);
+      await this.maybeSendLowCreditWarning(chatId, user.userId, code);
+      await this.triggerOnboarding(chatId, user.userId, code);
       return { handled: "lang_set" };
     }
     if (data === "home:gpt_chat") {
@@ -280,7 +334,7 @@ export class TelegramBotFlowService {
     }
     if (data === "image:back") {
       await this.deps.userState.setBotState(user.userId, { mode: "idle", updatedAt: nowTs() });
-      await this.sendMainMenu(chatId, messageId);
+      await this.sendMainMenu(chatId, messageId, lang);
       await this.answerCallback(callback.id);
       return { handled: "image_back" };
     }
@@ -294,7 +348,7 @@ export class TelegramBotFlowService {
     }
     if (data === "video_gen4:back") {
       await this.deps.userState.setBotState(user.userId, { mode: "idle", updatedAt: nowTs() });
-      await this.sendMainMenu(chatId, messageId);
+      await this.sendMainMenu(chatId, messageId, lang);
       await this.answerCallback(callback.id);
       return { handled: "video_back" };
     }
@@ -323,6 +377,29 @@ export class TelegramBotFlowService {
       await this.answerCallback(callback.id);
       return { handled: "onboarding_invite" };
     }
+    if (data === "home:sora2" || data === "sora2:menu") {
+      await this.sendSora2Menu(chatId, messageId);
+      await this.answerCallback(callback.id);
+      return { handled: "sora2_menu" };
+    }
+    if (data === "sora2:buy") {
+      const credits = (await this.deps.credits.getCredits(user.userId)).credits;
+      if (credits < SORA2_COST) {
+        await this.sendSora2NoCredit(chatId, messageId, credits);
+        await this.answerCallback(callback.id, "⚠️ کردیت کافی نیست.", true);
+        return { handled: "sora2_no_credit" };
+      }
+      await this.deps.credits.consume(user.userId, SORA2_COST, "sora2_invite_code", "telegram_bot");
+      await this.deps.ownerNotifications.queue({
+        userId,
+        source: "telegram_bot",
+        category: "sora2_request",
+        message: `queue_position~${SORA2_QUEUE_START} cost=${SORA2_COST}`,
+      });
+      await this.sendSora2PurchaseSuccess(chatId, messageId);
+      await this.answerCallback(callback.id);
+      return { handled: "sora2_buy" };
+    }
 
     if (data.startsWith("owner:")) {
       await this.deps.ownerNotifications.queue({
@@ -337,16 +414,32 @@ export class TelegramBotFlowService {
     return { handled: "callback_query" };
   }
 
-  private async handleCommand(userId: number, lang: string, chatId: number, text: string): Promise<{ handled: string }> {
+  private async handleCommand(
+    userId: number,
+    lang: string,
+    chatId: number,
+    text: string,
+    state: BotConversationState
+  ): Promise<{ handled: string }> {
     if (text.startsWith("/start")) {
-      await this.handleStart(userId, lang, chatId, text);
+      await this.handleStart(userId, lang, chatId, text, state);
       return { handled: "start" };
+    }
+    if (!state.langSelected) {
+      await this.sendLanguageMenu(chatId, "en", undefined, true);
+      return { handled: "lang_required" };
+    }
+    if (!(await this.ensureForceSub(chatId, userId, lang))) {
+      return { handled: "force_sub_required" };
     }
 
     switch (text) {
       case "/help":
+        await this.sendHelp(chatId);
+        return { handled: "help" };
       case "/menu":
-        await this.sendMainMenu(chatId);
+        await this.sendMainMenu(chatId, undefined, lang);
+        await this.maybeSendLowCreditWarning(chatId, userId, lang);
         return { handled: "menu" };
       case "/profile": {
         const credits = await this.deps.credits.getCredits(userId);
@@ -375,10 +468,10 @@ export class TelegramBotFlowService {
         return { handled: "gpt_open" };
       case "/cancel":
         await this.deps.userState.setBotState(userId, { mode: "idle", updatedAt: nowTs() });
-        await this.sendMainMenu(chatId);
+        await this.sendMainMenu(chatId, undefined, lang);
         return { handled: "cancel" };
       default:
-        await this.sendMainMenu(chatId);
+        await this.sendMainMenu(chatId, undefined, lang);
         return { handled: "unknown_command" };
     }
   }
@@ -391,7 +484,7 @@ export class TelegramBotFlowService {
         await this.sendMessage(chatId, "✅ <b>فعلاً تا همین‌جا! هر وقت خواستی برگرد گپ بزنیم.</b>", "HTML", undefined, {
           remove_keyboard: true,
         });
-        await this.sendMainMenu(chatId);
+        await this.sendMainMenu(chatId, undefined, lang);
         return true;
       }
 
@@ -459,7 +552,7 @@ export class TelegramBotFlowService {
       });
       await this.deps.userState.setBotState(userId, { mode: "idle", updatedAt: nowTs() });
       await this.sendMessage(chatId, "✅ درخواست ساخت صدای شخصی ثبت شد. بعد از آماده‌شدن اطلاع می‌گیری.", "HTML");
-      await this.sendMainMenu(chatId);
+      await this.sendMainMenu(chatId, undefined, lang);
       return true;
     }
 
@@ -469,7 +562,7 @@ export class TelegramBotFlowService {
   private async handleTextNavigation(userId: number, lang: string, chatId: number, text: string): Promise<boolean> {
     switch (text) {
       case LABELS.profile:
-        await this.handleCommand(userId, lang, chatId, "/profile");
+        await this.handleCommand(userId, lang, chatId, "/profile", { mode: "idle", updatedAt: nowTs() });
         return true;
       case LABELS.credit:
         await this.sendCreditMenu(chatId);
@@ -479,7 +572,7 @@ export class TelegramBotFlowService {
         await this.sendMessage(chatId, "🎧 <b>تبدیل متن به صدا</b>\n\nمتن را بفرست. می‌تونی صدا و خروجی را از منوی زیر عوض کنی.", "HTML", this.ttsKeyboard("alloy", "mp3"));
         return true;
       case LABELS.gpt:
-        await this.handleCommand(userId, lang, chatId, "/ask");
+        await this.handleCommand(userId, lang, chatId, "/ask", { mode: "idle", updatedAt: nowTs() });
         return true;
       case LABELS.lang:
         await this.sendLanguageMenu(chatId, lang);
@@ -507,16 +600,11 @@ export class TelegramBotFlowService {
           { text: LABELS.lang, callback_data: "home:lang" },
           { text: LABELS.invite, callback_data: "home:invite" },
         ],
-        [
-          { text: LABELS.apiToken, callback_data: "home:api_token" },
-          { text: LABELS.image, callback_data: "home:image" },
-        ],
-        [{ text: LABELS.video, callback_data: "home:video" }],
       ],
     };
   }
 
-  private async sendMainMenu(chatId: number, messageId?: number) {
+  private async sendMainMenu(chatId: number, messageId?: number, lang = "fa") {
     const text = `🏠 <b>${LABELS.homeTitle}</b>\n\n${LABELS.homeBody}`;
     await this.sendOrEditMessage(chatId, text, this.mainMenuKeyboard(), messageId, "HTML");
   }
@@ -533,7 +621,7 @@ export class TelegramBotFlowService {
     await this.sendOrEditMessage(chatId, text, replyMarkup, messageId, "HTML");
   }
 
-  private async sendLanguageMenu(chatId: number, currentLang: string, messageId?: number) {
+  private async sendLanguageMenu(chatId: number, currentLang: string, messageId?: number, forceNew = false) {
     const rows: Array<Array<{ text: string; callback_data: string }>> = [];
     for (let i = 0; i < LANGS.length; i += 2) {
       const left = LANGS[i]!;
@@ -546,6 +634,10 @@ export class TelegramBotFlowService {
     }
 
     const text = "🌐 <b>انتخاب زبان</b>\n\nیکی از زبان‌های زیر را انتخاب کن.";
+    if (forceNew || !messageId) {
+      await this.sendMessage(chatId, text, "HTML", { inline_keyboard: rows });
+      return;
+    }
     await this.sendOrEditMessage(chatId, text, { inline_keyboard: rows }, messageId, "HTML");
   }
 
@@ -580,32 +672,21 @@ export class TelegramBotFlowService {
     };
   }
 
-  private async handleStart(userId: number, lang: string, chatId: number, text: string) {
+  private async handleStart(userId: number, lang: string, chatId: number, text: string, state: BotConversationState) {
     const parts = text.split(/\s+/, 2);
     const startParam = parts.length > 1 ? parts[1] : "";
-    if (startParam && /^\d+$/.test(startParam) && Number(startParam) !== userId) {
-      await this.deps.ownerNotifications.queue({
-        userId,
-        source: "telegram_bot",
-        category: "start_referral",
-        message: `start_param_ref=${startParam}`,
-      });
-      await this.sendMessage(chatId, "🎉 از لینک دعوت وارد شدی. کد ارجاع ثبت شد.");
+    if (startParam && /^\d+$/.test(startParam) && Number(startParam) !== userId && !state.pendingReferralCode) {
+      await this.deps.userState.setBotState(userId, { ...state, pendingReferralCode: startParam, updatedAt: nowTs() });
     }
-
-    const profile = await this.deps.users.getProfile(userId);
-    const isFirstOpen = Math.abs(profile.lastSeenAt - profile.joinedAt) <= 3;
-    if (isFirstOpen) {
-      await this.sendMessage(
-        chatId,
-        "👋 خوش اومدی به Vexa AI!\n\n🎁 اعتبار اولیه حسابت فعال شده.\nاز منوی اصلی سرویس مورد نظرت رو انتخاب کن.",
-        "HTML",
-        {
-          inline_keyboard: [[{ text: "🎁 پاداش روزانه", callback_data: "onboarding:daily_reward" }, { text: "دعوت دوستان", callback_data: "onboarding:invite" }]],
-        }
-      );
+    if (!state.langSelected) {
+      await this.sendLanguageMenu(chatId, "en", undefined, true);
+      return;
     }
-    await this.sendMainMenu(chatId);
+    await this.maybeSendWelcomeAudio(chatId, userId, lang, state);
+    await this.consumePendingReferral(userId, chatId, lang);
+    await this.sendMainMenu(chatId, undefined, lang);
+    await this.maybeSendLowCreditWarning(chatId, userId, lang);
+    await this.triggerOnboarding(chatId, userId, lang);
   }
 
   private async handleMediaDrivenMessage(userId: number, chatId: number, msg: NonNullable<TelegramWebhookUpdate["message"]>, state: BotConversationState): Promise<boolean> {
@@ -655,17 +736,145 @@ export class TelegramBotFlowService {
   }
 
   private async sendInviteMenu(chatId: number, userId: number) {
+    const bonus = REFERRAL_BONUS;
     await this.sendMessage(
       chatId,
-      `🎁 <b>دعوت دوستان</b>\n\nلینک دعوت اختصاصی تو:\n<code>https://t.me/VexaAiBot?start=${userId}</code>\n\nبا هر دعوت موفق، پاداش اضافه می‌گیری.`,
+      `🎁 <b>${LABELS.inviteTitle}</b>\n\nشناسه عددی شما: <code>${userId}</code>\nتعداد دعوت‌ها تا الان: <b>0</b>\n\nلینک دعوت شما:\n<code>https://t.me/${this.deps.botUsername || "VexaAiBot"}?start=${userId}</code>\n\n<b>به ازای هر دعوت : +${bonus} کردیت</b>`,
       "HTML",
       {
         inline_keyboard: [
-          [{ text: "🎁 دریافت جایزه روزانه", callback_data: "invite:daily_reward" }],
           [{ text: LABELS.back, callback_data: "home:back" }],
+          [{ text: LABELS.inviteDailyReward, callback_data: "invite:daily_reward" }],
         ],
       }
     );
+  }
+
+  private async sendHelp(chatId: number) {
+    await this.sendMessage(chatId, LABELS.homeHelp, "HTML", { inline_keyboard: [[{ text: LABELS.homeBack, callback_data: "home:back" }]] });
+  }
+
+  private async sendSora2Menu(chatId: number, messageId?: number) {
+    const text =
+      "<b>🎬 خوش اومدی به بخش Sora 2</b>\n\n<b>✨ با Sora 2 می‌تونی فقط با نوشتن چند جمله، ویدیوهای واقعی و سینمایی بسازی!</b>\n<b>🚀 ساخته شده با هوش مصنوعی پیشرفته OpenAI</b>\n\n<b>🎞 هر ویدیو تا ۲۰ ثانیه و با کیفیت 1080p تولید میشه</b>\n\n<b>💰 برای فعال‌سازی دسترسی، باید «کد دعوت SORA 2» تهیه کنی.</b>\n<b>🔑 هزینه دریافت کد دعوت: 259 کردیت</b>\n\n<b>⚡ پس از پرداخت، کد اختصاصی برات ارسال میشه و می‌تونی وارد دنیای SORA بشی!</b>";
+    await this.sendOrEditMessage(chatId, text, { inline_keyboard: [[{ text: "خرید کد دعوت 🎟️", callback_data: "sora2:buy" }], [{ text: LABELS.homeBack, callback_data: "home:back" }]] }, messageId, "HTML");
+  }
+
+  private async sendSora2NoCredit(chatId: number, messageId: number | undefined, credits: number) {
+    const text = `⚠️ <b>کردیت کافی نیست!</b>\n<b>هزینه خرید کد دعوت: ${SORA2_COST} کردیت</b>\n<b>موجودی فعلی: ${credits} کردیت</b>\n\n<b>برای شارژ دکمه «خرید کردیت» رو بزن.</b>`;
+    await this.sendOrEditMessage(
+      chatId,
+      text,
+      { inline_keyboard: [[{ text: LABELS.credit, callback_data: "credit:menu" }], [{ text: LABELS.homeBack, callback_data: "home:back" }]] },
+      messageId,
+      "HTML"
+    );
+  }
+
+  private async sendSora2PurchaseSuccess(chatId: number, messageId?: number) {
+    const text = `<b>✅ پرداخت موفق!</b>\n<b>${SORA2_COST} کردیت از حسابت کم شد 💳</b>\n<b>⌛ تو صف انتظار هستی (نفر ${SORA2_QUEUE_START})</b>\n<b>🎟 کد دعوت Sora 2 به‌زودی برات ارسال میشه.</b>`;
+    await this.sendOrEditMessage(chatId, text, { inline_keyboard: [[{ text: "خرید کد دعوت 🎟️", callback_data: "sora2:buy" }], [{ text: LABELS.homeBack, callback_data: "home:back" }]] }, messageId, "HTML");
+  }
+
+  private async maybeSendLowCreditWarning(chatId: number, userId?: number, _lang = "fa") {
+    if (!userId) return;
+    const profile = await this.deps.users.getProfile(userId);
+    const state = await this.deps.userState.getBotState(userId);
+    if (profile.credits >= LOW_CREDIT_THRESHOLD) {
+      if (state.lowCreditPromptedAt) {
+        await this.deps.userState.setBotState(userId, { ...state, lowCreditPromptedAt: undefined, updatedAt: nowTs() });
+      }
+      return;
+    }
+    if (state.lowCreditPromptedAt) return;
+    await this.sendMessage(chatId, LABELS.lowCreditWarning, "HTML", { inline_keyboard: [[{ text: LABELS.lowCreditButton, callback_data: "credit:menu" }]] });
+    await this.deps.userState.setBotState(userId, { ...state, lowCreditPromptedAt: nowTs(), updatedAt: nowTs() });
+  }
+
+  private async triggerOnboarding(chatId: number, userId: number, _lang: string) {
+    const state = await this.deps.userState.getBotState(userId);
+    if (state.welcomeSentAt) return;
+    await this.sendMessage(chatId, "🎁 45 کردیت رایگان گرفتی\n≈ ۱۵ ثانیه صدای هوش مصنوعی\nالان امتحانش کن 👇", "HTML");
+    await this.sendMessage(chatId, "🎁 پاداش روزانه آماده است!\nبرای دریافت کردیت رایگان روی دکمه زیر بزن.", "HTML", {
+      inline_keyboard: [[{ text: "🎁", callback_data: "onboarding:daily_reward" }]],
+    });
+    await this.deps.userState.setBotState(userId, { ...state, welcomeSentAt: nowTs(), updatedAt: nowTs() });
+  }
+
+  private async maybeSendWelcomeAudio(chatId: number, userId: number, _lang: string, state: BotConversationState) {
+    if (!this.deps.welcomeAudioFileId || state.welcomeAudioSentAt) return;
+    const method = this.deps.welcomeAudioKind === "voice" ? "sendVoice" : this.deps.welcomeAudioKind === "document" ? "sendDocument" : "sendAudio";
+    const mediaKey = this.deps.welcomeAudioKind === "voice" ? "voice" : this.deps.welcomeAudioKind === "document" ? "document" : "audio";
+    const body: Record<string, unknown> = { chat_id: chatId, [mediaKey]: this.deps.welcomeAudioFileId };
+    await fetch(`https://api.telegram.org/bot${this.deps.botToken}/${method}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    await this.deps.userState.setBotState(userId, { ...state, welcomeAudioSentAt: nowTs(), updatedAt: nowTs() });
+  }
+
+  private async consumePendingReferral(userId: number, chatId: number, _lang: string) {
+    const state = await this.deps.userState.getBotState(userId);
+    const refCode = (state.pendingReferralCode || "").trim();
+    if (!refCode || !/^[0-9]+$/.test(refCode) || Number(refCode) === userId) return;
+    await this.deps.credits.grant(Number(refCode), REFERRAL_BONUS, "invite_referral", "telegram_bot");
+    await this.sendMessage(chatId, "🎉 <b>خوش اومدی! 45 کردیت رایگان گرفتی</b>", "HTML");
+    await this.deps.ownerNotifications.queue({
+      userId: Number(refCode),
+      source: "telegram_bot",
+      category: "ref_notify",
+      message: `👥 یک کاربر با لینک تو عضو شد\n🎁 <b>${REFERRAL_BONUS}</b> کردیت بهت اضافه شد`,
+    });
+    await this.deps.userState.setBotState(userId, { ...state, pendingReferralCode: undefined, updatedAt: nowTs() });
+  }
+
+  private async ensureForceSub(chatId: number, userId: number, _lang: string, messageId?: number): Promise<boolean> {
+    const mode = (this.deps.forceSubMode || "none").trim();
+    if (mode === "none") return true;
+    const tgChannel = (this.deps.forceSubChannel || "").trim();
+    if (!tgChannel) return true;
+    const normalized = tgChannel.replace(/^https?:\/\/t\.me\//, "").replace(/^t\.me\//, "").replace(/^@/, "");
+    const channelRef = `@${normalized}`;
+    const response = await fetch(`https://api.telegram.org/bot${this.deps.botToken}/getChatMember`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ chat_id: channelRef, user_id: userId }),
+    });
+    if (response.ok) {
+      const data = (await response.json()) as { result?: { status?: string; is_member?: boolean } };
+      const status = data.result?.status || "";
+      const isMember = status === "creator" || status === "administrator" || status === "member" || (status === "restricted" && data.result?.is_member);
+      if (isMember) return true;
+    }
+    const keyboard: InlineKeyboard = {
+      inline_keyboard: [
+        [{ text: "عضویت در کانال 🚀", url: `https://t.me/${normalized}` }],
+        [{ text: "عضو شدم ✅", callback_data: "fs:recheck" }],
+      ],
+    };
+    const text = "<b>برای ادامه عضو کانال شو</b>\n• کانال تلگرام\n\nبعد از عضویت روی دکمه «عضو شدم» بزن.";
+    if (messageId) await this.sendOrEditMessage(chatId, text, keyboard, messageId, "HTML");
+    else await this.sendMessage(chatId, text, "HTML", keyboard);
+    return false;
+  }
+
+  private async handleForceSubCallback(
+    callbackId: string,
+    chatId: number,
+    messageId: number | undefined,
+    userId: number,
+    lang: string,
+    data: string
+  ): Promise<{ handled: string }> {
+    if (await this.ensureForceSub(chatId, userId, lang, messageId)) {
+      await this.sendMainMenu(chatId, messageId, lang);
+      await this.consumePendingReferral(userId, chatId, lang);
+      await this.answerCallback(callbackId, "✅ عضویت تایید شد!");
+      return { handled: "force_sub_confirmed" };
+    }
+    await this.answerCallback(callbackId, "❌ هنوز عضو نشدی!");
+    return { handled: "force_sub_not_joined" };
   }
 
   private async markProcessed(update: TelegramWebhookUpdate, telegramUserId: number | null, eventType: string) {
