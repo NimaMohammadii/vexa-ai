@@ -16,6 +16,7 @@ export interface BotConversationState {
   referralPromptedAt?: number;
   dailyRewardClaimedAt?: number;
   lowCreditPromptedAt?: number;
+  lowCreditScheduledAt?: number;
   onboardingPending?: boolean;
   welcomeSentAt?: number;
   welcomeAudioSentAt?: number;
@@ -69,6 +70,7 @@ export class UserStateRepository {
         referralPromptedAt: Number(parsed.referralPromptedAt ?? 0) || undefined,
         dailyRewardClaimedAt: Number(parsed.dailyRewardClaimedAt ?? 0) || undefined,
         lowCreditPromptedAt: Number(parsed.lowCreditPromptedAt ?? 0) || undefined,
+        lowCreditScheduledAt: Number(parsed.lowCreditScheduledAt ?? 0) || undefined,
         onboardingPending: parsed.onboardingPending === undefined ? undefined : !!parsed.onboardingPending,
         welcomeSentAt: Number(parsed.welcomeSentAt ?? 0) || undefined,
         welcomeAudioSentAt: Number(parsed.welcomeAudioSentAt ?? 0) || undefined,
