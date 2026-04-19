@@ -10,6 +10,12 @@ export async function handleTelegramRoutes(ctx: RouteCtx): Promise<Response | nu
     const update = await parseJsonBody<TelegramWebhookUpdate>(request);
     const flow = new TelegramBotFlowService({
       botToken: env.TELEGRAM_BOT_TOKEN,
+      botUsername: env.TELEGRAM_BOT_USERNAME,
+      forceSubMode: env.FORCE_SUB_MODE,
+      forceSubChannel: env.TG_CHANNEL,
+      forceSubInstagramUrl: env.IG_URL,
+      welcomeAudioFileId: env.WELCOME_AUDIO_FILE_ID,
+      welcomeAudioKind: env.WELCOME_AUDIO_KIND,
       users: services.users,
       credits: services.credits,
       tokens: services.tokens,

@@ -15,6 +15,14 @@ export interface BotConversationState {
   cloneFileKind?: "voice" | "audio" | "document";
   referralPromptedAt?: number;
   dailyRewardClaimedAt?: number;
+  lowCreditPromptedAt?: number;
+  onboardingPending?: boolean;
+  welcomeSentAt?: number;
+  welcomeAudioSentAt?: number;
+  dailyBonusPromptedAt?: number;
+  dailyBonusUnlockedAt?: number;
+  pendingReferralCode?: string;
+  langSelected?: boolean;
 }
 
 const DEFAULT_STATE: BotConversationState = {
@@ -60,6 +68,14 @@ export class UserStateRepository {
             : undefined,
         referralPromptedAt: Number(parsed.referralPromptedAt ?? 0) || undefined,
         dailyRewardClaimedAt: Number(parsed.dailyRewardClaimedAt ?? 0) || undefined,
+        lowCreditPromptedAt: Number(parsed.lowCreditPromptedAt ?? 0) || undefined,
+        onboardingPending: parsed.onboardingPending === undefined ? undefined : !!parsed.onboardingPending,
+        welcomeSentAt: Number(parsed.welcomeSentAt ?? 0) || undefined,
+        welcomeAudioSentAt: Number(parsed.welcomeAudioSentAt ?? 0) || undefined,
+        dailyBonusPromptedAt: Number(parsed.dailyBonusPromptedAt ?? 0) || undefined,
+        dailyBonusUnlockedAt: Number(parsed.dailyBonusUnlockedAt ?? 0) || undefined,
+        pendingReferralCode: typeof parsed.pendingReferralCode === "string" ? parsed.pendingReferralCode : undefined,
+        langSelected: parsed.langSelected === undefined ? undefined : !!parsed.langSelected,
       };
     } catch {
       return DEFAULT_STATE;

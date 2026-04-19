@@ -17,6 +17,12 @@ export interface Env {
   TELEGRAM_WEBHOOK_SECRET: string;
   OWNER_TELEGRAM_CHAT_ID?: string;
   SESSION_TTL_SECONDS?: string;
+  TELEGRAM_BOT_USERNAME?: string;
+  FORCE_SUB_MODE?: string;
+  TG_CHANNEL?: string;
+  IG_URL?: string;
+  WELCOME_AUDIO_FILE_ID?: string;
+  WELCOME_AUDIO_KIND?: "audio" | "voice" | "document";
 }
 
 export interface Services {
