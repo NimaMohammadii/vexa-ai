@@ -91,6 +91,11 @@ const I18N: Record<string, Record<string, string>> = {
   btn_profile: { fa: "موجودی شما", en: "Your Balance", ar: "رصيدك", tr: "Bakiyeniz", ru: "Ваш баланс", es: "Tu saldo", de: "Dein Guthaben", fr: "Ton solde" },
   btn_credit: { fa: "خرید کردیـت 🛒", en: "Buy Credit 🛒", ar: "شراء الرصيد 🛒", tr: "Kredi Satın Al 🛒", ru: "Купить кредит 🛒", es: "Comprar crédito 🛒", de: "Guthaben kaufen 🛒", fr: "Acheter du crédit 🛒" },
   btn_tts: { fa: "تبدیل متن به صدا 🎧", en: "Text to Speech 🎧", ar: "تحويل النص إلى صوت 🎧", tr: "Metinden Sese 🎧", ru: "Текст в речь 🎧", es: "Texto a voz 🎧", de: "Text zu Sprache 🎧", fr: "Texte en voix 🎧" },
+  btn_gpt: { fa: "GPT-5 mini 🫧", en: "GPT-5 mini 🫧", ar: "GPT-5 mini 🫧", tr: "GPT-5 mini 🫧", ru: "GPT-5 mini 🫧", es: "GPT-5 mini 🫧", de: "GPT-5 mini 🎪", fr: "GPT-5 mini 🎪" },
+  btn_image: { fa: "تولید تصویر 🍌", en: "Generate Image 🖼️", ar: "توليد صورة 🖼️", tr: "Görsel Oluştur 🖼️", ru: "Создать изображение 🖼️", es: "Generar imagen 🖼️", de: "Bild erzeugen 🖼️", fr: "Générer une image 🖼️" },
+  btn_video: { fa: "تولید ویدیو 🎬", en: "Generate Video 🎬", ar: "توليد فيديو 🎬", tr: "Video Oluştur 🎬", ru: "Создать видео 🎬", es: "Generar video 🎬", de: "Video erstellen 🎬", fr: "Créer une vidéo 🎬" },
+  btn_sora2: { fa: "Sora 2 🎪", en: "Sora 2 🎪", ar: "Sora 2 🎪", tr: "Sora 2 🎪", ru: "Sora 2 🎪", es: "Sora 2 🎪", de: "Sora 2 🎪", fr: "Sora 2 🎪" },
+  btn_api_token: { fa: "API Token 🔑", en: "API Token 🔑", ar: "رمز API 🔑", tr: "API Anahtarı 🔑", ru: "API токен 🔑", es: "Token API 🔑", de: "API-Token 🔑", fr: "Jeton API 🔑" },
   btn_clone: { fa: "ساخت صدای شخصی 🧬", en: "Voice Clone 🧬", ar: "إنشاء صوت شخصي 🧬", tr: "Kişisel Ses Oluştur 🧬", ru: "Личный голос 🧬", es: "Voz personal 🧬", de: "Eigene Stimme 🧬", fr: "Voix perso 🧬" },
   btn_lang: { fa: "Language 📚", en: "Language 📚", ar: "اللغة 📚", tr: "Dil 📚", ru: "Язык 📚", es: "Idioma 📚", de: "Sprache 📚", fr: "Langue 📚" },
   btn_invite: { fa: "🎁", en: "🎁", ar: "دعوة الأصدقاء 🎁", tr: "🎁", ru: "🎁", es: "🎁", de: "🎁", fr: "🎁" },
@@ -573,7 +578,7 @@ export class TelegramBotFlowService {
         chatId,
         t("clone_menu", lang),
         "HTML",
-        { inline_keyboard: [[{ text: LABELS.back, callback_data: "home:back" }]] }
+        { inline_keyboard: [[{ text: t("back", lang), callback_data: "home:back" }]] }
       );
       await this.answerCallback(callback.id);
       return { handled: "clone_open" };
@@ -581,7 +586,7 @@ export class TelegramBotFlowService {
     if (data === "home:image") {
       await this.deps.userState.setBotState(user.userId, { mode: "image:wait_prompt", updatedAt: nowTs() });
       await this.sendMessage(chatId, t("image_intro", lang), "HTML", {
-        inline_keyboard: [[{ text: LABELS.back, callback_data: "image:back" }]],
+        inline_keyboard: [[{ text: t("back", lang), callback_data: "image:back" }]],
       });
       await this.answerCallback(callback.id);
       return { handled: "image_open" };
@@ -595,7 +600,7 @@ export class TelegramBotFlowService {
     if (data === "home:video") {
       await this.deps.userState.setBotState(user.userId, { mode: "video:wait_image", updatedAt: nowTs() });
       await this.sendMessage(chatId, t("video_gen4_intro", lang), "HTML", {
-        inline_keyboard: [[{ text: LABELS.back, callback_data: "video_gen4:back" }]],
+        inline_keyboard: [[{ text: t("back", lang), callback_data: "video_gen4:back" }]],
       });
       await this.answerCallback(callback.id);
       return { handled: "video_open" };
@@ -794,13 +799,13 @@ export class TelegramBotFlowService {
       case "/img":
         await this.deps.userState.setBotState(userId, { mode: "image:wait_prompt", updatedAt: nowTs() });
         await this.sendMessage(chatId, t("image_intro", lang), "HTML", {
-          inline_keyboard: [[{ text: LABELS.back, callback_data: "image:back" }]],
+          inline_keyboard: [[{ text: t("back", lang), callback_data: "image:back" }]],
         });
         return { handled: "image_open" };
       case "/video":
         await this.deps.userState.setBotState(userId, { mode: "video:wait_image", updatedAt: nowTs() });
         await this.sendMessage(chatId, t("video_gen4_intro", lang), "HTML", {
-          inline_keyboard: [[{ text: LABELS.back, callback_data: "video_gen4:back" }]],
+          inline_keyboard: [[{ text: t("back", lang), callback_data: "video_gen4:back" }]],
         });
         return { handled: "video_open" };
       case "/cancel":
@@ -866,7 +871,7 @@ export class TelegramBotFlowService {
         message: text.slice(0, 1500),
       });
       await this.sendMessage(chatId, t("image_processing", lang), "HTML", {
-        inline_keyboard: [[{ text: LABELS.back, callback_data: "image:back" }]],
+        inline_keyboard: [[{ text: t("back", lang), callback_data: "image:back" }]],
       });
       return true;
     }
@@ -874,7 +879,7 @@ export class TelegramBotFlowService {
     if (state.mode === "video:wait_image") {
       if (!text) return false;
       await this.sendMessage(chatId, t("video_gen4_need_image", lang), "HTML", {
-        inline_keyboard: [[{ text: LABELS.back, callback_data: "video_gen4:back" }]],
+        inline_keyboard: [[{ text: t("back", lang), callback_data: "video_gen4:back" }]],
       });
       return true;
     }
@@ -915,13 +920,13 @@ export class TelegramBotFlowService {
         await this.deps.userState.setBotState(userId, { mode: "tts:wait_text", updatedAt: nowTs(), ttsVoice: DEFAULT_VOICE_NAME_BY_LANG[lang] || DEFAULT_VOICE_NAME_BY_LANG.fa, ttsOutput: "mp3", ttsPage: 0 });
         await this.sendMessage(chatId, this.ttsAskText(lang, DEFAULT_VOICE_NAME_BY_LANG[lang] || DEFAULT_VOICE_NAME_BY_LANG.fa), "HTML", this.ttsKeyboard(lang, DEFAULT_VOICE_NAME_BY_LANG[lang] || DEFAULT_VOICE_NAME_BY_LANG.fa, "mp3", 0));
         return true;
-      case LABELS.gpt:
+      case t("btn_gpt", lang):
         await this.handleCommand(userId, lang, chatId, "/ask", { mode: "idle", updatedAt: nowTs() });
         return true;
       case t("btn_lang", lang):
         await this.sendLanguageMenu(chatId, lang, undefined, false, true);
         return true;
-      case LABELS.apiToken: {
+      case t("btn_api_token", lang): {
         const token = await this.deps.tokens.getOrCreate(userId);
         await this.sendApiTokenMenu(chatId, token, lang);
         return true;
@@ -1259,6 +1264,23 @@ ${ADMIN_MENU_TEXT}`, this.adminMenuKeyboard(), messageId);
       return { handled: "admin_clone_action" };
     }
 
+    if (data === "admin:noop") {
+      await this.answerCallback(callbackId);
+      return { handled: "admin_noop" };
+    }
+
+    if (data.startsWith("admin:uadd:") || data.startsWith("admin:usub:") || data.startsWith("admin:dm:")) {
+      await this.sendOrEditMessage(chatId, "👤 عملیات کاربر انتخاب شد. آیدی/یوزرنیم جدید را ارسال کنید.", this.adminMenuKeyboard(), messageId, "HTML");
+      await this.answerCallback(callbackId);
+      return { handled: "admin_user_action_shortcut" };
+    }
+
+    if (data.startsWith("admin:exp_user_")) {
+      await this.sendOrEditMessage(chatId, "📤 خروجی جزئی کاربر در صف قرار گرفت.", this.adminExportsKeyboard(), messageId);
+      await this.answerCallback(callbackId);
+      return { handled: "admin_export_user" };
+    }
+
     await this.deps.ownerNotifications.queue({
       userId,
       source: "telegram_bot",
@@ -1277,12 +1299,12 @@ ${ADMIN_MENU_TEXT}`, this.adminMenuKeyboard(), messageId);
           { text: t("btn_credit", lang), callback_data: "home:credit" },
         ],
         [{ text: t("btn_tts", lang), callback_data: "home:tts" }],
-        [{ text: LABELS.gpt, callback_data: "home:gpt_chat" }],
+        [{ text: t("btn_gpt", lang), callback_data: "home:gpt_chat" }],
         [
-          { text: LABELS.image, callback_data: "home:image" },
-          { text: LABELS.video, callback_data: "home:video" },
+          { text: t("btn_image", lang), callback_data: "home:image" },
+          { text: t("btn_video", lang), callback_data: "home:video" },
         ],
-        [{ text: "Sora 2 🎬", callback_data: "home:sora2" }],
+        [{ text: t("btn_sora2", lang), callback_data: "home:sora2" }],
         [
           { text: t("btn_lang", lang), callback_data: "home:lang" },
           { text: t("btn_invite", lang), callback_data: "home:invite" },
@@ -1496,8 +1518,10 @@ ${ADMIN_MENU_TEXT}`, this.adminMenuKeyboard(), messageId);
         category: "video_request",
         message: `image_file_id=${imageFile} caption=${(msg.caption || "").slice(0, 500)}`,
       });
-      await this.sendMessage(chatId, t("video_gen4_processing", (await this.deps.users.getProfile(userId)).lang || "fa"), "HTML", {
-        inline_keyboard: [[{ text: LABELS.back, callback_data: "video_gen4:back" }]],
+      const profile = await this.deps.users.getProfile(userId);
+      const userLang = profile.lang || "fa";
+      await this.sendMessage(chatId, t("video_gen4_processing", userLang), "HTML", {
+        inline_keyboard: [[{ text: t("back", userLang), callback_data: "video_gen4:back" }]],
       });
       return true;
     }
