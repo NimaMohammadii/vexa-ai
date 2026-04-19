@@ -117,6 +117,7 @@ const I18N: Record<string, Record<string, string>> = {
   credit_pay_rial_btn: { fa: "پرداخت به تومان", en: "Pay in Toman", ar: "الدفع بالتومان", tr: "Toman ile öde", ru: "Оплата в томанах", es: "Pagar en tomanes", de: "In Toman zahlen", fr: "Payer en toman" },
   credit_cancel: { fa: "لغو ❌", en: "Cancel ❌", ar: "إلغاء ❌", tr: "İptal ❌", ru: "Отмена ❌", es: "Cancelar ❌", de: "Abbrechen ❌", fr: "Annuler ❌" },
   credit_unavailable: { fa: "پرداخت به تومان فقط برای کاربران فارسی فعال است.", en: "Payments in tomans are only available in the Persian language.", ar: "الدفع بالعملة المحلية متاح فقط باللغة الفارسية.", tr: "Toman ile ödeme yalnızca Farsça dilinde kullanılabilir.", ru: "Оплата в туманах доступна только для персидского языка.", es: "El pago en toman solo está disponible en el idioma persa.", de: "Zahlungen in Toman sind nur auf Persisch verfügbar.", fr: "Le paiement en tomans est disponible uniquement en persan." },
+  credit_invalid_plan: { fa: "بسته نامعتبر است.", en: "Invalid package.", ar: "الباقة غير صالحة.", tr: "Geçersiz paket.", ru: "Недействительный пакет.", es: "Paquete no válido.", de: "Ungültiges Paket.", fr: "Pack invalide." },
   credit_stars_menu: { fa: "🌟 شارژ آنی با Telegram Stars\n\nیکی از بسته‌های زیر را انتخاب کن:", en: "🌟 Instant top-up with Telegram Stars\n\nPick one of the packages below:", ar: "🌟 شحن فوري عبر Telegram Stars\n\nاختر إحدى الباقات أدناه:", tr: "🌟 Telegram Stars ile anında yükleme\n\nAşağıdaki paketlerden birini seç:", ru: "🌟 Мгновенное пополнение через Telegram Stars\n\nВыберите один из пакетов ниже:", es: "🌟 Recarga instantánea con Telegram Stars\n\nElige uno de los paquetes a continuación:", de: "🌟 Sofort aufladen mit Telegram Stars\n\nWähle eines der Pakete unten:", fr: "🌟 Recharge instantanée via Telegram Stars\n\nChoisis l'un des packs ci-dessous :" },
   credit_invoice_label: { fa: "{credits} کردیت", en: "{credits} credits", ar: "{credits} رصيداً", tr: "{credits} kredi", ru: "{credits} кредитов", es: "{credits} créditos", de: "{credits} Guthaben", fr: "{credits} crédits" },
   credit_invoice_title: { fa: "Vexa — خرید کردیت", en: "Vexa — Buy Credits", ar: "Vexa — شراء الرصيد", tr: "Vexa — Kredi Satın Al", ru: "Vexa — Покупка кредитов", es: "Vexa — Comprar créditos", de: "Vexa — Guthaben kaufen", fr: "Vexa — Acheter des crédits" },
@@ -158,6 +159,10 @@ const I18N: Record<string, Record<string, string>> = {
   video_gen4_intro: { fa: "🎬 <b>عکس بفرست تا برات ویدیو بسازم.</b>\nهر ویدیو 1 کردیت هزینه دارد.\nمی‌تونی همراه عکس کپشن هم بفرستی تا حرکت رو توضیح بدی.", en: "🎬 <b>Send a photo and I'll turn it into a video.</b>\nEach video costs 1 credit.\nYou can add a caption to guide the motion.", ar: "🎬 <b>أرسل صورة وسأحوّلها إلى فيديو.</b>\nكل فيديو يكلف 1 رصيد.\nيمكنك إضافة تعليق لشرح الحركة.", tr: "🎬 <b>Bir fotoğraf gönder, senin için videoya çevireyim.</b>\nHer video 1 krediye mal olur.\nHareketi yönlendirmek için açıklama ekleyebilirsin.", ru: "🎬 <b>Пришли фото — я превращу его в видео.</b>\nКаждое видео стоит 1 кредит.\nМожешь добавить подпись, чтобы задать движение.", es: "🎬 <b>Envía una foto y la convertiré en video.</b>\nCada video cuesta 1 crédito.\nPuedes añadir una leyenda para guiar el movimiento.", de: "🎬 <b>Sende ein Foto und ich mache daraus ein Video.</b>\nJedes Video kostet 1 Credit.\nDu kannst eine Bildunterschrift hinzufügen, um die Bewegung zu steuern.", fr: "🎬 <b>Envoie une photo et je la transforme en vidéo.</b>\nChaque vidéo coûte 1 crédit.\nTu peux ajouter une légende pour guider le mouvement." },
   video_gen4_processing: { fa: "🎥 <b>در حال ساخت ویدیو...</b>", en: "🎥 <b>Generating the video...</b>", ar: "🎥 <b>جارٍ إنشاء الفيديو...</b>", tr: "🎥 <b>Video oluşturuluyor...</b>", ru: "🎥 <b>Создаю видео...</b>", es: "🎥 <b>Generando el video...</b>", de: "🎥 <b>Video wird erstellt...</b>", fr: "🎥 <b>Génération de la vidéo...</b>" },
   video_gen4_need_image: { fa: "⚠️ لطفاً یک عکس بفرست تا ویدیو بسازم.", en: "⚠️ Please send a photo so I can create a video.", ar: "⚠️ أرسل صورة من فضلك ليتم إنشاء الفيديو.", tr: "⚠️ Lütfen video oluşturmak için bir fotoğraf gönder.", ru: "⚠️ Пожалуйста, пришлите фото, чтобы я сделал видео.", es: "⚠️ Por favor envía una foto para crear el video.", de: "⚠️ Bitte sende ein Foto, damit ich ein Video erstellen kann.", fr: "⚠️ Merci d'envoyer une photo pour que je puisse créer la vidéo." },
+  clone_menu: { fa: "🧬 <b>ساخت صدای شخصی – Voice Clone</b>\n\n<b>یک ویس کوتاه به‌صورت فایل (۱۵–۳۰ ثانیه) ارسال کن تا همان صدا را بسازیم.</b>", en: "🧬 <b>Create your personal voice – Voice Clone</b>\n\n<b>Send a short voice message (15–30 seconds) to start.</b>", ar: "🧬 <b>أنشئ صوتك الشخصي – استنساخ الصوت</b>\n\n<b>أرسل رسالة صوتية قصيرة (15–30 ثانية) للبدء.</b>", tr: "🧬 <b>Kişisel sesini oluştur – Voice Clone</b>\n\n<b>Başlamak için 15–30 saniyelik kısa bir ses mesajı gönder.</b>", ru: "🧬 <b>Создай свой голос – Voice Clone</b>\n\n<b>Отправь короткое голосовое сообщение (15–30 секунд), чтобы начать.</b>", es: "🧬 <b>Crea tu voz personal – Voice Clone</b>\n\n<b>Envía un mensaje de voz corto (15–30 segundos) para comenzar.</b>", de: "🧬 <b>Erstelle deine eigene Stimme – Voice Clone</b>\n\n<b>Sende eine kurze Sprachnachricht (15–30 Sekunden), um zu starten.</b>", fr: "🧬 <b>Crée ta voix personnelle – Voice Clone</b>\n\n<b>Envoie un court message vocal (15–30 secondes) pour commencer.</b>" },
+  clone_ask_name: { fa: "➕ <b>حالا یک اسم برای صدای جدیدت بفرست.</b>", en: "➕ <b>Now send a name for your new voice.</b>", ar: "➕ <b>أرسل اسماً للصوت الجديد.</b>", tr: "➕ <b>Yeni sesin için bir isim gönder.</b>", ru: "➕ <b>Теперь отправьте имя для нового голоса.</b>", es: "➕ <b>Ahora envía un nombre para tu nueva voz.</b>", de: "➕ <b>Sende jetzt einen Namen für deine neue Stimme.</b>", fr: "➕ <b>Envoie maintenant un nom pour ta nouvelle voix.</b>" },
+  clone_audio_missing: { fa: "⚠️ فایل صوتی پیدا نشد؛ دوباره فایل را ارسال کن.", en: "⚠️ Audio file not found. Please send it again.", ar: "⚠️ لم يتم العثور على الملف الصوتي. أرسله مرة أخرى.", tr: "⚠️ Ses dosyası bulunamadı; lütfen tekrar gönder.", ru: "⚠️ Аудиофайл не найден. Пожалуйста, отправьте его снова.", es: "⚠️ No se encontró el archivo de audio. Envíalo de nuevo.", de: "⚠️ Audiodatei nicht gefunden. Bitte sende sie erneut.", fr: "⚠️ Fichier audio introuvable. Merci de le renvoyer." },
+  clone_success: { fa: "✅ درخواست ساخت صدای شخصی ثبت شد. بعد از آماده‌شدن اطلاع می‌گیری.", en: "✅ Your voice-clone request has been submitted. You’ll be notified when it’s ready.", ar: "✅ تم تسجيل طلب استنساخ الصوت. سنبلغك عند الجاهزية.", tr: "✅ Ses klonlama isteğin kaydedildi. Hazır olunca bilgilendirileceksin.", ru: "✅ Запрос на создание персонального голоса отправлен. Мы сообщим, когда будет готово.", es: "✅ Tu solicitud de clon de voz fue enviada. Te avisaremos cuando esté lista.", de: "✅ Deine Voice-Clone-Anfrage wurde eingereicht. Du wirst benachrichtigt, sobald sie fertig ist.", fr: "✅ Ta demande de clonage vocal a été enregistrée. Tu seras notifié quand ce sera prêt." },
   tts_banned_words: { fa: "❌ این کلمات قابل تبدیل نیستند. لطفاً متن دیگری استفاده کن.", en: "❌ This text contains blocked words. Please use different wording.", ar: "❌ هذا النص يحتوي على كلمات محظورة. الرجاء استخدام نص آخر.", tr: "❌ Bu metin yasaklı kelimeler içeriyor. Lütfen farklı bir metin kullan.", ru: "❌ В тексте есть запрещённые слова. Пожалуйста, сформулируйте иначе.", es: "❌ Este texto contiene palabras bloqueadas. Usa otro texto, por favor.", de: "❌ Dieser Text enthält gesperrte Wörter. Bitte formuliere ihn anders.", fr: "❌ Ce texte contient des mots interdits. Merci d'utiliser un autre texte." },
   force_sub_title: { fa: "<b>برای ادامه عضو کانال شو</b>", en: "<b>Join our channel to continue</b>", ar: "<b>انضم إلى القناة للمتابعة</b>", tr: "<b>Devam etmek için kanala katıl</b>", ru: "<b>Чтобы продолжить, вступи в канал</b>", es: "<b>Únete al canal para continuar</b>", de: "<b>Tritt dem Kanal bei, um weiterzumachen</b>", fr: "<b>Rejoins la chaîne pour continuer</b>" },
   force_sub_join_channel: { fa: "• کانال تلگرام", en: "• Telegram channel", ar: "• قناة تيليجرام", tr: "• Telegram kanalı", ru: "• Канал в Telegram", es: "• Canal de Telegram", de: "• Telegram-Kanal", fr: "• Chaîne Telegram" },
@@ -566,7 +571,7 @@ export class TelegramBotFlowService {
       await this.deps.userState.setBotState(user.userId, { mode: "clone:wait_audio", updatedAt: nowTs() });
       await this.sendMessage(
         chatId,
-        "🧬 <b>ساخت صدای شخصی</b>\n\nیک فایل صوتی (voice/audio) بفرست. بعد از دریافت، اسم صدا را ازت می‌پرسم.",
+        t("clone_menu", lang),
         "HTML",
         { inline_keyboard: [[{ text: LABELS.back, callback_data: "home:back" }]] }
       );
@@ -878,7 +883,7 @@ export class TelegramBotFlowService {
       if (!text) return false;
       if (!state.cloneFileId) {
         await this.deps.userState.setBotState(userId, { mode: "clone:wait_audio", updatedAt: nowTs() });
-        await this.sendMessage(chatId, "⚠️ فایل صوتی پیدا نشد؛ دوباره فایل را ارسال کن.");
+        await this.sendMessage(chatId, t("clone_audio_missing", lang), "HTML");
         return true;
       }
 
@@ -890,7 +895,7 @@ export class TelegramBotFlowService {
         message: `name=${text.slice(0, 100)} file_kind=${state.cloneFileKind || "voice"} file_id=${state.cloneFileId}`,
       });
       await this.deps.userState.setBotState(userId, { mode: "idle", updatedAt: nowTs() });
-      await this.sendMessage(chatId, "✅ درخواست ساخت صدای شخصی ثبت شد. بعد از آماده‌شدن اطلاع می‌گیری.", "HTML");
+      await this.sendMessage(chatId, t("clone_success", lang), "HTML");
       await this.sendMainMenu(chatId, undefined, lang);
       return true;
     }
@@ -1321,7 +1326,7 @@ ${ADMIN_MENU_TEXT}`, this.adminMenuKeyboard(), messageId);
         cloneFileId: fileId,
         cloneFileKind: kind,
       });
-      await this.sendMessage(chatId, "✅ فایل صوتی دریافت شد.\nحالا یک اسم برای صدای جدیدت بفرست.", "HTML");
+      await this.sendMessage(chatId, `✅ فایل صوتی دریافت شد.\n${t("clone_ask_name", (await this.deps.users.getProfile(userId)).lang || "fa")}`, "HTML");
       return true;
     }
 
