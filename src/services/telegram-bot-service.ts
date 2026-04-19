@@ -126,8 +126,51 @@ const I18N: Record<string, Record<string, string>> = {
   low_credit_button: { fa: "خرید کردیت", en: "Buy credits", ar: "شراء الرصيد", tr: "Kredi satın al", ru: "Купить кредиты", es: "Comprar créditos", de: "Credits kaufen", fr: "Acheter des crédits" },
   force_sub_confirmed: { fa: "✅ عضویت تایید شد!", en: "✅ Subscription confirmed!", ar: "✅ تم تأكيد الاشتراك!", tr: "✅ Üyelik doğrulandı!", ru: "✅ Подписка подтверждена!", es: "✅ Suscripción confirmada.", de: "✅ Mitgliedschaft bestätigt!", fr: "✅ Inscription confirmée !" },
   force_sub_not_joined: { fa: "❌ هنوز عضو نشدی!", en: "❌ You're not a member yet!", ar: "❌ لم تنضم بعد!", tr: "❌ Henüz katılmadın!", ru: "❌ Вы ещё не подписались!", es: "❌ Aún no te has unido.", de: "❌ Du bist noch nicht beigetreten!", fr: "❌ Tu n'as pas encore rejoint !" },
+  home_help: {
+    fa: "<b>📖 راهنمای استفاده از Vexa</b>\n\n🔹 <b>کردیت یعنی چی؟</b>\nهر حرف، فاصله یا علامت = ۱ کردیت.\n\n🔹 <b>کردیت رایگان شروع</b>\nبعد از /start، <b>۴۵ کردیت</b> هدیه می‌گیری؛ برای تست کوتاه مثل «سلام، من Vexa هستم».\n\n🔹 <b>اگر پیام «موجودی کافی نیست» دیدی</b>\nمتن رو کوتاه‌تر کن یا اول موجودی رو شارژ کن.\n\n🔹 <b>نکات صداگیری طبیعی</b>\nاز علائم نگارشی استفاده کن:\n• جمله‌ها رو با نقطه جدا کن.\n• برای مکث کوتاه از ویرگول استفاده کن.\n• سوال‌ها رو با ؟ ببند.\n• برای هیجان از ! کمک بگیر.\n\n✍️ <b>مثال</b>\n• ❌ «سلام خوبی امیدوارم حالت خوب باشه»\n• ✅ «سلام! خوبی؟ امیدوارم حالت خوب باشه.»",
+    en: "<b>📖 Using Vexa</b>\n\n🔹 <b>What are credits?</b>\nEach letter, space or symbol = 1 credit.\n\n🔹 <b>Free starter credits</b>\nAfter /start you receive <b>45 credits</b>; enough to try “Hi, I'm Vexa.”\n\n🔹 <b>Not enough credit?</b>\nSend a shorter text or top up first.\n\n🔹 <b>Tips for a natural voice</b>\nUse punctuation for better pauses:\n• Separate sentences with periods.\n• Add commas for short breaks.\n• Finish questions with ?.\n• Add ! for excitement.\n\n✍️ <b>Example</b>\n• ❌ \"hi hope you are well\"\n• ✅ \"Hi! How are you? Hope you're well.\"",
+  },
+  profile_title: { fa: "پروفایل", en: "Profile", ar: "الملف الشخصي", tr: "Profil", ru: "Профиль", es: "Perfil", de: "Profil", fr: "Profil" },
+  profile_body: { fa: "👤 <b>ID : <code>{uid}</code></b>\n💳 <b>Credit : {credits}</b>", en: "👤 ID: {uid}\n💳 Credits: {credits}", ar: "👤 المعرف: {uid}\n💳 الرصيد: {credits}", tr: "👤 ID: {uid}\n💳 Kredi: {credits}", ru: "👤 ID: {uid}\n💳 Кредиты: {credits}", es: "👤 ID: {uid}\n💳 Créditos: {credits}", de: "👤 ID: {uid}\n💳 Guthaben: {credits}", fr: "👤 ID : {uid}\n💳 Crédits : {credits}" },
+  api_token_body: {
+    fa: "🔐 <b>کلید API مخصوص تو</b>\n<code>{token}</code>\n\nبرای هر درخواست این هدر را اضافه کن:\n<code>X-API-Key: {token}</code>\n\n✅ اندپوینت‌های فعال:\n• <b>POST /v1/image</b> → تولید عکس (۵ کردیت)\n• <b>POST /v1/tts</b> → تبدیل متن به صدا (۰٫۰۵ کردیت به ازای هر کاراکتر)\n\nخروجی تولید عکس لینک مستقیم است و صدای TTS به صورت base64 برمی‌گردد. مصرف کردیت از همان موجودی ربات انجام می‌شود.",
+    en: "🔐 <b>Your API token</b>\n<code>{token}</code>\n\nAdd this header to every request:\n<code>X-API-Key: {token}</code>\n\n✅ Available endpoints:\n• <b>POST /v1/image</b> – generate an image (5 credits)\n• <b>POST /v1/tts</b> – text to speech (0.05 credit per character)\n\nImage responses return a direct URL and TTS responses include base64 audio. Credits are deducted from your bot balance.",
+  },
+  api_token_rotate: { fa: "تولید کلید جدید ♻️", en: "Generate new token ♻️", ar: "تجديد الرمز ♻️", tr: "Yeni anahtar üret ♻️", ru: "Сгенерировать новый токен ♻️", es: "Generar nuevo token ♻️", de: "Neuen Token erzeugen ♻️", fr: "Générer un nouveau jeton ♻️" },
+  api_token_rotated: { fa: "🔄 کلید جدید ساخته شد", en: "🔄 New token generated", ar: "🔄 تم إنشاء رمز جديد", tr: "🔄 Yeni anahtar oluşturuldu", ru: "🔄 Создан новый токен", es: "🔄 Nuevo token generado", de: "🔄 Neuer Token erstellt", fr: "🔄 Nouveau jeton créé" },
+  invite_title: { fa: "دعوت دوستان 🎁", en: "Invite Friends 🎁", ar: "دعوة الأصدقاء 🎁", tr: "Arkadaş Davet Et 🎁", ru: "Пригласить друзей 🎁", es: "Invitar amigos 🎁", de: "Freunde einladen 🎁", fr: "Inviter des amis 🎁" },
+  invite_body: { fa: "شناسه عددی شما: <code>{user_id}</code>\nتعداد دعوت‌ها تا الان: <b>{invited}</b>\n\nلینک دعوت شما:\n<code>{ref}</code>\n\n<b>به ازای هر دعوت : +{bonus} کردیت</b>", en: "Your numeric ID: <code>{user_id}</code>\nInvites so far: <b>{invited}</b>\n\nYour invite link:\n<code>{ref}</code>\nPer invite: {bonus} credits", ar: "معرّفك الرقمي: <code>{user_id}</code>\nعدد الدعوات حتى الآن: <b>{invited}</b>\n\nرابط دعوتك:\n<code>{ref}</code>\nلكل دعوة: {bonus} رصيد", tr: "Sayısal kimliğin: <code>{user_id}</code>\nŞu ana kadar davet: <b>{invited}</b>\n\nDavet bağlantın:\n<code>{ref}</code>\nDavet başına: {bonus} kredi", ru: "Ваш числовой ID: <code>{user_id}</code>\nПриглашений на данный момент: <b>{invited}</b>\n\nВаша ссылка:\n<code>{ref}</code>\nЗа приглашение: {bonus} кредитов", es: "Tu ID numérico: <code>{user_id}</code>\nInvitaciones hasta ahora: <b>{invited}</b>\n\nTu enlace de invitación:\n<code>{ref}</code>\nPor invitación: {bonus} créditos", de: "Deine numerische ID: <code>{user_id}</code>\nEinladungen bisher: <b>{invited}</b>\n\nDein Einladungslink:\n<code>{ref}</code>\nPro Einladung: {bonus} Guthaben", fr: "Ton ID numérique : <code>{user_id}</code>\nInvitations jusqu’à présent : <b>{invited}</b>\n\nTon lien d'invitation :\n<code>{ref}</code>\nPar invitation : {bonus} crédits" },
+  invite_daily_reward: { fa: "دریافت پاداش روزانه 🎁", en: "Claim daily reward 🎁", ar: "استلام مكافأة يومية 🎁", tr: "Günlük ödülü al 🎁", ru: "Получить дневной бонус 🎁", es: "Reclamar recompensa diaria 🎁", de: "Tägliche Belohnung holen 🎁", fr: "Obtenir la récompense quotidienne 🎁" },
+  invite_daily_reward_success: { fa: "🎉 امروز {amount} کردیت به عنوان پاداش روزانه گرفتی!", en: "🎉 You received {amount} credits as today's daily reward!", ar: "🎉 حصلت اليوم على {amount} رصيد كمكافأة يومية!", tr: "🎉 Bugünkü günlük ödül olarak {amount} kredi kazandın!", ru: "🎉 Ты получил сегодня {amount} кредитов как ежедневный бонус!", es: "🎉 ¡Recibiste {amount} créditos como recompensa diaria de hoy!", de: "🎉 Du hast heute {amount} Credits als tägliche Belohnung erhalten!", fr: "🎉 Tu as reçu {amount} crédits comme récompense quotidienne d'aujourd'hui !" },
+  invite_daily_reward_cooldown: { fa: "⏳ قبلاً پاداش امروز رو گرفتی. بعد از {time} دوباره تلاش کن.", en: "⏳ You've already claimed today's reward. Try again in {time}.", ar: "⏳ لقد استلمت مكافأة اليوم بالفعل. جرّب بعد {time}.", tr: "⏳ Bugünkü ödülü zaten aldın. {time} sonra tekrar dene.", ru: "⏳ Ты уже получил сегодняшний бонус. Попробуй снова через {time}.", es: "⏳ Ya reclamaste la recompensa de hoy. Vuelve en {time}.", de: "⏳ Du hast die heutige Belohnung schon erhalten. Versuche es in {time} erneut.", fr: "⏳ Tu as déjà récupéré la récompense d'aujourd'hui. Réessaie dans {time}." },
+  onboarding_welcome: { fa: "🎁 {credits} کردیت رایگان گرفتی\n≈ ۱۵ ثانیه صدای هوش مصنوعی\nالان امتحانش کن 👇", en: "🎁 You’ve received {credits} free credits\n≈ 15 Seconds of AI voice\nTry it now 👇", ar: "🎁 لقد حصلت على {credits} رصيد مجاني\n≈ 15 ثوانٍ من صوت الذكاء الاصطناعي\nجرّبه الآن 👇", tr: "🎁 {credits} ücretsiz kredi kazandın\n≈ 15 saniye yapay zekâ sesi\nHemen dene 👇", ru: "🎁 Вы получили {credits} бесплатных кредитов\n≈ 15 секунд AI-голоса\nПопробуйте сейчас 👇", es: "🎁 Recibiste {credits} créditos gratis\n≈ 15 segundos de voz con IA\nPruébalo ahora 👇", de: "🎁 Du hast {credits} kostenlose Credits erhalten\n≈ 15 Sekunden KI-Stimme\nJetzt ausprobieren 👇", fr: "🎁 Tu as reçu {credits} crédits gratuits\n≈ 15 secondes de voix IA\nEssaie maintenant 👇" },
+  onboarding_daily_bonus_ready: { fa: "🎁 پاداش روزانه آماده است!\nبرای دریافت کردیت رایگان روی دکمه زیر بزن.", en: "🎁 Daily bonus is ready!\nTap below to claim your free credits.", ar: "🎁 المكافأة اليومية جاهزة!\nاضغط بالأسفل لتحصل على رصيدك المجاني.", tr: "🎁 Günlük bonus hazır!\nÜcretsiz kredini almak için aşağıya dokun.", ru: "🎁 Ежедневный бонус готов!\nНажмите ниже, чтобы получить бесплатные кредиты.", es: "🎁 ¡La bonificación diaria está lista!\nToca abajo para reclamar tus créditos gratis.", de: "🎁 Die tägliche Belohnung ist bereit!\nTippe unten, um deine Gratis-Credits zu erhalten.", fr: "🎁 Le bonus quotidien est prêt !\nAppuie ci-dessous pour récupérer tes crédits gratuits." },
+  onboarding_daily_bonus_unlocked: { fa: "🎁 پاداش روزانه باز شد 🙂\nکردیت رایگان منتظرته.\nبرای دریافت بزن.", en: "🎁 Daily bonus unlocked 🙂\nFree credits are waiting for you.\nTap to collect.", ar: "🎁 تم فتح المكافأة اليومية 🙂\nالرصيد المجاني بانتظارك.\nاضغط للتحصيل.", tr: "🎁 Günlük bonus açıldı 🙂\nÜcretsiz krediler seni bekliyor.\nAlmak için dokun.", ru: "🎁 Ежедневный бонус открыт 🙂\nБесплатные кредиты ждут тебя.\nНажми, чтобы получить.", es: "🎁 Bono diario desbloqueado 🙂\nHay créditos gratis esperándote.\nToca para recoger.", de: "🎁 Täglicher Bonus freigeschaltet 🙂\nGratis-Credits warten auf dich.\nTippe zum Einsammeln.", fr: "🎁 Bonus quotidien débloqué 🙂\nDes crédits gratuits t’attendent.\nAppuie pour récupérer." },
+  onboarding_bonus_button: { fa: "🎁", en: "🎁", ar: "🎁", tr: "🎁", ru: "🎁", es: "🎁", de: "🎁", fr: "🎁" },
+  gpt_open: { fa: "<b>GPT-5 mini آماده است 🙂</b>\n<b>پیامت رو پایین بنویس</b>", en: "<b>GPT-5 mini is ready 🙂</b>\n<b>Send your message below</b>", ar: "<b>GPT-5 mini جاهز 🙂</b>\n<b>اكتب رسالتك بالأسفل</b>", tr: "<b>GPT-5 mini hazır 🙂</b>\n<b>Mesajını aşağıya yaz</b>", ru: "<b>GPT-5 mini готов 🙂</b>\n<b>Напиши сообщение ниже</b>", es: "<b>GPT-5 mini está listo 🙂</b>\n<b>Escribe tu mensaje abajo</b>", de: "<b>GPT-5 mini ist bereit 🙂</b>\n<b>Schreibe deine Nachricht unten</b>", fr: "<b>GPT-5 mini est prêt 🙂</b>\n<b>Écris ton message ci-dessous</b>" },
+  gpt_end: { fa: "✅ <b>فعلاً تا همین‌جا! هر وقت خواستی برگرد گپ بزنیم.</b>", en: "✅ <b>Chat ended for now. Come back anytime.</b>", ar: "✅ <b>تم إنهاء الدردشة حالياً. عد في أي وقت.</b>", tr: "✅ <b>Sohbet şimdilik bitti. İstediğin zaman dön.</b>", ru: "✅ <b>Чат завершён. Возвращайся в любое время.</b>", es: "✅ <b>Chat finalizado por ahora. Vuelve cuando quieras.</b>", de: "✅ <b>Chat vorerst beendet. Komm jederzeit zurück.</b>", fr: "✅ <b>Discussion terminée pour le moment. Reviens quand tu veux.</b>" },
+  gpt_end_button: { fa: "✅ اتمام چت", en: "✅ End chat", ar: "✅ إنهاء الدردشة", tr: "✅ Sohbeti bitir", ru: "✅ Завершить чат", es: "✅ Finalizar chat", de: "✅ Chat beenden", fr: "✅ Terminer le chat" },
+  gpt_wait: { fa: "🫧 <b>درحال فکر کردن...</b>", en: "🫧 <b>Thinking...</b>", ar: "🫧 <b>جارٍ التفكير...</b>", tr: "🫧 <b>Düşünüyor...</b>", ru: "🫧 <b>Думаю...</b>", es: "🫧 <b>Pensando...</b>", de: "🫧 <b>Denke nach...</b>", fr: "🫧 <b>Je réfléchis...</b>" },
+  image_intro: { fa: "🖼️ <b>هرچی میخوای بنویس تا برات بسازمش.</b>\nهر تصویر 1 کردیت از حسابت کم میشه.", en: "🖼️ <b>Describe anything you want and I'll make it.</b>\nEach image costs 1 credit.", ar: "🖼️ <b>اكتب أي شيء تريده وسأصنعه لك.</b>\nكل صورة تخصم 1 رصيد.", tr: "🖼️ <b>Ne istersen yaz, senin için oluşturayım.</b>\nHer görsel için 1 kredi düşer.", ru: "🖼️ <b>Опиши всё, что хочешь — я создам это.</b>\nЗа каждое изображение списывается 1 кредит.", es: "🖼️ <b>Describe lo que quieras y lo crearé para ti.</b>\nCada imagen cuesta 1 crédito.", de: "🖼️ <b>Beschreibe, was du willst, und ich setze es um.</b>\nFür jedes Bild wird 1 Credit abgezogen.", fr: "🖼️ <b>Décris ce que tu veux et je le créerai pour toi.</b>\nChaque image coûte 1 crédit." },
+  image_processing: { fa: "🎨 <b>در حال ساخت تصویر...</b>", en: "🎨 <b>Generating the image...</b>", ar: "🎨 <b>جارٍ توليد الصورة...</b>", tr: "🎨 <b>Görsel oluşturuluyor...</b>", ru: "🎨 <b>Создаю изображение...</b>", es: "🎨 <b>Generando la imagen...</b>", de: "🎨 <b>Bild wird erstellt...</b>", fr: "🎨 <b>Génération de l'image...</b>" },
+  image_need_prompt: { fa: "⚠️ لطفاً برای این عکس یه توضیح متنی هم بنویس تا بدونم چه تغییری می‌خوای.", en: "⚠️ Please add a short caption describing the change you want.", ar: "⚠️ أضف وصفاً نصياً للصورة حتى أعرف التعديل المطلوب.", tr: "⚠️ Lütfen istediğin değişikliği anlatan kısa bir açıklama yaz.", ru: "⚠️ Добавьте текстовое описание, чтобы понять, что изменить.", es: "⚠️ Añade un texto que describa el cambio que quieres.", de: "⚠️ Bitte füge eine kurze Beschreibung hinzu, welche Änderung du möchtest.", fr: "⚠️ Ajoute une courte description de la modification souhaitée." },
+  video_gen4_intro: { fa: "🎬 <b>عکس بفرست تا برات ویدیو بسازم.</b>\nهر ویدیو 1 کردیت هزینه دارد.\nمی‌تونی همراه عکس کپشن هم بفرستی تا حرکت رو توضیح بدی.", en: "🎬 <b>Send a photo and I'll turn it into a video.</b>\nEach video costs 1 credit.\nYou can add a caption to guide the motion.", ar: "🎬 <b>أرسل صورة وسأحوّلها إلى فيديو.</b>\nكل فيديو يكلف 1 رصيد.\nيمكنك إضافة تعليق لشرح الحركة.", tr: "🎬 <b>Bir fotoğraf gönder, senin için videoya çevireyim.</b>\nHer video 1 krediye mal olur.\nHareketi yönlendirmek için açıklama ekleyebilirsin.", ru: "🎬 <b>Пришли фото — я превращу его в видео.</b>\nКаждое видео стоит 1 кредит.\nМожешь добавить подпись, чтобы задать движение.", es: "🎬 <b>Envía una foto y la convertiré en video.</b>\nCada video cuesta 1 crédito.\nPuedes añadir una leyenda para guiar el movimiento.", de: "🎬 <b>Sende ein Foto und ich mache daraus ein Video.</b>\nJedes Video kostet 1 Credit.\nDu kannst eine Bildunterschrift hinzufügen, um die Bewegung zu steuern.", fr: "🎬 <b>Envoie une photo et je la transforme en vidéo.</b>\nChaque vidéo coûte 1 crédit.\nTu peux ajouter une légende pour guider le mouvement." },
+  video_gen4_processing: { fa: "🎥 <b>در حال ساخت ویدیو...</b>", en: "🎥 <b>Generating the video...</b>", ar: "🎥 <b>جارٍ إنشاء الفيديو...</b>", tr: "🎥 <b>Video oluşturuluyor...</b>", ru: "🎥 <b>Создаю видео...</b>", es: "🎥 <b>Generando el video...</b>", de: "🎥 <b>Video wird erstellt...</b>", fr: "🎥 <b>Génération de la vidéo...</b>" },
+  video_gen4_need_image: { fa: "⚠️ لطفاً یک عکس بفرست تا ویدیو بسازم.", en: "⚠️ Please send a photo so I can create a video.", ar: "⚠️ أرسل صورة من فضلك ليتم إنشاء الفيديو.", tr: "⚠️ Lütfen video oluşturmak için bir fotoğraf gönder.", ru: "⚠️ Пожалуйста, пришлите фото, чтобы я сделал видео.", es: "⚠️ Por favor envía una foto para crear el video.", de: "⚠️ Bitte sende ein Foto, damit ich ein Video erstellen kann.", fr: "⚠️ Merci d'envoyer une photo pour que je puisse créer la vidéo." },
+  tts_banned_words: { fa: "❌ این کلمات قابل تبدیل نیستند. لطفاً متن دیگری استفاده کن.", en: "❌ This text contains blocked words. Please use different wording.", ar: "❌ هذا النص يحتوي على كلمات محظورة. الرجاء استخدام نص آخر.", tr: "❌ Bu metin yasaklı kelimeler içeriyor. Lütfen farklı bir metin kullan.", ru: "❌ В тексте есть запрещённые слова. Пожалуйста, сформулируйте иначе.", es: "❌ Este texto contiene palabras bloqueadas. Usa otro texto, por favor.", de: "❌ Dieser Text enthält gesperrte Wörter. Bitte formuliere ihn anders.", fr: "❌ Ce texte contient des mots interdits. Merci d'utiliser un autre texte." },
+  force_sub_title: { fa: "<b>برای ادامه عضو کانال شو</b>", en: "<b>Join our channel to continue</b>", ar: "<b>انضم إلى القناة للمتابعة</b>", tr: "<b>Devam etmek için kanala katıl</b>", ru: "<b>Чтобы продолжить, вступи в канал</b>", es: "<b>Únete al canal para continuar</b>", de: "<b>Tritt dem Kanal bei, um weiterzumachen</b>", fr: "<b>Rejoins la chaîne pour continuer</b>" },
+  force_sub_join_channel: { fa: "• کانال تلگرام", en: "• Telegram channel", ar: "• قناة تيليجرام", tr: "• Telegram kanalı", ru: "• Канал в Telegram", es: "• Canal de Telegram", de: "• Telegram-Kanal", fr: "• Chaîne Telegram" },
+  force_sub_join_instagram: { fa: "• صفحه اینستاگرام", en: "• Instagram page", ar: "• صفحة إنستغرام", tr: "• Instagram sayfası", ru: "• Страница в Instagram", es: "• Página de Instagram", de: "• Instagram-Seite", fr: "• Page Instagram" },
+  force_sub_hint: { fa: "بعد از عضویت روی دکمه «عضو شدم» بزن.", en: "After joining, tap \"I joined\" to continue.", ar: "بعد الانضمام اضغط زر \"انضممت\" للمتابعة.", tr: "Katıldıktan sonra \"Katıldım\" düğmesine bas.", ru: "После вступления нажми «Я вступил(а)».", es: "Después de unirte, toca \"Ya me uní\" para continuar.", de: "Nach dem Beitritt tippe auf \"Ich bin beigetreten\".", fr: "Après avoir rejoint, appuie sur \"Je me suis abonné\" pour continuer." },
+  force_sub_btn_join_channel: { fa: "عضویت در کانال 🚀", en: "Join channel 🚀", ar: "انضمام إلى القناة 🚀", tr: "Kanala katıl 🚀", ru: "Вступить в канал 🚀", es: "Unirme al canal 🚀", de: "Kanal beitreten 🚀", fr: "Rejoindre la chaîne 🚀" },
+  force_sub_btn_follow_instagram: { fa: "دنبال کردن اینستاگرام 📱", en: "Follow on Instagram 📱", ar: "متابعة إنستغرام 📱", tr: "Instagram'ı takip et 📱", ru: "Подписаться в Instagram 📱", es: "Seguir en Instagram 📱", de: "Instagram folgen 📱", fr: "Suivre sur Instagram 📱" },
+  force_sub_btn_joined: { fa: "عضو شدم ✅", en: "I joined ✅", ar: "انضممت ✅", tr: "Katıldım ✅", ru: "Я вступил ✅", es: "Ya me uní ✅", de: "Ich bin beigetreten ✅", fr: "Je me suis abonné ✅" },
+  receipt_waiting_confirm: { fa: "✅ رسید دریافت شد\n⏳ <b>...درحال بررسـی</b>", en: "✅ Receipt received\n⏳ <b>Under review...</b>", ar: "✅ تم استلام الإيصال\n⏳ <b>جارٍ المراجعة...</b>", tr: "✅ Dekont alındı\n⏳ <b>İnceleniyor...</b>", ru: "✅ Чек получен\n⏳ <b>Проверяем...</b>", es: "✅ Recibo recibido\n⏳ <b>En revisión...</b>", de: "✅ Beleg erhalten\n⏳ <b>Wird geprüft...</b>", fr: "✅ Reçu reçu\n⏳ <b>En cours de vérification...</b>" },
+  sora2_btn_buy: { fa: "خرید کد دعوت 🎟️", en: "Buy invite code 🎟️", ar: "شراء رمز الدعوة 🎟️", tr: "Davet kodu satın al 🎟️", ru: "Купить код-приглашение 🎟️", es: "Comprar código de invitación 🎟️", de: "Einladungscode kaufen 🎟️", fr: "Acheter un code d'invitation 🎟️" },
+  sora2_no_credit_alert: { fa: "⚠️ کردیت کافی نیست.", en: "⚠️ Not enough credits.", ar: "⚠️ لا يوجد رصيد كافٍ.", tr: "⚠️ Yeterli kredin yok.", ru: "⚠️ Недостаточно кредитов.", es: "⚠️ Créditos insuficientes.", de: "⚠️ Nicht genug Credits.", fr: "⚠️ Crédits insuffisants." },
 };
 const t = (key: string, lang: string) => I18N[key]?.[lang] || I18N[key]?.fa || key;
+const BANNED_WORDS = ["کوص"];
 const DEFAULT_VOICE_NAME_BY_LANG: Record<string, string> = { fa: "Liam", en: "Ava", ar: "Liam", tr: "Arda", ru: "Алина", es: "Valeria", de: "Lena", fr: "Léa" };
 const VOICES_BY_LANG: Record<string, Record<string, string>> = {"fa": {"Liam": "TX3LPaxmHKxFdv7VOQHJ", "Amir": "1SM7GgM6IMuvQlz2BwM3", "Nazy": "tnSpp4vdxKPjI9w0GnoV", "Sarah": "BIvP0GN1cAtSRTxNHnWS", "Alex": "GFGuOkimbpNkTEOVDkqX", "Noushin": "NZiuR1C6kVMSWHG27sIM", "Paniz": "BZgkqPqms7Kj9ulSkVzn", "Alexandra": "kdmDKE6EkgrWrrykO9Qt", "Laura": "7piC4m7q8WrpEAnMj5xC", "Maxon": "0dPqNXnhg2bmxQv1WKDp", "Jessica": "cgSgspJ2msm6clMCkdW9", "Austin": "Bj9UqZbhQsanLzgalpEG", "priyanka": "BpjGufoPiobT79j2vtj4", "horatius": "qXpMhyvQqiRxWQs4qSSB", "anika": "Sm1seazb4gs7RSlUVw7c", "brock": "DGzg6RaUqxGRTHSBjfgF", "Xavier": "YOq2y2Up4RgXP2HyXjE5", "Bradford": "NNl6r8mD7vthiJatiJt1"}, "en": {"Liam": "TX3LPaxmHKxFdv7VOQHJ", "Noah": "1SM7GgM6IMuvQlz2BwM3", "Ava": "tnSpp4vdxKPjI9w0GnoV", "Nora": "BIvP0GN1cAtSRTxNHnWS", "Alex": "GFGuOkimbpNkTEOVDkqX", "Ella": "NZiuR1C6kVMSWHG27sIM", "Chloe": "BZgkqPqms7Kj9ulSkVzn", "Alexandra": "kdmDKE6EkgrWrrykO9Qt", "Laura": "7piC4m7q8WrpEAnMj5xC", "Maxon": "0dPqNXnhg2bmxQv1WKDp", "Jessica": "cgSgspJ2msm6clMCkdW9", "Austin": "Bj9UqZbhQsanLzgalpEG", "priyanka": "BpjGufoPiobT79j2vtj4", "horatius": "qXpMhyvQqiRxWQs4qSSB", "anika": "Sm1seazb4gs7RSlUVw7c", "brock": "DGzg6RaUqxGRTHSBjfgF", "Xavier": "YOq2y2Up4RgXP2HyXjE5", "Lucas": "NNl6r8mD7vthiJatiJt1"}, "ar": {"Liam": "TX3LPaxmHKxFdv7VOQHJ", "Amir": "1SM7GgM6IMuvQlz2BwM3", "Nazy": "tnSpp4vdxKPjI9w0GnoV", "Sarah": "BIvP0GN1cAtSRTxNHnWS", "Alex": "GFGuOkimbpNkTEOVDkqX", "Noushin": "NZiuR1C6kVMSWHG27sIM", "Paniz": "BZgkqPqms7Kj9ulSkVzn", "Alexandra": "kdmDKE6EkgrWrrykO9Qt", "Laura": "7piC4m7q8WrpEAnMj5xC", "Maxon": "0dPqNXnhg2bmxQv1WKDp", "Jessica": "cgSgspJ2msm6clMCkdW9", "Austin": "Bj9UqZbhQsanLzgalpEG", "priyanka": "BpjGufoPiobT79j2vtj4", "horatius": "qXpMhyvQqiRxWQs4qSSB", "anika": "Sm1seazb4gs7RSlUVw7c", "brock": "DGzg6RaUqxGRTHSBjfgF", "Xavier": "YOq2y2Up4RgXP2HyXjE5", "Bradford": "NNl6r8mD7vthiJatiJt1"}, "tr": {"Arda": "TX3LPaxmHKxFdv7VOQHJ", "Emre": "1SM7GgM6IMuvQlz2BwM3", "Deniz": "tnSpp4vdxKPjI9w0GnoV", "Sarah": "BIvP0GN1cAtSRTxNHnWS", "Burak": "GFGuOkimbpNkTEOVDkqX", "Selin": "NZiuR1C6kVMSWHG27sIM", "Duru": "BZgkqPqms7Kj9ulSkVzn", "Elif": "kdmDKE6EkgrWrrykO9Qt", "İrem": "7piC4m7q8WrpEAnMj5xC", "Mert": "0dPqNXnhg2bmxQv1WKDp", "Asya": "cgSgspJ2msm6clMCkdW9", "Derya": "Bj9UqZbhQsanLzgalpEG", "priyanka": "BpjGufoPiobT79j2vtj4", "horatius": "qXpMhyvQqiRxWQs4qSSB", "anika": "Sm1seazb4gs7RSlUVw7c", "Ozan": "DGzg6RaUqxGRTHSBjfgF", "Xavier": "YOq2y2Up4RgXP2HyXjE5", "Kaan": "NNl6r8mD7vthiJatiJt1"}, "ru": {"Илья": "TX3LPaxmHKxFdv7VOQHJ", "Никита": "1SM7GgM6IMuvQlz2BwM3", "Алина": "tnSpp4vdxKPjI9w0GnoV", "Милана": "BIvP0GN1cAtSRTxNHnWS", "Даниил": "GFGuOkimbpNkTEOVDkqX", "София": "NZiuR1C6kVMSWHG27sIM", "Ева": "BZgkqPqms7Kj9ulSkVzn", "Полина": "kdmDKE6EkgrWrrykO9Qt", "Кира": "7piC4m7q8WrpEAnMj5xC", "Maxon": "0dPqNXnhg2bmxQv1WKDp", "Дарья": "cgSgspJ2msm6clMCkdW9", "Austin": "Bj9UqZbhQsanLzgalpEG", "priyanka": "BpjGufoPiobT79j2vtj4", "horatius": "qXpMhyvQqiRxWQs4qSSB", "Вероника": "Sm1seazb4gs7RSlUVw7c", "brock": "DGzg6RaUqxGRTHSBjfgF", "Xavier": "YOq2y2Up4RgXP2HyXjE5", "Матвей": "NNl6r8mD7vthiJatiJt1"}, "es": {"Mateo": "TX3LPaxmHKxFdv7VOQHJ", "Leo": "1SM7GgM6IMuvQlz2BwM3", "Valeria": "tnSpp4vdxKPjI9w0GnoV", "Sofía": "BIvP0GN1cAtSRTxNHnWS", "Diego": "GFGuOkimbpNkTEOVDkqX", "Camila": "NZiuR1C6kVMSWHG27sIM", "Luna": "BZgkqPqms7Kj9ulSkVzn", "Renata": "kdmDKE6EkgrWrrykO9Qt", "Martina": "7piC4m7q8WrpEAnMj5xC", "Bruno": "0dPqNXnhg2bmxQv1WKDp", "Paula": "cgSgspJ2msm6clMCkdW9", "Tomás": "Bj9UqZbhQsanLzgalpEG", "Elena": "BpjGufoPiobT79j2vtj4", "horatius": "qXpMhyvQqiRxWQs4qSSB", "Abril": "Sm1seazb4gs7RSlUVw7c", "brock": "DGzg6RaUqxGRTHSBjfgF", "Xavier": "YOq2y2Up4RgXP2HyXjE5", "Andrés": "NNl6r8mD7vthiJatiJt1"}, "de": {"Leon": "TX3LPaxmHKxFdv7VOQHJ", "Luca": "1SM7GgM6IMuvQlz2BwM3", "Lena": "tnSpp4vdxKPjI9w0GnoV", "Mia": "BIvP0GN1cAtSRTxNHnWS", "Finn": "GFGuOkimbpNkTEOVDkqX", "Emma": "NZiuR1C6kVMSWHG27sIM", "Lea": "BZgkqPqms7Kj9ulSkVzn", "Hannah": "kdmDKE6EkgrWrrykO9Qt", "Laura": "7piC4m7q8WrpEAnMj5xC", "Jonas": "0dPqNXnhg2bmxQv1WKDp", "Nina": "cgSgspJ2msm6clMCkdW9", "Paul": "Bj9UqZbhQsanLzgalpEG", "Clara": "BpjGufoPiobT79j2vtj4", "Max": "qXpMhyvQqiRxWQs4qSSB", "Sophie": "Sm1seazb4gs7RSlUVw7c", "Noah": "DGzg6RaUqxGRTHSBjfgF", "Xavier": "YOq2y2Up4RgXP2HyXjE5", "Tim": "NNl6r8mD7vthiJatiJt1"}, "fr": {"Hugo": "TX3LPaxmHKxFdv7VOQHJ", "Noah": "1SM7GgM6IMuvQlz2BwM3", "Léa": "tnSpp4vdxKPjI9w0GnoV", "Inès": "BIvP0GN1cAtSRTxNHnWS", "Theo": "GFGuOkimbpNkTEOVDkqX", "Emma": "NZiuR1C6kVMSWHG27sIM", "Jade": "BZgkqPqms7Kj9ulSkVzn", "Mila": "kdmDKE6EkgrWrrykO9Qt", "Louise": "7piC4m7q8WrpEAnMj5xC", "Jules": "0dPqNXnhg2bmxQv1WKDp", "Jessica": "cgSgspJ2msm6clMCkdW9", "Adrien": "Bj9UqZbhQsanLzgalpEG", "Nina": "BpjGufoPiobT79j2vtj4", "horatius": "qXpMhyvQqiRxWQs4qSSB", "Zoé": "Sm1seazb4gs7RSlUVw7c", "brock": "DGzg6RaUqxGRTHSBjfgF", "Xavier": "YOq2y2Up4RgXP2HyXjE5", "Paul": "NNl6r8mD7vthiJatiJt1"}};
 const STAR_PACKAGES = [
@@ -316,7 +359,7 @@ export class TelegramBotFlowService {
     }
     if (data === "home:profile") {
       const credits = (await this.deps.credits.getCredits(user.userId)).credits;
-      await this.answerCallback(callback.id, `نمای کلی حساب\n\n💳 موجودی شما: ${credits} کردیت`, true);
+      await this.answerCallback(callback.id, `${t("profile_title", lang)}\n\n${t("profile_body", lang).replace(/<[^>]+>/g, "").replace("{uid}", String(user.userId)).replace("{credits}", String(credits))}`, true);
       return { handled: "profile" };
     }
     if (data === "home:credit" || data === "credit:menu") {
@@ -368,18 +411,18 @@ export class TelegramBotFlowService {
     }
     if (data === "home:api_token") {
       const token = await this.deps.tokens.getOrCreate(user.userId);
-      await this.sendApiTokenMenu(chatId, token, messageId);
+      await this.sendApiTokenMenu(chatId, token, lang, messageId);
       await this.answerCallback(callback.id);
       return { handled: "api_token" };
     }
     if (data === "api:rotate") {
       const token = await this.deps.tokens.rotate(user.userId);
-      await this.sendApiTokenMenu(chatId, token, messageId);
-      await this.answerCallback(callback.id, "✅ توکن API چرخانده شد.");
+      await this.sendApiTokenMenu(chatId, token, lang, messageId);
+      await this.answerCallback(callback.id, t("api_token_rotated", lang));
       return { handled: "api_rotate" };
     }
     if (data === "home:lang") {
-      await this.sendLanguageMenu(chatId, lang, messageId);
+      await this.sendLanguageMenu(chatId, lang, messageId, false, true);
       await this.answerCallback(callback.id);
       return { handled: "lang_menu" };
     }
@@ -408,8 +451,8 @@ export class TelegramBotFlowService {
     }
     if (data === "home:gpt_chat") {
       await this.deps.userState.setBotState(user.userId, { mode: "gpt:chat", updatedAt: nowTs() });
-      await this.sendMessage(chatId, "<b>GPT-5 mini آماده است 🙂</b>\n<b>پیامت رو پایین بنویس</b>", "HTML", undefined, {
-        keyboard: [[{ text: LABELS.gptEnd }]],
+      await this.sendMessage(chatId, t("gpt_open", lang), "HTML", undefined, {
+        keyboard: [[{ text: t("gpt_end_button", lang) }]],
         resize_keyboard: true,
       });
       await this.answerCallback(callback.id);
@@ -507,7 +550,7 @@ export class TelegramBotFlowService {
     }
     if (data === "home:image") {
       await this.deps.userState.setBotState(user.userId, { mode: "image:wait_prompt", updatedAt: nowTs() });
-      await this.sendMessage(chatId, "🖼️ <b>تولید تصویر</b>\n\nپرامپتت رو بفرست تا تصویر ساخته بشه.", "HTML", {
+      await this.sendMessage(chatId, t("image_intro", lang), "HTML", {
         inline_keyboard: [[{ text: LABELS.back, callback_data: "image:back" }]],
       });
       await this.answerCallback(callback.id);
@@ -521,7 +564,7 @@ export class TelegramBotFlowService {
     }
     if (data === "home:video") {
       await this.deps.userState.setBotState(user.userId, { mode: "video:wait_image", updatedAt: nowTs() });
-      await this.sendMessage(chatId, "🎬 <b>Gen-4 Video</b>\n\nیک عکس بفرست تا ویدیو ساخته شود.", "HTML", {
+      await this.sendMessage(chatId, t("video_gen4_intro", lang), "HTML", {
         inline_keyboard: [[{ text: LABELS.back, callback_data: "video_gen4:back" }]],
       });
       await this.answerCallback(callback.id);
@@ -544,12 +587,12 @@ export class TelegramBotFlowService {
       const diff = nowTs() - last;
       if (diff < DAILY_REWARD_SECONDS) {
         const minutes = Math.ceil((DAILY_REWARD_SECONDS - diff) / 60);
-        await this.answerCallback(callback.id, `⏳ ${minutes} دقیقه تا جایزه بعدی باقی مانده.`, true);
+        await this.answerCallback(callback.id, t("invite_daily_reward_cooldown", lang).replace("{time}", `${minutes} min`), true);
         return { handled: "daily_reward_cooldown" };
       }
       await this.deps.credits.grant(user.userId, 10, "invite_daily_reward", "telegram_bot");
       await this.deps.userState.setBotState(user.userId, { ...state, dailyRewardClaimedAt: nowTs(), updatedAt: nowTs() });
-      await this.answerCallback(callback.id, "✅ 10 کردیت روزانه اضافه شد!", true);
+      await this.answerCallback(callback.id, t("invite_daily_reward_success", lang).replace("{amount}", "10"), true);
       await this.sendInviteMenu(chatId, user.userId);
       return { handled: "daily_reward_claim" };
     }
@@ -559,15 +602,15 @@ export class TelegramBotFlowService {
       return { handled: "onboarding_invite" };
     }
     if (data === "home:sora2" || data === "sora2:menu") {
-      await this.sendSora2Menu(chatId, messageId);
+      await this.sendSora2Menu(chatId, lang, messageId);
       await this.answerCallback(callback.id);
       return { handled: "sora2_menu" };
     }
     if (data === "sora2:buy") {
       const credits = (await this.deps.credits.getCredits(user.userId)).credits;
       if (credits < SORA2_COST) {
-        await this.sendSora2NoCredit(chatId, messageId, credits);
-        await this.answerCallback(callback.id, "⚠️ کردیت کافی نیست.", true);
+        await this.sendSora2NoCredit(chatId, lang, messageId, credits);
+        await this.answerCallback(callback.id, t("sora2_no_credit_alert", lang), true);
         return { handled: "sora2_no_credit" };
       }
       await this.deps.credits.consume(user.userId, SORA2_COST, "sora2_invite_code", "telegram_bot");
@@ -577,13 +620,18 @@ export class TelegramBotFlowService {
         category: "sora2_request",
         message: `queue_position~${SORA2_QUEUE_START} cost=${SORA2_COST}`,
       });
-      await this.sendSora2PurchaseSuccess(chatId, messageId);
+      await this.sendSora2PurchaseSuccess(chatId, lang, messageId);
       await this.answerCallback(callback.id);
       return { handled: "sora2_buy" };
     }
     if (data.startsWith("credit_admin:")) {
       const parts = data.split(":");
       const action = parts[1];
+      const ownerId = Number(this.deps.ownerTelegramChatId || 0);
+      if (ownerId > 0 && ownerId !== userId) {
+        await this.answerCallback(callback.id, "⛔️", true);
+        return { handled: "credit_admin_denied" };
+      }
       const targetUser = Number(parts[2] || 0);
       const planIndex = Number(parts[3] || 0);
       const plan = PAYMENT_PLANS[planIndex];
@@ -660,7 +708,7 @@ export class TelegramBotFlowService {
 
     switch (text) {
       case "/help":
-        await this.sendHelp(chatId);
+        await this.sendHelp(chatId, lang);
         return { handled: "help" };
       case "/menu":
         await this.sendMainMenu(chatId, undefined, lang);
@@ -669,7 +717,11 @@ export class TelegramBotFlowService {
         return { handled: "menu" };
       case "/profile": {
         const credits = await this.deps.credits.getCredits(userId);
-        await this.sendMessage(chatId, `نمای کلی حساب\n\n💳 موجودی شما: ${credits.credits} کردیت`);
+        await this.sendMessage(
+          chatId,
+          `🙋🏼‍♂️ <b>${t("profile_title", lang)}</b>\n\n${t("profile_body", lang).replace("{uid}", String(userId)).replace("{credits}", String(credits.credits))}`,
+          "HTML"
+        );
         return { handled: "profile" };
       }
       case "/credits":
@@ -677,18 +729,18 @@ export class TelegramBotFlowService {
         return { handled: "credits" };
       case "/apitoken": {
         const token = await this.deps.tokens.getOrCreate(userId);
-        await this.sendApiTokenMenu(chatId, token);
+        await this.sendApiTokenMenu(chatId, token, lang);
         return { handled: "api_token" };
       }
       case "/rotatetoken": {
         const token = await this.deps.tokens.rotate(userId);
-        await this.sendApiTokenMenu(chatId, token);
+        await this.sendApiTokenMenu(chatId, token, lang);
         return { handled: "api_rotate" };
       }
       case "/ask":
         await this.deps.userState.setBotState(userId, { mode: "gpt:chat", updatedAt: nowTs() });
-        await this.sendMessage(chatId, "<b>GPT-5 mini آماده است 🙂</b>\n<b>پیامت رو پایین بنویس</b>", "HTML", undefined, {
-          keyboard: [[{ text: LABELS.gptEnd }]],
+        await this.sendMessage(chatId, t("gpt_open", lang), "HTML", undefined, {
+          keyboard: [[{ text: t("gpt_end_button", lang) }]],
           resize_keyboard: true,
         });
         return { handled: "gpt_open" };
@@ -705,9 +757,9 @@ export class TelegramBotFlowService {
   private async handleStateDrivenMessage(userId: number, lang: string, chatId: number, text: string, state: BotConversationState): Promise<boolean> {
     if (state.mode === "gpt:chat") {
       if (!text) return false;
-      if (text === LABELS.gptEnd) {
+      if (text === t("gpt_end_button", lang)) {
         await this.deps.userState.setBotState(userId, { mode: "idle", updatedAt: nowTs() });
-        await this.sendMessage(chatId, "✅ <b>فعلاً تا همین‌جا! هر وقت خواستی برگرد گپ بزنیم.</b>", "HTML", undefined, {
+        await this.sendMessage(chatId, t("gpt_end", lang), "HTML", undefined, {
           remove_keyboard: true,
         });
         await this.sendMainMenu(chatId, undefined, lang);
@@ -717,8 +769,8 @@ export class TelegramBotFlowService {
       await this.deps.history.append(userId, "user", text);
       await this.deps.history.append(userId, "assistant", `Received your prompt: ${text.slice(0, 400)}`);
       await this.deps.credits.consume(userId, 1, "gpt_message", "telegram_bot");
-      await this.sendMessage(chatId, `🫧 <b>درحال فکر کردن...</b>\n\n${text.slice(0, 400)}`, "HTML", undefined, {
-        keyboard: [[{ text: LABELS.gptEnd }]],
+      await this.sendMessage(chatId, `${t("gpt_wait", lang)}\n\n${text.slice(0, 400)}`, "HTML", undefined, {
+        keyboard: [[{ text: t("gpt_end_button", lang) }]],
         resize_keyboard: true,
       });
       return true;
@@ -726,6 +778,11 @@ export class TelegramBotFlowService {
 
     if (state.mode === "tts:wait_text") {
       if (!text) return false;
+      if (this.hasBannedWord(text)) {
+        const currentVoice = state.ttsVoice || DEFAULT_VOICE_NAME_BY_LANG[lang] || DEFAULT_VOICE_NAME_BY_LANG.fa;
+        await this.sendMessage(chatId, t("tts_banned_words", lang), "HTML", this.ttsKeyboard(lang, currentVoice, state.ttsOutput || "mp3", state.ttsPage || 0));
+        return true;
+      }
       const cost = Math.max(1, Math.ceil(text.length / 100));
       await this.deps.credits.consume(userId, cost, "tts_message", "telegram_bot");
       await this.deps.ownerNotifications.queue({
@@ -749,7 +806,7 @@ export class TelegramBotFlowService {
         category: "image_request",
         message: text.slice(0, 1500),
       });
-      await this.sendMessage(chatId, "🖼️ درخواست تصویرت ثبت شد و برای پردازش ارسال شد.", undefined, {
+      await this.sendMessage(chatId, t("image_processing", lang), "HTML", {
         inline_keyboard: [[{ text: LABELS.back, callback_data: "image:back" }]],
       });
       return true;
@@ -757,7 +814,7 @@ export class TelegramBotFlowService {
 
     if (state.mode === "video:wait_image") {
       if (!text) return false;
-      await this.sendMessage(chatId, "🎬 لطفاً یک عکس ارسال کن.", undefined, {
+      await this.sendMessage(chatId, t("video_gen4_need_image", lang), "HTML", {
         inline_keyboard: [[{ text: LABELS.back, callback_data: "video_gen4:back" }]],
       });
       return true;
@@ -803,11 +860,11 @@ export class TelegramBotFlowService {
         await this.handleCommand(userId, lang, chatId, "/ask", { mode: "idle", updatedAt: nowTs() });
         return true;
       case t("btn_lang", lang):
-        await this.sendLanguageMenu(chatId, lang);
+        await this.sendLanguageMenu(chatId, lang, undefined, false, true);
         return true;
       case LABELS.apiToken: {
         const token = await this.deps.tokens.getOrCreate(userId);
-        await this.sendApiTokenMenu(chatId, token);
+        await this.sendApiTokenMenu(chatId, token, lang);
         return true;
       }
       default:
@@ -899,7 +956,7 @@ export class TelegramBotFlowService {
     });
   }
 
-  private async sendLanguageMenu(chatId: number, currentLang: string, messageId?: number, forceNew = false) {
+  private async sendLanguageMenu(chatId: number, currentLang: string, messageId?: number, forceNew = false, showBack = false) {
     const rows: Array<Array<{ text: string; callback_data: string }>> = [];
     for (let i = 0; i < LANGS.length; i += 2) {
       const left = LANGS[i]!;
@@ -911,6 +968,7 @@ export class TelegramBotFlowService {
       rows.push(row);
     }
 
+    if (showBack) rows.push([{ text: t("back", currentLang), callback_data: "home:back" }]);
     const text = `🌐 <b>${t("lang_title", currentLang)}</b>\n\n${t("lang_hint", currentLang)}`;
     if (forceNew || !messageId) {
       await this.sendMessage(chatId, text, "HTML", { inline_keyboard: rows });
@@ -919,18 +977,12 @@ export class TelegramBotFlowService {
     await this.sendOrEditMessage(chatId, text, { inline_keyboard: rows }, messageId, "HTML");
   }
 
-  private async sendApiTokenMenu(chatId: number, token: string, messageId?: number) {
-    const text = [
-      "🔐 <b>کلید API مخصوص تو</b>",
-      `<code>${token}</code>`,
-      "",
-      "برای هر درخواست این هدر را اضافه کن:",
-      `<code>X-API-Key: ${token}</code>`,
-    ].join("\n");
+  private async sendApiTokenMenu(chatId: number, token: string, lang: string, messageId?: number) {
+    const text = t("api_token_body", lang).split("{token}").join(token);
     const replyMarkup: InlineKeyboard = {
       inline_keyboard: [
-        [{ text: "♻️ چرخش توکن API", callback_data: "api:rotate" }],
-        [{ text: LABELS.homeBack, callback_data: "home:back" }],
+        [{ text: t("api_token_rotate", lang), callback_data: "api:rotate" }],
+        [{ text: t("home_back_to_menu", lang), callback_data: "home:back" }],
       ],
     };
     await this.sendOrEditMessage(chatId, text, replyMarkup, messageId, "HTML");
@@ -1032,7 +1084,7 @@ export class TelegramBotFlowService {
       }
       await this.deps.userState.setBotState(userId, { ...state, waitingReceipt: undefined, selectedPlanIndex: undefined, updatedAt: nowTs() });
       const user = await this.deps.users.getProfile(userId);
-      await this.sendMessage(chatId, "✅ رسید دریافت شد\n⏳ <b>لطفاً منتظر تایید باش</b>", "HTML");
+      await this.sendMessage(chatId, t("receipt_waiting_confirm", user.lang || "fa"), "HTML");
       await this.sendMainMenu(chatId, undefined, user.lang || "fa");
       return true;
     }
@@ -1047,7 +1099,7 @@ export class TelegramBotFlowService {
         category: "video_request",
         message: `image_file_id=${imageFile} caption=${(msg.caption || "").slice(0, 500)}`,
       });
-      await this.sendMessage(chatId, "✅ درخواست ویدیو ثبت شد و برای پردازش ارسال شد.", "HTML", {
+      await this.sendMessage(chatId, t("video_gen4_processing", (await this.deps.users.getProfile(userId)).lang || "fa"), "HTML", {
         inline_keyboard: [[{ text: LABELS.back, callback_data: "video_gen4:back" }]],
       });
       return true;
@@ -1083,43 +1135,46 @@ export class TelegramBotFlowService {
 
   private async sendInviteMenu(chatId: number, userId: number) {
     const bonus = REFERRAL_BONUS;
+    const user = await this.deps.users.getProfile(userId);
+    const lang = user.lang || "fa";
+    const refUrl = `https://t.me/${this.deps.botUsername || "VexaAiBot"}?start=${userId}`;
     await this.sendMessage(
       chatId,
-      `🎁 <b>${LABELS.inviteTitle}</b>\n\nشناسه عددی شما: <code>${userId}</code>\nتعداد دعوت‌ها تا الان: <b>0</b>\n\nلینک دعوت شما:\n<code>https://t.me/${this.deps.botUsername || "VexaAiBot"}?start=${userId}</code>\n\n<b>به ازای هر دعوت : +${bonus} کردیت</b>`,
+      `🎁 <b>${t("invite_title", lang)}</b>\n\n${t("invite_body", lang).replace("{user_id}", String(userId)).replace("{invited}", "0").replace("{ref}", refUrl).replace("{bonus}", String(bonus))}`,
       "HTML",
       {
         inline_keyboard: [
-          [{ text: LABELS.back, callback_data: "home:back" }],
-          [{ text: LABELS.inviteDailyReward, callback_data: "invite:daily_reward" }],
+          [{ text: t("back", lang), callback_data: "home:back" }],
+          [{ text: t("invite_daily_reward", lang), callback_data: "invite:daily_reward" }],
         ],
       }
     );
   }
 
-  private async sendHelp(chatId: number) {
-    await this.sendMessage(chatId, LABELS.homeHelp, "HTML", { inline_keyboard: [[{ text: LABELS.homeBack, callback_data: "home:back" }]] });
+  private async sendHelp(chatId: number, lang = "fa") {
+    await this.sendMessage(chatId, t("home_help", lang), "HTML", { inline_keyboard: [[{ text: t("home_back_to_menu", lang), callback_data: "home:back" }]] });
   }
 
-  private async sendSora2Menu(chatId: number, messageId?: number) {
+  private async sendSora2Menu(chatId: number, lang: string, messageId?: number) {
     const text =
       "<b>🎬 خوش اومدی به بخش Sora 2</b>\n\n<b>✨ با Sora 2 می‌تونی فقط با نوشتن چند جمله، ویدیوهای واقعی و سینمایی بسازی!</b>\n<b>🚀 ساخته شده با هوش مصنوعی پیشرفته OpenAI</b>\n\n<b>🎞 هر ویدیو تا ۲۰ ثانیه و با کیفیت 1080p تولید میشه</b>\n\n<b>💰 برای فعال‌سازی دسترسی، باید «کد دعوت SORA 2» تهیه کنی.</b>\n<b>🔑 هزینه دریافت کد دعوت: 259 کردیت</b>\n\n<b>⚡ پس از پرداخت، کد اختصاصی برات ارسال میشه و می‌تونی وارد دنیای SORA بشی!</b>";
-    await this.sendOrEditMessage(chatId, text, { inline_keyboard: [[{ text: "خرید کد دعوت 🎟️", callback_data: "sora2:buy" }], [{ text: LABELS.homeBack, callback_data: "home:back" }]] }, messageId, "HTML");
+    await this.sendOrEditMessage(chatId, text, { inline_keyboard: [[{ text: t("sora2_btn_buy", lang), callback_data: "sora2:buy" }], [{ text: t("home_back_to_menu", lang), callback_data: "home:back" }]] }, messageId, "HTML");
   }
 
-  private async sendSora2NoCredit(chatId: number, messageId: number | undefined, credits: number) {
+  private async sendSora2NoCredit(chatId: number, lang: string, messageId: number | undefined, credits: number) {
     const text = `⚠️ <b>کردیت کافی نیست!</b>\n<b>هزینه خرید کد دعوت: ${SORA2_COST} کردیت</b>\n<b>موجودی فعلی: ${credits} کردیت</b>\n\n<b>برای شارژ دکمه «خرید کردیت» رو بزن.</b>`;
     await this.sendOrEditMessage(
       chatId,
       text,
-      { inline_keyboard: [[{ text: LABELS.credit, callback_data: "credit:menu" }], [{ text: LABELS.homeBack, callback_data: "home:back" }]] },
+      { inline_keyboard: [[{ text: t("btn_credit", lang), callback_data: "credit:menu" }], [{ text: t("home_back_to_menu", lang), callback_data: "home:back" }]] },
       messageId,
       "HTML"
     );
   }
 
-  private async sendSora2PurchaseSuccess(chatId: number, messageId?: number) {
+  private async sendSora2PurchaseSuccess(chatId: number, lang: string, messageId?: number) {
     const text = `<b>✅ پرداخت موفق!</b>\n<b>${SORA2_COST} کردیت از حسابت کم شد 💳</b>\n<b>⌛ تو صف انتظار هستی (نفر ${SORA2_QUEUE_START})</b>\n<b>🎟 کد دعوت Sora 2 به‌زودی برات ارسال میشه.</b>`;
-    await this.sendOrEditMessage(chatId, text, { inline_keyboard: [[{ text: "خرید کد دعوت 🎟️", callback_data: "sora2:buy" }], [{ text: LABELS.homeBack, callback_data: "home:back" }]] }, messageId, "HTML");
+    await this.sendOrEditMessage(chatId, text, { inline_keyboard: [[{ text: t("sora2_btn_buy", lang), callback_data: "sora2:buy" }], [{ text: t("home_back_to_menu", lang), callback_data: "home:back" }]] }, messageId, "HTML");
   }
 
   private async maybeSendLowCreditWarning(chatId: number, userId?: number, _lang = "fa", scheduleIfNeeded = false) {
@@ -1157,7 +1212,7 @@ export class TelegramBotFlowService {
     const state = await this.deps.userState.getBotState(userId);
     if (!state.onboardingPending || state.welcomeSentAt) return;
     const now = nowTs();
-    await this.sendMessage(chatId, LABELS.onboardingWelcome, "HTML");
+    await this.sendMessage(chatId, t("onboarding_welcome", _lang).replace("{credits}", "45"), "HTML");
     await this.deps.userState.setBotState(userId, {
       ...state,
       welcomeSentAt: now,
@@ -1170,16 +1225,16 @@ export class TelegramBotFlowService {
     const state = await this.deps.userState.getBotState(userId);
     const now = nowTs();
     if (state.welcomeSentAt && !state.dailyBonusPromptedAt && now - state.welcomeSentAt >= ONBOARDING_DAILY_BONUS_DELAY) {
-      await this.sendMessage(chatId, LABELS.onboardingDailyReady, "HTML", {
-        inline_keyboard: [[{ text: "🎁", callback_data: "onboarding:daily_reward" }]],
+      await this.sendMessage(chatId, t("onboarding_daily_bonus_ready", _lang), "HTML", {
+        inline_keyboard: [[{ text: t("onboarding_bonus_button", _lang), callback_data: "onboarding:daily_reward" }]],
       });
       await this.deps.userState.setBotState(userId, { ...state, dailyBonusPromptedAt: now, updatedAt: now });
       return;
     }
 
     if (state.dailyBonusPromptedAt && !state.dailyBonusUnlockedAt && now - state.dailyBonusPromptedAt >= ONBOARDING_DAILY_BONUS_UNLOCK_DELAY) {
-      await this.sendMessage(chatId, LABELS.onboardingDailyUnlocked, "HTML", {
-        inline_keyboard: [[{ text: "🎁", callback_data: "onboarding:invite" }]],
+      await this.sendMessage(chatId, t("onboarding_daily_bonus_unlocked", _lang), "HTML", {
+        inline_keyboard: [[{ text: t("onboarding_bonus_button", _lang), callback_data: "onboarding:invite" }]],
       });
       await this.deps.userState.setBotState(userId, { ...state, dailyBonusUnlockedAt: now, updatedAt: now });
     }
@@ -1254,15 +1309,15 @@ export class TelegramBotFlowService {
 
     const keyboard: InlineKeyboard = {
       inline_keyboard: [
-        ...(hasTg ? [[{ text: "عضویت در کانال 🚀", url: `https://t.me/${normalized}` }]] : []),
-        ...(hasIg ? [[{ text: "دنبال‌کردن اینستاگرام 📸", url: igUrl }]] : []),
-        [{ text: "عضو شدم ✅", callback_data: "fs:recheck" }],
+        ...(hasTg ? [[{ text: t("force_sub_btn_join_channel", _lang), url: `https://t.me/${normalized}` }]] : []),
+        ...(hasIg ? [[{ text: t("force_sub_btn_follow_instagram", _lang), url: igUrl }]] : []),
+        [{ text: t("force_sub_btn_joined", _lang), callback_data: "fs:recheck" }],
       ],
     };
-    const lines = ["<b>برای ادامه عضو کانال شو</b>"];
-    if (hasTg) lines.push("• کانال تلگرام");
-    if (hasIg) lines.push("• اینستاگرام");
-    lines.push("", "بعد از عضویت روی دکمه «عضو شدم» بزن.");
+    const lines = [t("force_sub_title", _lang)];
+    if (hasTg) lines.push(t("force_sub_join_channel", _lang));
+    if (hasIg) lines.push(t("force_sub_join_instagram", _lang));
+    lines.push("", t("force_sub_hint", _lang));
     const text = lines.join("\n");
     if (messageId) await this.sendOrEditMessage(chatId, text, keyboard, messageId, "HTML");
     else await this.sendMessage(chatId, text, "HTML", keyboard);
@@ -1290,6 +1345,17 @@ export class TelegramBotFlowService {
     }
     await this.answerCallback(callbackId, t("force_sub_not_joined", lang));
     return { handled: "force_sub_not_joined" };
+  }
+
+  private hasBannedWord(text: string): boolean {
+    const replacements: Record<string, string> = { ك: "ک", ي: "ی", ى: "ی", ؤ: "و", إ: "ا", أ: "ا", آ: "ا", ة: "ه", "ۀ": "ه" };
+    let normalized = (text || "").toLowerCase();
+    for (const [src, dst] of Object.entries(replacements)) normalized = normalized.split(src).join(dst);
+    normalized = normalized.split("ـ").join("").split("\u200c").join(" ").split("\u200d").join("");
+    return BANNED_WORDS.some((word) => {
+      const normalizedWord = word.toLowerCase();
+      return normalizedWord.length > 0 && normalized.includes(normalizedWord);
+    });
   }
 
   private async markProcessed(update: TelegramWebhookUpdate, telegramUserId: number | null, eventType: string) {
