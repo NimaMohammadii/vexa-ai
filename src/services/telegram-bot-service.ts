@@ -85,6 +85,14 @@ const LANGS: Array<{ label: string; code: string }> = [
   { label: "Français", code: "fr" },
 ];
 
+const ADMIN_FEATURE_TOGGLES: Array<{ label: string; key: string }> = [
+  { label: "✅/❌ GPT", key: "GPT_ENABLED" },
+  { label: "✅/❌ تصویر", key: "IMAGE_ENABLED" },
+  { label: "✅/❌ ویدیو", key: "VIDEO_ENABLED" },
+  { label: "✅/❌ Voice Clone", key: "CLONE_ENABLED" },
+  { label: "✅/❌ Sora2", key: "SORA2_ENABLED" },
+];
+
 
 const I18N: Record<string, Record<string, string>> = {
   home_title: { fa: "/help   منوی اصلی", en: "Main Menu", ar: "القائمة الرئيسية", tr: "Ana Menü", ru: "Главное меню", es: "Menú principal", de: "Hauptmenü", fr: "Menu principal" },
@@ -1128,6 +1136,9 @@ export class TelegramBotFlowService {
   }
 
   private adminSettingsKeyboard(): InlineKeyboard {
+    const forceSubRaw = (this.deps.forceSubMode || "none").toLowerCase();
+    const forceSubLabel = forceSubRaw === "all" ? "همه" : forceSubRaw === "new" ? "فقط جدیدها" : "خاموش";
+    const soundEnabled = (this.deps.welcomeAudioFileId || "").trim() ? "✅ فعال" : "❌ غیرفعال";
     return {
       inline_keyboard: [
         [
@@ -1138,13 +1149,13 @@ export class TelegramBotFlowService {
           { text: "📢 کانال تلگرام", callback_data: "admin:set:tg" },
           { text: "📷 لینک اینستاگرام", callback_data: "admin:set:ig" },
         ],
-        [{ text: "🔐 عضویت اجباری: خاموش", callback_data: "admin:toggle:fs" }],
+        [{ text: `🔐 عضویت اجباری: ${forceSubLabel}`, callback_data: "admin:toggle:fs" }],
         [{ text: "🧩 دسترسی بخش‌ها", callback_data: "admin:features" }],
         [{ text: "🔐 عضویت اجباری بر اساس زبان", callback_data: "admin:fs_lang:list" }],
         [{ text: "🎛 مدیریت صداهای ربات", callback_data: "admin:global_voices" }],
         [{ text: "🎧 دموهای صدا", callback_data: "admin:demo" }],
         [{ text: "🎙 پیام صوتی خوش‌آمد", callback_data: "admin:welcome_audio" }],
-        [{ text: "🔊 صدای ربات: ✅ فعال", callback_data: "admin:toggle:sound" }],
+        [{ text: `🔊 صدای ربات: ${soundEnabled}`, callback_data: "admin:toggle:sound" }],
         [{ text: "⬅️ بازگشت", callback_data: "admin:menu" }],
       ],
     };
@@ -1193,6 +1204,43 @@ export class TelegramBotFlowService {
     await this.sendOrEditMessage(chatId, `${ADMIN_TITLE}
 
 ${ADMIN_MENU_TEXT}`, this.adminMenuKeyboard(), messageId);
+  }
+
+  private async adminFeatureAccessKeyboard(): Promise<InlineKeyboard> {
+    const rows: InlineKeyboard["inline_keyboard"] = [];
+    for (const item of ADMIN_FEATURE_TOGGLES) {
+      const raw = (await this.getSetting(item.key, "1")).trim().toLowerCase();
+      const enabled = ["1", "true", "yes", "on", "enabled"].includes(raw);
+      rows.push([{ text: `${item.label}: ${enabled ? "✅ فعال" : "❌ غیرفعال"}`, callback_data: `admin:feature:toggle:${item.key}` }]);
+    }
+    rows.push([{ text: "⬅️ بازگشت", callback_data: "admin:settings" }]);
+    return { inline_keyboard: rows };
+  }
+
+  private csvEscape(value: unknown): string {
+    const text = String(value ?? "");
+    if (/[",\n]/.test(text)) return `"${text.replaceAll(`"`, `""`)}"`;
+    return text;
+  }
+
+  private csvFromRows(headers: string[], rows: Array<Array<unknown>>): string {
+    const lines: string[] = [];
+    lines.push(headers.map((h) => this.csvEscape(h)).join(","));
+    for (const row of rows) {
+      lines.push(row.map((v) => this.csvEscape(v)).join(","));
+    }
+    return `${lines.join("\n")}\n`;
+  }
+
+  private async sendDocumentFromText(chatId: number, filename: string, content: string, caption: string): Promise<void> {
+    const form = new FormData();
+    form.append("chat_id", String(chatId));
+    form.append("caption", caption);
+    form.append("document", new Blob([content], { type: "text/csv;charset=utf-8" }), filename);
+    await fetch(`https://api.telegram.org/bot${this.deps.botToken}/sendDocument`, {
+      method: "POST",
+      body: form,
+    });
   }
 
   private async handleAdminCallback(callbackId: string, chatId: number, messageId: number | undefined, userId: number, data: string): Promise<{ handled: string }> {
@@ -1416,13 +1464,16 @@ ${ADMIN_MENU_TEXT}`, this.adminMenuKeyboard(), messageId);
     }
     if (data.startsWith("admin:fs_lang:open:")) {
       const langCode = data.split(":")[3] || "fa";
+      const mode = (await this.getSetting(`FORCE_SUB_MODE_${langCode}`, "none")).toLowerCase();
+      const modeLabel = mode === "all" ? "همه" : mode === "new" ? "فقط جدیدها" : "خاموش";
+      const tgChannel = (await this.getSetting(`TG_CHANNEL_${langCode}`, "")).trim() || "—";
       await this.sendOrEditMessage(
         chatId,
         `🔐 تنظیمات عضویت اجباری برای <b>${langCode}</b>`,
         {
           inline_keyboard: [
-            [{ text: "🔐 عضویت اجباری: خاموش", callback_data: `admin:fs_lang:toggle:${langCode}` }],
-            [{ text: "📢 کانال تلگرام", callback_data: `admin:fs_lang:set_tg:${langCode}` }],
+            [{ text: `🔐 عضویت اجباری: ${modeLabel}`, callback_data: `admin:fs_lang:toggle:${langCode}` }],
+            [{ text: `📢 کانال تلگرام: ${tgChannel}`, callback_data: `admin:fs_lang:set_tg:${langCode}` }],
             [{ text: "⬅️ بازگشت", callback_data: "admin:fs_lang:list" }],
           ],
         },
@@ -1432,10 +1483,28 @@ ${ADMIN_MENU_TEXT}`, this.adminMenuKeyboard(), messageId);
       await this.answerCallback(callbackId);
       return { handled: "admin_fs_lang_open" };
     }
-    if (data.startsWith("admin:fs_lang:toggle:") || data.startsWith("admin:fs_lang:set_tg:")) {
-      await this.sendOrEditMessage(chatId, "✅ تنظیمات ذخیره شد.", this.adminSettingsKeyboard(), messageId);
+    if (data.startsWith("admin:fs_lang:toggle:")) {
+      const langCode = data.split(":")[3] || "fa";
+      const key = `FORCE_SUB_MODE_${langCode}`;
+      const cur = (await this.getSetting(key, "none")).toLowerCase();
+      const order = ["none", "new", "all"];
+      const idx = Math.max(0, order.indexOf(cur));
+      const next = order[(idx + 1) % order.length]!;
+      await this.setSetting(key, next);
+      return this.handleAdminCallback(callbackId, chatId, messageId, userId, `admin:fs_lang:open:${langCode}`);
+    }
+    if (data.startsWith("admin:fs_lang:set_tg:")) {
+      const langCode = data.split(":")[3] || "fa";
+      await this.deps.userState.setBotState(userId, { mode: "admin:set_setting", updatedAt: nowTs(), adminSettingKey: `TG_CHANNEL_${langCode}` });
+      await this.sendOrEditMessage(chatId, `📢 لینک/یوزرنیم کانال تلگرام برای زبان <b>${langCode}</b> را ارسال کنید.`, this.adminSettingsKeyboard(), messageId, "HTML");
       await this.answerCallback(callbackId);
-      return { handled: "admin_fs_lang_update" };
+      return { handled: "admin_fs_lang_set_tg_prompt" };
+    }
+
+    if (data === "admin:features") {
+      await this.sendOrEditMessage(chatId, "🧩 مدیریت دسترسی بخش‌ها:", await this.adminFeatureAccessKeyboard(), messageId);
+      await this.answerCallback(callbackId);
+      return { handled: "admin_features" };
     }
 
     if (data.startsWith("admin:feature:toggle:") || data === "admin:toggle:fs" || data === "admin:toggle:sound") {
@@ -1443,6 +1512,9 @@ ${ADMIN_MENU_TEXT}`, this.adminMenuKeyboard(), messageId);
         const key = data.split(":")[3] || "";
         const cur = await this.getSetting(key, "1");
         await this.setSetting(key, cur === "1" ? "0" : "1");
+        await this.sendOrEditMessage(chatId, "✅ وضعیت با موفقیت تغییر کرد.", await this.adminFeatureAccessKeyboard(), messageId);
+        await this.answerCallback(callbackId);
+        return { handled: "admin_feature_toggle" };
       } else if (data === "admin:toggle:fs") {
         const cur = await this.getSetting("FORCE_SUB_MODE", "none");
         const order = ["none", "new", "all"];
@@ -1481,7 +1553,35 @@ ${ADMIN_MENU_TEXT}`, this.adminMenuKeyboard(), messageId);
     }
 
     if (data.startsWith("admin:exp:")) {
-      await this.sendOrEditMessage(chatId, "📤 خروجی در صف تولید قرار گرفت.", this.adminExportsKeyboard(), messageId);
+      if (data === "admin:exp:users") {
+        const { results } = await this.deps.db
+          .prepare(`SELECT user_id, username, first_name, lang, banned, credits, joined_at, last_seen_at FROM users ORDER BY user_id ASC`)
+          .all<{ user_id: number; username: string | null; first_name: string | null; lang: string; banned: number; credits: number; joined_at: number; last_seen_at: number }>();
+        const csv = this.csvFromRows(
+          ["user_id", "username", "first_name", "lang", "banned", "credits", "joined_at", "last_seen_at"],
+          (results || []).map((r) => [r.user_id, r.username || "", r.first_name || "", r.lang || "", r.banned, r.credits, r.joined_at, r.last_seen_at])
+        );
+        await this.sendDocumentFromText(chatId, "users.csv", csv, "📤 خروجی کاربران");
+      } else if (data === "admin:exp:buy") {
+        const { results } = await this.deps.db
+          .prepare(`SELECT user_id, amount, reason, source, created_at FROM credit_ledger WHERE reason IN ('telegram_stars_purchase','manual_rial_payment') ORDER BY created_at DESC`)
+          .all<{ user_id: number; amount: number; reason: string; source: string; created_at: number }>();
+        const csv = this.csvFromRows(
+          ["user_id", "amount", "reason", "source", "created_at"],
+          (results || []).map((r) => [r.user_id, r.amount, r.reason, r.source, r.created_at])
+        );
+        await this.sendDocumentFromText(chatId, "purchases.csv", csv, "📤 خروجی خریدها");
+      } else if (data === "admin:exp:msg") {
+        const { results } = await this.deps.db
+          .prepare(`SELECT user_id, role, content, created_at FROM gpt_messages ORDER BY created_at DESC LIMIT 50000`)
+          .all<{ user_id: number; role: string; content: string; created_at: number }>();
+        const csv = this.csvFromRows(
+          ["user_id", "role", "content", "created_at"],
+          (results || []).map((r) => [r.user_id, r.role, r.content, r.created_at])
+        );
+        await this.sendDocumentFromText(chatId, "messages.csv", csv, "📤 خروجی پیام‌ها");
+      }
+      await this.sendOrEditMessage(chatId, "📤 خروجی ارسال شد.", this.adminExportsKeyboard(), messageId);
       await this.answerCallback(callbackId);
       return { handled: "admin_export" };
     }
@@ -1508,7 +1608,55 @@ ${ADMIN_MENU_TEXT}`, this.adminMenuKeyboard(), messageId);
     }
 
     if (data.startsWith("admin:exp_user_")) {
-      await this.sendOrEditMessage(chatId, "📤 خروجی جزئی کاربر در صف قرار گرفت.", this.adminExportsKeyboard(), messageId);
+      const parts = data.split(":");
+      const action = parts[1] || "";
+      const uid = Number(parts[2] || 0);
+      if (!uid) {
+        await this.answerCallback(callbackId, "❌ آی‌دی نامعتبر", true);
+        return { handled: "admin_export_user_invalid_uid" };
+      }
+      if (action === "exp_user_tts") {
+        const { results } = await this.deps.db
+          .prepare(`SELECT user_id, amount, reason, source, created_at FROM credit_ledger WHERE user_id = ?1 AND reason = 'tts_message' ORDER BY created_at DESC`)
+          .bind(uid)
+          .all<{ user_id: number; amount: number; reason: string; source: string; created_at: number }>();
+        const csv = this.csvFromRows(
+          ["user_id", "amount", "reason", "source", "created_at"],
+          (results || []).map((r) => [r.user_id, r.amount, r.reason, r.source, r.created_at])
+        );
+        await this.sendDocumentFromText(chatId, `user_${uid}_tts.csv`, csv, `📥 خروجی TTS کاربر ${uid}`);
+      } else if (action === "exp_user_msgs") {
+        const { results } = await this.deps.db
+          .prepare(`SELECT user_id, role, content, created_at FROM gpt_messages WHERE user_id = ?1 ORDER BY created_at DESC`)
+          .bind(uid)
+          .all<{ user_id: number; role: string; content: string; created_at: number }>();
+        const csv = this.csvFromRows(
+          ["user_id", "role", "content", "created_at"],
+          (results || []).map((r) => [r.user_id, r.role, r.content, r.created_at])
+        );
+        await this.sendDocumentFromText(chatId, `user_${uid}_messages.csv`, csv, `📥 پیام‌های کاربر ${uid}`);
+      } else if (action === "exp_user_gpt") {
+        const { results } = await this.deps.db
+          .prepare(`SELECT user_id, role, content, created_at FROM gpt_messages WHERE user_id = ?1 ORDER BY created_at DESC`)
+          .bind(uid)
+          .all<{ user_id: number; role: string; content: string; created_at: number }>();
+        const csv = this.csvFromRows(
+          ["user_id", "role", "content", "created_at"],
+          (results || []).map((r) => [r.user_id, r.role, r.content, r.created_at])
+        );
+        await this.sendDocumentFromText(chatId, `user_${uid}_gpt.csv`, csv, `📥 GPT کاربر ${uid}`);
+      } else if (action === "exp_user_images") {
+        const { results } = await this.deps.db
+          .prepare(`SELECT user_id, asset_type, source_prompt, storage_url, status, provider, created_at FROM generated_assets WHERE user_id = ?1 ORDER BY created_at DESC`)
+          .bind(uid)
+          .all<{ user_id: number; asset_type: string; source_prompt: string | null; storage_url: string | null; status: string; provider: string | null; created_at: number }>();
+        const csv = this.csvFromRows(
+          ["user_id", "asset_type", "source_prompt", "storage_url", "status", "provider", "created_at"],
+          (results || []).map((r) => [r.user_id, r.asset_type, r.source_prompt || "", r.storage_url || "", r.status, r.provider || "", r.created_at])
+        );
+        await this.sendDocumentFromText(chatId, `user_${uid}_images.csv`, csv, `📥 تصاویر کاربر ${uid}`);
+      }
+      await this.sendOrEditMessage(chatId, "📤 خروجی جزئی کاربر ارسال شد.", this.adminExportsKeyboard(), messageId);
       await this.answerCallback(callbackId);
       return { handled: "admin_export_user" };
     }
