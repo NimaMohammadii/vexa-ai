@@ -170,6 +170,12 @@ const I18N: Record<string, Record<string, string>> = {
   sora2_no_credit_alert: { fa: "⚠️ کردیت کافی نیست.", en: "⚠️ Not enough credits.", ar: "⚠️ لا يوجد رصيد كافٍ.", tr: "⚠️ Yeterli kredin yok.", ru: "⚠️ Недостаточно кредитов.", es: "⚠️ Créditos insuficientes.", de: "⚠️ Nicht genug Credits.", fr: "⚠️ Crédits insuffisants." },
 };
 const t = (key: string, lang: string) => I18N[key]?.[lang] || I18N[key]?.fa || key;
+const ADMIN_TITLE = "🛠 پنل ادمین";
+const ADMIN_MENU_TEXT = `از دکمه‌های زیر استفاده کنید:
+• آمار، کاربران، پیام‌رسانی
+• افزایش/کسر کردیت
+• تنظیمات و خروجی‌ها`;
+const ADMIN_DENY_TEXT = "⛔️ شما دسترسی به پنل ادمین ندارید.";
 const BANNED_WORDS = ["کوص"];
 const DEFAULT_VOICE_NAME_BY_LANG: Record<string, string> = { fa: "Liam", en: "Ava", ar: "Liam", tr: "Arda", ru: "Алина", es: "Valeria", de: "Lena", fr: "Léa" };
 const VOICES_BY_LANG: Record<string, Record<string, string>> = {"fa": {"Liam": "TX3LPaxmHKxFdv7VOQHJ", "Amir": "1SM7GgM6IMuvQlz2BwM3", "Nazy": "tnSpp4vdxKPjI9w0GnoV", "Sarah": "BIvP0GN1cAtSRTxNHnWS", "Alex": "GFGuOkimbpNkTEOVDkqX", "Noushin": "NZiuR1C6kVMSWHG27sIM", "Paniz": "BZgkqPqms7Kj9ulSkVzn", "Alexandra": "kdmDKE6EkgrWrrykO9Qt", "Laura": "7piC4m7q8WrpEAnMj5xC", "Maxon": "0dPqNXnhg2bmxQv1WKDp", "Jessica": "cgSgspJ2msm6clMCkdW9", "Austin": "Bj9UqZbhQsanLzgalpEG", "priyanka": "BpjGufoPiobT79j2vtj4", "horatius": "qXpMhyvQqiRxWQs4qSSB", "anika": "Sm1seazb4gs7RSlUVw7c", "brock": "DGzg6RaUqxGRTHSBjfgF", "Xavier": "YOq2y2Up4RgXP2HyXjE5", "Bradford": "NNl6r8mD7vthiJatiJt1"}, "en": {"Liam": "TX3LPaxmHKxFdv7VOQHJ", "Noah": "1SM7GgM6IMuvQlz2BwM3", "Ava": "tnSpp4vdxKPjI9w0GnoV", "Nora": "BIvP0GN1cAtSRTxNHnWS", "Alex": "GFGuOkimbpNkTEOVDkqX", "Ella": "NZiuR1C6kVMSWHG27sIM", "Chloe": "BZgkqPqms7Kj9ulSkVzn", "Alexandra": "kdmDKE6EkgrWrrykO9Qt", "Laura": "7piC4m7q8WrpEAnMj5xC", "Maxon": "0dPqNXnhg2bmxQv1WKDp", "Jessica": "cgSgspJ2msm6clMCkdW9", "Austin": "Bj9UqZbhQsanLzgalpEG", "priyanka": "BpjGufoPiobT79j2vtj4", "horatius": "qXpMhyvQqiRxWQs4qSSB", "anika": "Sm1seazb4gs7RSlUVw7c", "brock": "DGzg6RaUqxGRTHSBjfgF", "Xavier": "YOq2y2Up4RgXP2HyXjE5", "Lucas": "NNl6r8mD7vthiJatiJt1"}, "ar": {"Liam": "TX3LPaxmHKxFdv7VOQHJ", "Amir": "1SM7GgM6IMuvQlz2BwM3", "Nazy": "tnSpp4vdxKPjI9w0GnoV", "Sarah": "BIvP0GN1cAtSRTxNHnWS", "Alex": "GFGuOkimbpNkTEOVDkqX", "Noushin": "NZiuR1C6kVMSWHG27sIM", "Paniz": "BZgkqPqms7Kj9ulSkVzn", "Alexandra": "kdmDKE6EkgrWrrykO9Qt", "Laura": "7piC4m7q8WrpEAnMj5xC", "Maxon": "0dPqNXnhg2bmxQv1WKDp", "Jessica": "cgSgspJ2msm6clMCkdW9", "Austin": "Bj9UqZbhQsanLzgalpEG", "priyanka": "BpjGufoPiobT79j2vtj4", "horatius": "qXpMhyvQqiRxWQs4qSSB", "anika": "Sm1seazb4gs7RSlUVw7c", "brock": "DGzg6RaUqxGRTHSBjfgF", "Xavier": "YOq2y2Up4RgXP2HyXjE5", "Bradford": "NNl6r8mD7vthiJatiJt1"}, "tr": {"Arda": "TX3LPaxmHKxFdv7VOQHJ", "Emre": "1SM7GgM6IMuvQlz2BwM3", "Deniz": "tnSpp4vdxKPjI9w0GnoV", "Sarah": "BIvP0GN1cAtSRTxNHnWS", "Burak": "GFGuOkimbpNkTEOVDkqX", "Selin": "NZiuR1C6kVMSWHG27sIM", "Duru": "BZgkqPqms7Kj9ulSkVzn", "Elif": "kdmDKE6EkgrWrrykO9Qt", "İrem": "7piC4m7q8WrpEAnMj5xC", "Mert": "0dPqNXnhg2bmxQv1WKDp", "Asya": "cgSgspJ2msm6clMCkdW9", "Derya": "Bj9UqZbhQsanLzgalpEG", "priyanka": "BpjGufoPiobT79j2vtj4", "horatius": "qXpMhyvQqiRxWQs4qSSB", "anika": "Sm1seazb4gs7RSlUVw7c", "Ozan": "DGzg6RaUqxGRTHSBjfgF", "Xavier": "YOq2y2Up4RgXP2HyXjE5", "Kaan": "NNl6r8mD7vthiJatiJt1"}, "ru": {"Илья": "TX3LPaxmHKxFdv7VOQHJ", "Никита": "1SM7GgM6IMuvQlz2BwM3", "Алина": "tnSpp4vdxKPjI9w0GnoV", "Милана": "BIvP0GN1cAtSRTxNHnWS", "Даниил": "GFGuOkimbpNkTEOVDkqX", "София": "NZiuR1C6kVMSWHG27sIM", "Ева": "BZgkqPqms7Kj9ulSkVzn", "Полина": "kdmDKE6EkgrWrrykO9Qt", "Кира": "7piC4m7q8WrpEAnMj5xC", "Maxon": "0dPqNXnhg2bmxQv1WKDp", "Дарья": "cgSgspJ2msm6clMCkdW9", "Austin": "Bj9UqZbhQsanLzgalpEG", "priyanka": "BpjGufoPiobT79j2vtj4", "horatius": "qXpMhyvQqiRxWQs4qSSB", "Вероника": "Sm1seazb4gs7RSlUVw7c", "brock": "DGzg6RaUqxGRTHSBjfgF", "Xavier": "YOq2y2Up4RgXP2HyXjE5", "Матвей": "NNl6r8mD7vthiJatiJt1"}, "es": {"Mateo": "TX3LPaxmHKxFdv7VOQHJ", "Leo": "1SM7GgM6IMuvQlz2BwM3", "Valeria": "tnSpp4vdxKPjI9w0GnoV", "Sofía": "BIvP0GN1cAtSRTxNHnWS", "Diego": "GFGuOkimbpNkTEOVDkqX", "Camila": "NZiuR1C6kVMSWHG27sIM", "Luna": "BZgkqPqms7Kj9ulSkVzn", "Renata": "kdmDKE6EkgrWrrykO9Qt", "Martina": "7piC4m7q8WrpEAnMj5xC", "Bruno": "0dPqNXnhg2bmxQv1WKDp", "Paula": "cgSgspJ2msm6clMCkdW9", "Tomás": "Bj9UqZbhQsanLzgalpEG", "Elena": "BpjGufoPiobT79j2vtj4", "horatius": "qXpMhyvQqiRxWQs4qSSB", "Abril": "Sm1seazb4gs7RSlUVw7c", "brock": "DGzg6RaUqxGRTHSBjfgF", "Xavier": "YOq2y2Up4RgXP2HyXjE5", "Andrés": "NNl6r8mD7vthiJatiJt1"}, "de": {"Leon": "TX3LPaxmHKxFdv7VOQHJ", "Luca": "1SM7GgM6IMuvQlz2BwM3", "Lena": "tnSpp4vdxKPjI9w0GnoV", "Mia": "BIvP0GN1cAtSRTxNHnWS", "Finn": "GFGuOkimbpNkTEOVDkqX", "Emma": "NZiuR1C6kVMSWHG27sIM", "Lea": "BZgkqPqms7Kj9ulSkVzn", "Hannah": "kdmDKE6EkgrWrrykO9Qt", "Laura": "7piC4m7q8WrpEAnMj5xC", "Jonas": "0dPqNXnhg2bmxQv1WKDp", "Nina": "cgSgspJ2msm6clMCkdW9", "Paul": "Bj9UqZbhQsanLzgalpEG", "Clara": "BpjGufoPiobT79j2vtj4", "Max": "qXpMhyvQqiRxWQs4qSSB", "Sophie": "Sm1seazb4gs7RSlUVw7c", "Noah": "DGzg6RaUqxGRTHSBjfgF", "Xavier": "YOq2y2Up4RgXP2HyXjE5", "Tim": "NNl6r8mD7vthiJatiJt1"}, "fr": {"Hugo": "TX3LPaxmHKxFdv7VOQHJ", "Noah": "1SM7GgM6IMuvQlz2BwM3", "Léa": "tnSpp4vdxKPjI9w0GnoV", "Inès": "BIvP0GN1cAtSRTxNHnWS", "Theo": "GFGuOkimbpNkTEOVDkqX", "Emma": "NZiuR1C6kVMSWHG27sIM", "Jade": "BZgkqPqms7Kj9ulSkVzn", "Mila": "kdmDKE6EkgrWrrykO9Qt", "Louise": "7piC4m7q8WrpEAnMj5xC", "Jules": "0dPqNXnhg2bmxQv1WKDp", "Jessica": "cgSgspJ2msm6clMCkdW9", "Adrien": "Bj9UqZbhQsanLzgalpEG", "Nina": "BpjGufoPiobT79j2vtj4", "horatius": "qXpMhyvQqiRxWQs4qSSB", "Zoé": "Sm1seazb4gs7RSlUVw7c", "brock": "DGzg6RaUqxGRTHSBjfgF", "Xavier": "YOq2y2Up4RgXP2HyXjE5", "Paul": "NNl6r8mD7vthiJatiJt1"}};
@@ -332,6 +338,10 @@ export class TelegramBotFlowService {
     const lang = user.lang || "fa";
     const data = callback.data ?? "";
     const state = await this.deps.userState.getBotState(user.userId);
+
+    if (data.startsWith("admin:")) {
+      return this.handleAdminCallback(callback.id, chatId, messageId, user.userId, data);
+    }
 
     if (data.startsWith("fs:")) {
       return this.handleForceSubCallback(callback.id, chatId, messageId, user.userId, lang, data);
@@ -710,6 +720,13 @@ export class TelegramBotFlowService {
       case "/help":
         await this.sendHelp(chatId, lang);
         return { handled: "help" };
+      case "/admin":
+        if (!this.isOwner(userId)) {
+          await this.sendMessage(chatId, ADMIN_DENY_TEXT);
+          return { handled: "admin_denied" };
+        }
+        await this.sendAdminMenu(chatId);
+        return { handled: "admin_menu" };
       case "/menu":
         await this.sendMainMenu(chatId, undefined, lang);
         await this.maybeSendLowCreditWarning(chatId, userId, lang, true);
@@ -870,6 +887,158 @@ export class TelegramBotFlowService {
       default:
         return false;
     }
+  }
+
+  private isOwner(userId: number): boolean {
+    const ownerId = Number(this.deps.ownerTelegramChatId || 0);
+    return ownerId > 0 && ownerId === userId;
+  }
+
+  private adminMenuKeyboard(): InlineKeyboard {
+    return {
+      inline_keyboard: [
+        [
+          { text: "📊 آمار", callback_data: "admin:stats" },
+          { text: "👥 کاربران", callback_data: "admin:users" },
+        ],
+        [{ text: "🌐 کاربران بر اساس زبان", callback_data: "admin:lang_users" }],
+        [
+          { text: "🖼️ کاربران تصویر", callback_data: "admin:image_users" },
+          { text: "🤖 کاربران GPT", callback_data: "admin:gpt_users" },
+        ],
+        [{ text: "🧬 کاربران Voice Clone", callback_data: "admin:clone" }],
+        [{ text: "🎁 پاداش روزانه", callback_data: "admin:daily_reward_users" }],
+        [
+          { text: "➕ افزودن کردیت", callback_data: "admin:add" },
+          { text: "➖ کسر کردیت", callback_data: "admin:sub" },
+        ],
+        [{ text: "🧮 فرمول کردیت همگانی", callback_data: "admin:bulk_credit" }],
+        [{ text: "♻️ ریست کاربر", callback_data: "admin:reset" }],
+        [
+          { text: "✉️ پیام تکی", callback_data: "admin:dm" },
+          { text: "📣 پیام همگانی", callback_data: "admin:cast" },
+        ],
+        [
+          { text: "⚙️ تنظیمات", callback_data: "admin:settings" },
+          { text: "📤 خروجی‌ها", callback_data: "admin:exports" },
+        ],
+        [{ text: "⬅️ بازگشت", callback_data: "admin:back" }],
+      ],
+    };
+  }
+
+  private adminSettingsKeyboard(): InlineKeyboard {
+    return {
+      inline_keyboard: [
+        [
+          { text: "🎁 بونوس رفرال", callback_data: "admin:set:bonus" },
+          { text: "🎉 کردیت شروع", callback_data: "admin:set:free" },
+        ],
+        [
+          { text: "📢 کانال تلگرام", callback_data: "admin:set:tg" },
+          { text: "📷 لینک اینستاگرام", callback_data: "admin:set:ig" },
+        ],
+        [{ text: "🔐 عضویت اجباری: خاموش", callback_data: "admin:toggle:fs" }],
+        [{ text: "🧩 دسترسی بخش‌ها", callback_data: "admin:features" }],
+        [{ text: "🔐 عضویت اجباری بر اساس زبان", callback_data: "admin:fs_lang:list" }],
+        [{ text: "🎛 مدیریت صداهای ربات", callback_data: "admin:global_voices" }],
+        [{ text: "🎧 دموهای صدا", callback_data: "admin:demo" }],
+        [{ text: "🎙 پیام صوتی خوش‌آمد", callback_data: "admin:welcome_audio" }],
+        [{ text: "🔊 صدای ربات: ✅ فعال", callback_data: "admin:toggle:sound" }],
+        [{ text: "⬅️ بازگشت", callback_data: "admin:menu" }],
+      ],
+    };
+  }
+
+  private adminExportsKeyboard(): InlineKeyboard {
+    return {
+      inline_keyboard: [
+        [
+          { text: "👥 کاربران", callback_data: "admin:exp:users" },
+          { text: "🪙 خریدها", callback_data: "admin:exp:buy" },
+        ],
+        [{ text: "💬 پیام‌ها", callback_data: "admin:exp:msg" }],
+        [{ text: "⬅️ بازگشت", callback_data: "admin:menu" }],
+      ],
+    };
+  }
+
+  private async sendAdminMenu(chatId: number, messageId?: number) {
+    await this.sendOrEditMessage(chatId, `${ADMIN_TITLE}
+
+${ADMIN_MENU_TEXT}`, this.adminMenuKeyboard(), messageId);
+  }
+
+  private async handleAdminCallback(callbackId: string, chatId: number, messageId: number | undefined, userId: number, data: string): Promise<{ handled: string }> {
+    if (!this.isOwner(userId)) {
+      await this.answerCallback(callbackId, "⛔️", true);
+      return { handled: "admin_denied" };
+    }
+
+    if (data === "admin:back") {
+      await this.sendMainMenu(chatId, messageId, "fa");
+      await this.answerCallback(callbackId);
+      return { handled: "admin_back" };
+    }
+
+    if (data === "admin:menu") {
+      await this.sendAdminMenu(chatId, messageId);
+      await this.answerCallback(callbackId);
+      return { handled: "admin_menu" };
+    }
+
+    if (data === "admin:settings") {
+      await this.sendOrEditMessage(chatId, "⚙️ تنظیمات ربات:", this.adminSettingsKeyboard(), messageId);
+      await this.answerCallback(callbackId);
+      return { handled: "admin_settings" };
+    }
+
+    if (data === "admin:exports") {
+      await this.sendOrEditMessage(chatId, "📤 خروجی‌ها:", this.adminExportsKeyboard(), messageId);
+      await this.answerCallback(callbackId);
+      return { handled: "admin_exports" };
+    }
+
+    const legacyPrompts: Record<string, string> = {
+      "admin:add": "➕ آیدی عددی یا یوزرنیم کاربر برای «افزایش کردیت» را بفرستید.",
+      "admin:sub": "➖ آیدی عددی یا یوزرنیم کاربر برای «کسر کردیت» را بفرستید.",
+      "admin:bulk_credit": "🧮 فرمول محاسبه کردیت جدید را بفرستید.\nمی‌توانید از متغیر <code>old</code> (کردیت فعلی) استفاده کنید، مثلا: <code>old * 0.045</code>.",
+      "admin:reset": "♻️ آیدی عددی یا یوزرنیم کاربری که باید ریست شود را بفرستید.",
+      "admin:dm": "✉️ آیدی عددی یا یوزرنیم کاربری که باید پیام تکی بگیرد را بفرستید.",
+      "admin:cast": "🌐 زبان پیام همگانی را انتخاب کنید.",
+      "admin:users": "👥 لیست کاربران:",
+      "admin:stats": "📊 آمار:",
+      "admin:clone": "🧬 کاربران Voice Clone:",
+      "admin:image_users": "🖼️ کاربران تصویر:",
+      "admin:gpt_users": "🤖 کاربران GPT:",
+      "admin:daily_reward_users": "🎁 کاربران پاداش روزانه:",
+      "admin:lang_users": "🌐 کاربران بر اساس زبان:",
+      "admin:demo": "🎧 زبان دمو را انتخاب کنید.",
+      "admin:welcome_audio": "🎙 زبان پیام صوتی خوش‌آمد را انتخاب کنید.",
+      "admin:features": "🧩 مدیریت دسترسی بخش‌ها:",
+      "admin:global_voices": "🎛 مدیریت صداهای ربات:",
+      "admin:fs_lang:list": "🔐 تنظیمات عضویت اجباری بر اساس زبان:",
+      "admin:set:bonus": "🎁 مقدار بونوس رفرال را بفرستید (عدد).",
+      "admin:set:free": "🎉 مقدار «کردیت شروع برای ورود اول» را بفرستید (عدد).",
+      "admin:set:tg": "📢 لینک/یوزرنیم کانال تلگرام (برای عضویت اجباری) را بفرستید.",
+      "admin:set:ig": "📷 لینک پیج اینستاگرام (برای عضویت اجباری) را بفرستید.",
+    };
+
+    const prompt = legacyPrompts[data];
+    if (prompt) {
+      await this.sendOrEditMessage(chatId, prompt, this.adminMenuKeyboard(), messageId, "HTML");
+      await this.answerCallback(callbackId);
+      return { handled: "admin_prompt" };
+    }
+
+    await this.deps.ownerNotifications.queue({
+      userId,
+      source: "telegram_bot",
+      category: "admin_callback",
+      message: `Unhandled legacy admin callback: ${data}`,
+    });
+    await this.answerCallback(callbackId, "Action received ✅");
+    return { handled: "admin_callback" };
   }
 
   private mainMenuKeyboard(lang: string): InlineKeyboard {
