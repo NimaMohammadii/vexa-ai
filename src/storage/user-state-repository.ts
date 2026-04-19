@@ -4,6 +4,7 @@ export interface BotConversationState {
     | "awaiting_prompt"
     | "gpt:chat"
     | "tts:wait_text"
+    | "tts:processing"
     | "image:wait_prompt"
     | "video:wait_image"
     | "clone:wait_audio"
@@ -71,6 +72,7 @@ export class UserStateRepository {
           parsed.mode === "awaiting_prompt" ||
           parsed.mode === "gpt:chat" ||
           parsed.mode === "tts:wait_text" ||
+          parsed.mode === "tts:processing" ||
           parsed.mode === "image:wait_prompt" ||
           parsed.mode === "video:wait_image" ||
           parsed.mode === "clone:wait_audio" ||

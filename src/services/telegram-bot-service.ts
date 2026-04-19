@@ -119,6 +119,23 @@ const I18N: Record<string, Record<string, string>> = {
   tts_demo_caption: { fa: "🎧 دمو: {voice}\n⏳ حذف خودکار پس از {seconds} ثانیه", en: "🎧 Demo: {voice}\n⏳ Auto delete in {seconds} seconds", ar: "🎧 عرض تجريبي: {voice}\n⏳ الحذف التلقائي خلال {seconds} ثانية", tr: "🎧 Demo: {voice}\n⏳ Otomatik silme {seconds} saniye içinde", ru: "🎧 Демо: {voice}\n⏳ Автоудаление через {seconds} секунд", es: "🎧 Demo: {voice}\n⏳ Eliminación automática en {seconds} segundos", de: "🎧 Demo: {voice}\n⏳ Automatisches Löschen in {seconds} Sekunden", fr: "🎧 Démo : {voice}\n⏳ Suppression automatique dans {seconds} secondes" },
   tts_demo_wait: { fa: "⏳ دموی این صدا ارسال شده. لطفاً تا حذف شدنش صبر کنید.", en: "⏳ Demo already sent. Please wait for it to be deleted.", ar: "⏳ تم إرسال العرض التجريبي بالفعل. يرجى الانتظار حتى يتم حذفه.", tr: "⏳ Demo zaten gönderildi. Silinmesini bekleyin.", ru: "⏳ Демо уже отправлено. Подождите, пока оно будет удалено.", es: "⏳ La demo ya fue enviada. Espera a que se elimine.", de: "⏳ Demo bereits gesendet. Bitte warten, bis sie gelöscht wird.", fr: "⏳ Démo déjà envoyée. Merci d’attendre sa suppression." },
   tts_demo_missing: { fa: "❌ دموی این صدا هنوز تنظیم نشده است.", en: "❌ Demo for this voice is not available yet.", ar: "❌ العرض التجريبي لهذا الصوت غير متوفر بعد.", tr: "❌ Bu ses için demo henüz mevcut değil.", ru: "❌ Демоверсия для этого голоса пока недоступна.", es: "❌ La demo de esta voz aún no está disponible.", de: "❌ Für diese Stimme ist noch keine Demo verfügbar.", fr: "❌ La démo de cette voix n'est pas encore disponible." },
+  tts_delete_voice: { fa: "🗑 حذف این صدا", en: "🗑 Delete this voice", ar: "🗑 حذف هذا الصوت", tr: "🗑 Bu sesi sil", ru: "🗑 Удалить этот голос", es: "🗑 Eliminar esta voz", de: "🗑 Diese Stimme löschen", fr: "🗑 Supprimer cette voix" },
+  tts_delete_success: { fa: "✅ صدای '{voice}' حذف شد", en: "✅ '{voice}' was deleted", ar: "✅ تم حذف الصوت «{voice}»", tr: "✅ '{voice}' silindi", ru: "✅ Голос «{voice}» удалён", es: "✅ Se eliminó «{voice}»", de: "✅ „{voice}“ wurde gelöscht", fr: "✅ «{voice}» a été supprimée" },
+  tts_delete_error: { fa: "❌ خطا در حذف صدا", en: "❌ Error deleting the voice", ar: "❌ حدث خطأ أثناء حذف الصوت", tr: "❌ Ses silinirken hata oluştu", ru: "❌ Ошибка при удалении голоса", es: "❌ Error al eliminar la voz", de: "❌ Fehler beim Löschen der Stimme", fr: "❌ Erreur lors de la suppression de la voix" },
+  tts_voice_not_found: { fa: "صدا یافت نشد", en: "Voice not found", ar: "لم يتم العثور على الصوت", tr: "Ses bulunamadı", ru: "Голос не найден", es: "Voz no encontrada", de: "Stimme nicht gefunden", fr: "Voix introuvable" },
+  tts_voice_disabled: { fa: "این صدا برای شما غیرفعال است.", en: "This voice is disabled for you.", ar: "هذا الصوت معطّل لك.", tr: "Bu ses sizin için devre dışı.", ru: "Этот голос для вас отключён.", es: "Esta voz está desactivada para ti.", de: "Diese Stimme ist für dich deaktiviert.", fr: "Cette voix est désactivée pour vous." },
+  tts_processing: { fa: "👀 <b>در حال تبدیل...</b>", en: "⏳ Converting...", ar: "⏳ جارٍ التحويل...", tr: "⏳ Dönüştürülüyor...", ru: "⏳ Конвертация...", es: "⏳ Convirtiendo...", de: "⏳ Wird konvertiert...", fr: "⏳ Conversion..." },
+  tts_no_credit: {
+    fa: "⚠️ <b>کردیت کافی نیست</b>\n<b>موجودی شما: {credits} کردیت</b>\n<b>کردیت لازم: {required}</b>\n<b>می‌تونی کردیت بخری یا متن رو کوتاه‌تر کنی /help</b>",
+    en: "⚠️ <b>Not enough credits</b>\n<b>Your balance: {credits} credits</b>\n<b>Required: {required} credits</b>\n<b>You can buy credits or send a shorter text /help</b>",
+    ar: "⚠️ <b>الرصيد غير كافٍ</b>\n<b>رصيدك الحالي: {credits} رصيد</b>\n<b>المطلوب: {required} رصيد</b>\n<b>يمكنك شراء رصيد أو إرسال نص أقصر /help</b>",
+    tr: "⚠️ <b>Yetersiz kredi</b>\n<b>Mevcut bakiyen: {credits} kredi</b>\n<b>Gerekli: {required} kredi</b>\n<b>Kredi satın alabilir veya daha kısa metin gönderebilirsin /help</b>",
+    ru: "⚠️ <b>Недостаточно кредитов</b>\n<b>Текущий баланс: {credits} кредитов</b>\n<b>Нужно: {required} кредитов</b>\n<b>Можно пополнить баланс или отправить более короткий текст /help</b>",
+    es: "⚠️ <b>Créditos insuficientes</b>\n<b>Saldo actual: {credits} créditos</b>\n<b>Requerido: {required} créditos</b>\n<b>Puedes comprar créditos o enviar un texto más corto /help</b>",
+    de: "⚠️ <b>Nicht genug Guthaben</b>\n<b>Dein Kontostand: {credits} Credits</b>\n<b>Benötigt: {required} Credits</b>\n<b>Du kannst Guthaben kaufen oder einen kürzeren Text senden /help</b>",
+    fr: "⚠️ <b>Crédits insuffisants</b>\n<b>Solde actuel : {credits} crédits</b>\n<b>Requis : {required} crédits</b>\n<b>Tu peux acheter des crédits ou envoyer un texte plus court /help</b>",
+  },
+  tts_error: { fa: "⚠️ <b>خطا در تبدیل٫ دوباره تلاش کن</b>", en: "⚠️ Conversion failed. Try again.", ar: "⚠️ فشل التحويل. جرب مرة أخرى.", tr: "⚠️ Dönüşüm hatası. Tekrar dene.", ru: "⚠️ Ошибка конвертации. Попробуйте снова.", es: "⚠️ Error de conversión. Inténtalo de nuevo.", de: "⚠️ Umwandlung fehlgeschlagen. Versuch's nochmal.", fr: "⚠️ Échec de conversion. Réessayez." },
   tts_output_saved: { fa: "✅ خروجی روی <b>{mode}</b> تنظیم شد.", en: "✅ Output set to <b>{mode}</b>.", ar: "✅ تم ضبط المخرج على <b>{mode}</b>.", tr: "✅ Çıktı <b>{mode}</b> olarak ayarlandı.", ru: "✅ Формат вывода: <b>{mode}</b>.", es: "✅ Salida configurada en <b>{mode}</b>.", de: "✅ Ausgabe auf <b>{mode}</b> gesetzt.", fr: "✅ Sortie définie sur <b>{mode}</b>." },
   tts_request_saved: { fa: "✅ متن صوتی ثبت شد.\n\n🎙 صدا: <b>{voice}</b>\n📦 خروجی: <b>{output}</b>", en: "✅ Your TTS text has been queued.\n\n🎙 Voice: <b>{voice}</b>\n📦 Output: <b>{output}</b>", ar: "✅ تم تسجيل النص الصوتي.\n\n🎙 الصوت: <b>{voice}</b>\n📦 المخرج: <b>{output}</b>", tr: "✅ TTS metnin sıraya alındı.\n\n🎙 Ses: <b>{voice}</b>\n📦 Çıktı: <b>{output}</b>", ru: "✅ Текст для TTS сохранён.\n\n🎙 Голос: <b>{voice}</b>\n📦 Вывод: <b>{output}</b>", es: "✅ Tu texto TTS fue registrado.\n\n🎙 Voz: <b>{voice}</b>\n📦 Salida: <b>{output}</b>", de: "✅ Dein TTS-Text wurde übernommen.\n\n🎙 Stimme: <b>{voice}</b>\n📦 Ausgabe: <b>{output}</b>", fr: "✅ Ton texte TTS a été pris en compte.\n\n🎙 Voix : <b>{voice}</b>\n📦 Sortie : <b>{output}</b>" },
   tts_next: { fa: "بعدی ➜", en: "Next ➜", ar: "التالي ➜", tr: "Sonraki ➜", ru: "Далее ➜", es: "Siguiente ➜", de: "Weiter ➜", fr: "Suivant ➜" },
@@ -504,18 +521,24 @@ export class TelegramBotFlowService {
       return { handled: "gpt_open" };
     }
     if (data === "home:tts") {
-      const selected = state.ttsVoice || DEFAULT_VOICE_NAME_BY_LANG[lang] || DEFAULT_VOICE_NAME_BY_LANG.fa;
+      const selected = await this.resolveTtsVoiceSelection(user.userId, lang, state.ttsVoice || DEFAULT_VOICE_NAME_BY_LANG[lang] || DEFAULT_VOICE_NAME_BY_LANG.fa);
       await this.deps.userState.setBotState(user.userId, { ...state, mode: "tts:wait_text", updatedAt: nowTs(), ttsVoice: selected, ttsOutput: state.ttsOutput || "mp3", ttsPage: state.ttsPage || 0 });
-      await this.sendMessage(chatId, this.ttsAskText(lang, selected), "HTML", this.ttsKeyboard(lang, selected, state.ttsOutput || "mp3", state.ttsPage || 0));
+      await this.sendMessage(chatId, this.ttsAskText(lang, selected), "HTML", await this.ttsKeyboard(lang, user.userId, selected, state.ttsOutput || "mp3", state.ttsPage || 0));
       await this.answerCallback(callback.id);
       return { handled: "tts_open" };
     }
     if (data.startsWith("tts:voice:")) {
       const name = data.split(":").slice(2).join(":");
+      const selected = await this.resolveTtsVoiceSelection(user.userId, lang, name);
+      if (selected !== name) {
+        const exists = await this.ttsVoiceExists(user.userId, lang, name);
+        await this.answerCallback(callback.id, t(exists ? "tts_voice_disabled" : "tts_voice_not_found", lang));
+        return { handled: exists ? "tts_voice_disabled" : "tts_voice_missing" };
+      }
       const st = await this.deps.userState.getBotState(user.userId);
-      await this.deps.userState.setBotState(user.userId, { ...st, mode: "tts:wait_text", updatedAt: nowTs(), ttsVoice: name });
-      await this.sendOrEditMessage(chatId, this.ttsAskText(lang, name), this.ttsKeyboard(lang, name, st.ttsOutput || "mp3", st.ttsPage || 0), messageId, "HTML");
-      await this.answerCallback(callback.id, name);
+      await this.deps.userState.setBotState(user.userId, { ...st, mode: "tts:wait_text", updatedAt: nowTs(), ttsVoice: selected });
+      await this.sendOrEditMessage(chatId, this.ttsAskText(lang, selected), await this.ttsKeyboard(lang, user.userId, selected, st.ttsOutput || "mp3", st.ttsPage || 0), messageId, "HTML");
+      await this.answerCallback(callback.id, selected);
       return { handled: "tts_voice" };
     }
     if (data.startsWith("tts:page:")) {
@@ -523,13 +546,13 @@ export class TelegramBotFlowService {
       const step = data.endsWith(":next") ? 1 : -1;
       const nextPage = Math.max(0, (st.ttsPage || 0) + step);
       await this.deps.userState.setBotState(user.userId, { ...st, ttsPage: nextPage, updatedAt: nowTs() });
-      const selected = st.ttsVoice || DEFAULT_VOICE_NAME_BY_LANG[lang] || DEFAULT_VOICE_NAME_BY_LANG.fa;
-      await this.sendOrEditMessage(chatId, this.ttsAskText(lang, selected), this.ttsKeyboard(lang, selected, st.ttsOutput || "mp3", nextPage), messageId, "HTML");
+      const selected = await this.resolveTtsVoiceSelection(user.userId, lang, st.ttsVoice || DEFAULT_VOICE_NAME_BY_LANG[lang] || DEFAULT_VOICE_NAME_BY_LANG.fa);
+      await this.sendOrEditMessage(chatId, this.ttsAskText(lang, selected), await this.ttsKeyboard(lang, user.userId, selected, st.ttsOutput || "mp3", nextPage), messageId, "HTML");
       await this.answerCallback(callback.id);
       return { handled: "tts_page" };
     }
     if (data.startsWith("tts:demo:")) {
-      const voice = data.split(":")[2] || "";
+      const voice = data.split(":").slice(2).join(":") || "";
       const demo = this.getDemoAudio(voice, lang);
       if (!demo) {
         await this.answerCallback(callback.id);
@@ -576,11 +599,30 @@ export class TelegramBotFlowService {
     if (data.startsWith("tts:output:")) {
       const state = await this.deps.userState.getBotState(user.userId);
       const output = data.endsWith(":voice") ? "voice" : "mp3";
-      const voice = state.ttsVoice || DEFAULT_VOICE_NAME_BY_LANG[lang] || DEFAULT_VOICE_NAME_BY_LANG.fa;
+      const voice = await this.resolveTtsVoiceSelection(user.userId, lang, state.ttsVoice || DEFAULT_VOICE_NAME_BY_LANG[lang] || DEFAULT_VOICE_NAME_BY_LANG.fa);
       await this.deps.userState.setBotState(user.userId, { ...state, mode: "tts:wait_text", updatedAt: nowTs(), ttsOutput: output });
-      await this.sendMessage(chatId, t("tts_output_saved", lang).replace("{mode}", output.toUpperCase()), "HTML", this.ttsKeyboard(lang, voice, output, state.ttsPage || 0));
+      await this.sendOrEditMessage(chatId, this.ttsAskText(lang, voice), await this.ttsKeyboard(lang, user.userId, voice, output, state.ttsPage || 0), messageId, "HTML");
       await this.answerCallback(callback.id);
       return { handled: "tts_output" };
+    }
+    if (data.startsWith("tts:delete:")) {
+      const voiceName = data.split(":").slice(2).join(":");
+      try {
+        const customVoices = await this.listUserCustomVoices(user.userId);
+        if (!customVoices.some((voice) => voice.name === voiceName)) {
+          await this.answerCallback(callback.id, t("tts_voice_not_found", lang));
+          return { handled: "tts_delete_missing" };
+        }
+        await this.deleteUserCustomVoice(user.userId, voiceName);
+        const st = await this.deps.userState.getBotState(user.userId);
+        const selected = await this.resolveTtsVoiceSelection(user.userId, lang, DEFAULT_VOICE_NAME_BY_LANG[lang] || DEFAULT_VOICE_NAME_BY_LANG.fa);
+        await this.deps.userState.setBotState(user.userId, { ...st, mode: "tts:wait_text", ttsVoice: selected, updatedAt: nowTs() });
+        await this.sendOrEditMessage(chatId, this.ttsAskText(lang, selected), await this.ttsKeyboard(lang, user.userId, selected, st.ttsOutput || "mp3", st.ttsPage || 0), messageId, "HTML");
+        await this.answerCallback(callback.id, t("tts_delete_success", lang).replace("{voice}", voiceName));
+      } catch {
+        await this.answerCallback(callback.id, t("tts_delete_error", lang));
+      }
+      return { handled: "tts_delete" };
     }
     if (data === "home:clone") {
       await this.deps.userState.setBotState(user.userId, { mode: "clone:wait_audio", updatedAt: nowTs() });
@@ -852,22 +894,48 @@ export class TelegramBotFlowService {
 
     if (state.mode === "tts:wait_text") {
       if (!text) return false;
+      await this.deps.userState.setBotState(userId, { ...state, mode: "tts:processing", updatedAt: nowTs() });
       if (this.hasBannedWord(text)) {
-        const currentVoice = state.ttsVoice || DEFAULT_VOICE_NAME_BY_LANG[lang] || DEFAULT_VOICE_NAME_BY_LANG.fa;
-        await this.sendMessage(chatId, t("tts_banned_words", lang), "HTML", this.ttsKeyboard(lang, currentVoice, state.ttsOutput || "mp3", state.ttsPage || 0));
+        const currentVoice = await this.resolveTtsVoiceSelection(userId, lang, state.ttsVoice || DEFAULT_VOICE_NAME_BY_LANG[lang] || DEFAULT_VOICE_NAME_BY_LANG.fa);
+        await this.deps.userState.setBotState(userId, { ...state, mode: "tts:wait_text", updatedAt: nowTs(), ttsVoice: currentVoice });
+        await this.sendMessage(chatId, t("tts_banned_words", lang), "HTML", await this.ttsKeyboard(lang, userId, currentVoice, state.ttsOutput || "mp3", state.ttsPage || 0));
         return true;
       }
-      const cost = Math.max(1, Math.ceil(text.length / 100));
-      await this.deps.credits.consume(userId, cost, "tts_message", "telegram_bot");
-      await this.deps.ownerNotifications.queue({
-        userId,
-        source: "telegram_bot",
-        category: "tts_request",
-        message: `voice=${state.ttsVoice || "alloy"} output=${state.ttsOutput || "mp3"} text=${text.slice(0, 1000)}`,
-      });
-      const voice = state.ttsVoice || DEFAULT_VOICE_NAME_BY_LANG[lang] || DEFAULT_VOICE_NAME_BY_LANG.fa;
-      const output = (state.ttsOutput || "mp3").toUpperCase();
-      await this.sendMessage(chatId, t("tts_request_saved", lang).replace("{voice}", voice).replace("{output}", output), "HTML", this.ttsKeyboard(lang, voice, state.ttsOutput || "mp3", state.ttsPage || 0));
+      try {
+        const voice = await this.resolveTtsVoiceSelection(userId, lang, state.ttsVoice || DEFAULT_VOICE_NAME_BY_LANG[lang] || DEFAULT_VOICE_NAME_BY_LANG.fa);
+        if (!(await this.ttsVoiceExists(userId, lang, voice))) {
+          await this.deps.userState.setBotState(userId, { ...state, mode: "tts:wait_text", updatedAt: nowTs(), ttsVoice: voice });
+          await this.sendMessage(chatId, t("tts_voice_disabled", lang), "HTML");
+          return true;
+        }
+        const isCustom = await this.isCustomVoice(userId, voice);
+        const cost = Math.max(1, text.length * (isCustom ? 2 : 1));
+        const credits = await this.deps.credits.getCredits(userId);
+        if (credits.credits < cost) {
+          await this.deps.userState.setBotState(userId, { ...state, mode: "tts:wait_text", updatedAt: nowTs(), ttsVoice: voice });
+          await this.sendMessage(
+            chatId,
+            t("tts_no_credit", lang).replace("{credits}", String(credits.credits)).replace("{required}", String(cost)),
+            "HTML",
+            { inline_keyboard: [[{ text: t("btn_credit", lang), callback_data: "credit:menu" }]] }
+          );
+          return true;
+        }
+        await this.sendMessage(chatId, t("tts_processing", lang), "HTML");
+        await this.deps.credits.consume(userId, cost, "tts_message", "telegram_bot");
+        await this.deps.ownerNotifications.queue({
+          userId,
+          source: "telegram_bot",
+          category: "tts_request",
+          message: `voice=${voice} output=${state.ttsOutput || "mp3"} text=${text.slice(0, 1000)}`,
+        });
+        const output = (state.ttsOutput || "mp3").toUpperCase();
+        await this.deps.userState.setBotState(userId, { ...state, mode: "tts:wait_text", updatedAt: nowTs(), ttsVoice: voice });
+        await this.sendMessage(chatId, t("tts_request_saved", lang).replace("{voice}", voice).replace("{output}", output), "HTML", await this.ttsKeyboard(lang, userId, voice, state.ttsOutput || "mp3", state.ttsPage || 0));
+      } catch {
+        await this.deps.userState.setBotState(userId, { ...state, mode: "idle", updatedAt: nowTs() });
+        await this.sendMessage(chatId, t("tts_error", lang), "HTML");
+      }
       return true;
     }
 
@@ -1049,8 +1117,9 @@ export class TelegramBotFlowService {
         await this.sendCreditMenu(chatId, lang);
         return true;
       case t("btn_tts", lang):
-        await this.deps.userState.setBotState(userId, { mode: "tts:wait_text", updatedAt: nowTs(), ttsVoice: DEFAULT_VOICE_NAME_BY_LANG[lang] || DEFAULT_VOICE_NAME_BY_LANG.fa, ttsOutput: "mp3", ttsPage: 0 });
-        await this.sendMessage(chatId, this.ttsAskText(lang, DEFAULT_VOICE_NAME_BY_LANG[lang] || DEFAULT_VOICE_NAME_BY_LANG.fa), "HTML", this.ttsKeyboard(lang, DEFAULT_VOICE_NAME_BY_LANG[lang] || DEFAULT_VOICE_NAME_BY_LANG.fa, "mp3", 0));
+        const selected = await this.resolveTtsVoiceSelection(userId, lang, DEFAULT_VOICE_NAME_BY_LANG[lang] || DEFAULT_VOICE_NAME_BY_LANG.fa);
+        await this.deps.userState.setBotState(userId, { mode: "tts:wait_text", updatedAt: nowTs(), ttsVoice: selected, ttsOutput: "mp3", ttsPage: 0 });
+        await this.sendMessage(chatId, this.ttsAskText(lang, selected), "HTML", await this.ttsKeyboard(lang, userId, selected, "mp3", 0));
         return true;
       case t("btn_gpt", lang):
         await this.handleCommand(userId, lang, chatId, "/ask", { mode: "idle", updatedAt: nowTs() });
@@ -1787,8 +1856,8 @@ ${ADMIN_MENU_TEXT}`, this.adminMenuKeyboard(), messageId);
     await this.sendOrEditMessage(chatId, text, replyMarkup, messageId, "HTML");
   }
 
-  private ttsKeyboard(lang: string, selectedVoice: string, selectedOutput: "mp3" | "voice" = "mp3", page = 0): InlineKeyboard {
-    const voices = Object.keys(VOICES_BY_LANG[lang] || VOICES_BY_LANG.fa);
+  private async ttsKeyboard(lang: string, userId: number, selectedVoice: string, selectedOutput: "mp3" | "voice" = "mp3", page = 0): Promise<InlineKeyboard> {
+    const voices = await this.getAvailableTtsVoices(userId, lang);
     const perPage = voices.length > 10 ? 9 : 10;
     const totalPages = Math.max(1, Math.ceil(voices.length / perPage));
     const current = Math.max(0, Math.min(page, totalPages - 1));
@@ -1803,6 +1872,9 @@ ${ADMIN_MENU_TEXT}`, this.adminMenuKeyboard(), messageId);
     if (current > 0) nav.push({ text: t("tts_prev", lang), callback_data: "tts:page:prev" });
     if (current < totalPages - 1) nav.push({ text: t("tts_next", lang), callback_data: "tts:page:next" });
     if (nav.length) rows.push(nav);
+    if (await this.isCustomVoice(userId, selectedVoice)) {
+      rows.push([{ text: t("tts_delete_voice", lang), callback_data: `tts:delete:${selectedVoice}` }]);
+    }
     rows.push([{ text: t("tts_demo", lang), callback_data: `tts:demo:${selectedVoice}` }]);
     rows.push([
       { text: `${selectedOutput === "mp3" ? "✔️ " : ""}${t("tts_output_mp3", lang)}`, callback_data: "tts:output:mp3" },
@@ -1811,6 +1883,77 @@ ${ADMIN_MENU_TEXT}`, this.adminMenuKeyboard(), messageId);
     rows.push([{ text: t("btn_clone", lang), callback_data: "home:clone" }]);
     rows.push([{ text: t("back", lang), callback_data: "home:back" }]);
     return { inline_keyboard: rows };
+  }
+
+  private async getAvailableTtsVoices(userId: number, lang: string): Promise<string[]> {
+    const defaultVoices = Object.keys(VOICES_BY_LANG[lang] || VOICES_BY_LANG.fa);
+    const disabledDefault = await this.listDisabledVoices(userId, lang);
+    const globalDisabled = await this.listGlobalDisabledVoices(lang);
+    const customVoices = await this.listUserCustomVoices(userId);
+    const disabledCustom = await this.listDisabledVoices(userId, "custom");
+    return [
+      ...defaultVoices.filter((name) => !disabledDefault.has(name) && !globalDisabled.has(name)),
+      ...customVoices.map((voice) => voice.name).filter((name) => !disabledCustom.has(name)),
+    ];
+  }
+
+  private async resolveTtsVoiceSelection(userId: number, lang: string, desiredVoice: string): Promise<string> {
+    const voices = await this.getAvailableTtsVoices(userId, lang);
+    if (voices.includes(desiredVoice)) return desiredVoice;
+    return voices[0] || desiredVoice;
+  }
+
+  private async ttsVoiceExists(userId: number, lang: string, voiceName: string): Promise<boolean> {
+    const defaultVoices = VOICES_BY_LANG[lang] || VOICES_BY_LANG.fa;
+    if (voiceName in defaultVoices) return true;
+    const customVoices = await this.listUserCustomVoices(userId);
+    return customVoices.some((voice) => voice.name === voiceName);
+  }
+
+  private async isCustomVoice(userId: number, voiceName: string): Promise<boolean> {
+    const voices = await this.listUserCustomVoices(userId);
+    return voices.some((voice) => voice.name === voiceName);
+  }
+
+  private async listUserCustomVoices(userId: number): Promise<Array<{ name: string; id: string }>> {
+    const raw = await this.getSetting(`TTS_USER_VOICES_${userId}`);
+    if (!raw) return [];
+    try {
+      const parsed = JSON.parse(raw) as Record<string, string>;
+      return Object.entries(parsed)
+        .map(([name, id]) => ({ name, id: String(id || "") }))
+        .filter((voice) => voice.name.trim().length > 0 && voice.id.trim().length > 0);
+    } catch {
+      return [];
+    }
+  }
+
+  private async deleteUserCustomVoice(userId: number, voiceName: string): Promise<void> {
+    const voices = await this.listUserCustomVoices(userId);
+    const next = Object.fromEntries(voices.filter((voice) => voice.name !== voiceName).map((voice) => [voice.name, voice.id]));
+    await this.setSetting(`TTS_USER_VOICES_${userId}`, JSON.stringify(next));
+  }
+
+  private async listDisabledVoices(userId: number, lang: string): Promise<Set<string>> {
+    const raw = await this.getSetting(`TTS_DISABLED_USER_${userId}_${lang}`);
+    if (!raw) return new Set();
+    try {
+      const parsed = JSON.parse(raw) as string[];
+      return new Set(parsed.map((item) => String(item)));
+    } catch {
+      return new Set();
+    }
+  }
+
+  private async listGlobalDisabledVoices(lang: string): Promise<Set<string>> {
+    const raw = await this.getSetting(`TTS_DISABLED_GLOBAL_${lang}`);
+    if (!raw) return new Set();
+    try {
+      const parsed = JSON.parse(raw) as string[];
+      return new Set(parsed.map((item) => String(item)));
+    } catch {
+      return new Set();
+    }
   }
 
   private ttsAskText(lang: string, voiceName: string) {
