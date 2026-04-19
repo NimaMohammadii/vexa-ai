@@ -1,6 +1,20 @@
 export interface BotConversationState {
-  mode: "idle" | "awaiting_prompt" | "gpt:chat" | "tts:wait_text" | "image:wait_prompt" | "video:wait_image";
+  mode:
+    | "idle"
+    | "awaiting_prompt"
+    | "gpt:chat"
+    | "tts:wait_text"
+    | "image:wait_prompt"
+    | "video:wait_image"
+    | "clone:wait_audio"
+    | "clone:wait_name";
   updatedAt: number;
+  ttsVoice?: string;
+  ttsOutput?: "mp3" | "voice";
+  cloneFileId?: string;
+  cloneFileKind?: "voice" | "audio" | "document";
+  referralPromptedAt?: number;
+  dailyRewardClaimedAt?: number;
 }
 
 const DEFAULT_STATE: BotConversationState = {
@@ -31,10 +45,21 @@ export class UserStateRepository {
           parsed.mode === "gpt:chat" ||
           parsed.mode === "tts:wait_text" ||
           parsed.mode === "image:wait_prompt" ||
-          parsed.mode === "video:wait_image"
+          parsed.mode === "video:wait_image" ||
+          parsed.mode === "clone:wait_audio" ||
+          parsed.mode === "clone:wait_name"
             ? parsed.mode
             : "idle",
         updatedAt: Number(parsed.updatedAt ?? 0),
+        ttsVoice: typeof parsed.ttsVoice === "string" ? parsed.ttsVoice : undefined,
+        ttsOutput: parsed.ttsOutput === "voice" ? "voice" : parsed.ttsOutput === "mp3" ? "mp3" : undefined,
+        cloneFileId: typeof parsed.cloneFileId === "string" ? parsed.cloneFileId : undefined,
+        cloneFileKind:
+          parsed.cloneFileKind === "voice" || parsed.cloneFileKind === "audio" || parsed.cloneFileKind === "document"
+            ? parsed.cloneFileKind
+            : undefined,
+        referralPromptedAt: Number(parsed.referralPromptedAt ?? 0) || undefined,
+        dailyRewardClaimedAt: Number(parsed.dailyRewardClaimedAt ?? 0) || undefined,
       };
     } catch {
       return DEFAULT_STATE;
