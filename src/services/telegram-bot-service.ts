@@ -1429,6 +1429,14 @@ ${ADMIN_MENU_TEXT}`, this.adminMenuKeyboard(), messageId);
             inline_keyboard: [
               [{ text: "➕ افزودن", callback_data: `admin:uadd:${u.user_id}` }, { text: "➖ کسر", callback_data: `admin:usub:${u.user_id}` }],
               [{ text: "✉️ پیام تکی", callback_data: `admin:dm:${u.user_id}` }, { text: u.banned ? "✅ آن‌بن" : "🚫 بن", callback_data: `admin:${u.banned ? "unban" : "ban"}:${u.user_id}` }],
+              [
+                { text: "📥 متن‌های TTS کاربر", callback_data: `admin:exp_user_tts:${u.user_id}` },
+                { text: "💬 پیام‌های کاربر", callback_data: `admin:exp_user_msgs:${u.user_id}` },
+              ],
+              [
+                { text: "🤖 GPT کاربر", callback_data: `admin:exp_user_gpt:${u.user_id}` },
+                { text: "🖼️ تصاویر کاربر", callback_data: `admin:exp_user_images:${u.user_id}` },
+              ],
               [{ text: "⬅️ بازگشت", callback_data: "admin:users" }],
             ],
           };
@@ -1749,11 +1757,6 @@ ${ADMIN_MENU_TEXT}`, this.adminMenuKeyboard(), messageId);
         ],
         [{ text: t("btn_tts", lang), callback_data: "home:tts" }],
         [{ text: t("btn_gpt", lang), callback_data: "home:gpt_chat" }],
-        [
-          { text: t("btn_image", lang), callback_data: "home:image" },
-          { text: t("btn_video", lang), callback_data: "home:video" },
-        ],
-        [{ text: t("btn_sora2", lang), callback_data: "home:sora2" }],
         [
           { text: t("btn_lang", lang), callback_data: "home:lang" },
           { text: t("btn_invite", lang), callback_data: "home:invite" },
