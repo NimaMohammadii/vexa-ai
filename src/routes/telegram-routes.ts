@@ -1,5 +1,5 @@
 import { HttpError, jsonOk, parseJsonBody } from "../http/response";
-import { TelegramBotFlowService, type TelegramWebhookUpdate } from "../services/telegram-legacy-parity-bot-service";
+import { TelegramBotFlowService, type TelegramWebhookUpdate } from "../services/telegram-bot-service";
 import { UserStateRepository } from "../storage/user-state-repository";
 import type { RouteCtx } from "./types";
 
@@ -12,6 +12,11 @@ export async function handleTelegramRoutes(ctx: RouteCtx): Promise<Response | nu
       db: env.DB,
       botToken: env.TELEGRAM_BOT_TOKEN,
       botUsername: env.TELEGRAM_BOT_USERNAME,
+      forceSubMode: env.FORCE_SUB_MODE,
+      forceSubChannel: env.TG_CHANNEL,
+      forceSubInstagramUrl: env.IG_URL,
+      welcomeAudioFileId: env.WELCOME_AUDIO_FILE_ID,
+      welcomeAudioKind: env.WELCOME_AUDIO_KIND,
       ownerTelegramChatId: env.OWNER_TELEGRAM_CHAT_ID,
       cardNumber: env.CARD_NUMBER,
       users: services.users,
