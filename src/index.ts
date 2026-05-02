@@ -25,7 +25,7 @@ import {
 import { UserStateDO } from "./storage/user-state-do";
 import { handleMeRoutes } from "./routes/me-routes";
 import { handlePublicRoutes } from "./routes/public-routes";
-import { handleTelegramRoutes } from "./routes/telegram-routes";
+import { handleTelegramActiveRoutes } from "./routes/telegram-active-routes";
 import type { Env } from "./routes/types";
 
 export { UserStateDO };
@@ -58,7 +58,7 @@ export default {
     try {
       const ctx = { env, request, url, services };
 
-      const handlers = [handleTelegramRoutes, handlePublicRoutes, handleMeRoutes];
+      const handlers = [handleTelegramActiveRoutes, handlePublicRoutes, handleMeRoutes];
       for (const handler of handlers) {
         const response = await handler(ctx);
         if (response) return withCors(request, response);
