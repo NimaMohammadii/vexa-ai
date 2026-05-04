@@ -26,7 +26,7 @@ def open_clone(bot, cq):
 
     db.set_state(cq.from_user.id, STATE_WAIT_VOICE)
 
-    # ذخیره message_id برای پاک‌سازی بعدی
+    #ذخیره message_id برای پاک‌سازی بعدی
     if not hasattr(bot, "clone_start_messages"):
         bot.clone_start_messages = {}
     bot.clone_start_messages[cq.from_user.id] = cq.message.message_id
